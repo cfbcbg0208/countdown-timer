@@ -1,0 +1,10 @@
+# 검토용 스크래치 (프롬프트·스크린샷) — 버전관리 제외
+.prompts/
+
+# OS / 에디터 부산물
+Thumbs.db
+Desktop.ini
+.DS_Store
+.idea/
+
+# ⚠️ 스택별 무시규칙(node_modules, 빌드 산출물 등)은 스택 확정 후 보강

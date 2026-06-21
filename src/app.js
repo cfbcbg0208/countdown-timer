@@ -1,67 +1,61 @@
-// M3b: 두 입력 구역(텍스트/선택기), 텍스트 실시간 해석 미리보기,
-// 활성 방식 표시, +/- 부호·색상·이모지 방향 표시.
+// M4b: 여러 카운트다운을 목록으로 관리(추가·삭제·영속·임박순 정렬·동시 틱).
 import { parseFlexible, diff, formatDuration, formatLocal } from './time.js';
+import { load, add, remove, sortByUrgency } from './store.js';
 
 const $ = (id) => document.getElementById(id);
-
+const labelInput = $('label-input');
 const textInput = $('text-input');
 const textPreview = $('text-preview');
 const pickerInput = $('picker-input');
-const zones = { text: $('zone-text'), picker: $('zone-picker') };
-
-const display = $('display');
-const labelEl = $('display-label');
-const timeEl = $('display-time');
-const targetEl = $('display-target');
+const listEl = $('list');
 const emptyHint = $('empty-hint');
 
-// 방향별 표시 메타: 라벨 · 이모지 · 부호 · CSS 클래스
-// 부호는 D-Day 관례를 따른다: 남은=− (D-7), 지난=+ (D+3). 색은 부호와 별개(남은=초록/지난=빨강).
+// 부호는 D-Day 관례: 남은=− (D-7), 지난=+ (D+3). 색은 부호와 별개(남은=초록/지난=빨강).
 const DIRS = {
   future: { label: '남은 시간', emoji: '⏳', sign: '−', cls: 'display--future' },
   past: { label: '지난 시간', emoji: '⌛', sign: '+', cls: 'display--past' },
   now: { label: '바로 지금!', emoji: '🎯', sign: '', cls: '' },
 };
 
-let target = null; // 현재 적용된 목표 Date
-let source = null; // 'text' | 'picker'
-let timer = null;
+const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ESC[c]);
 
-function render() {
-  if (!target) return;
+// 로컬 시각을 보존하는 ISO 문자열(오프셋 없이 → new Date()가 로컬로 되읽음).
+function toLocalISO(date) {
+  const p = (n) => String(n).padStart(2, '0');
+  return (
+    `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}` +
+    `T${p(date.getHours())}:${p(date.getMinutes())}:${p(date.getSeconds())}`
+  );
+}
+
+let list = load(localStorage);
+
+function cardHTML(item) {
+  const target = new Date(item.targetISO);
   const r = diff(target);
   const d = DIRS[r.direction];
-  display.className = `display ${d.cls}`.trim();
-  labelEl.textContent = `${d.emoji} ${d.label}`;
-  timeEl.innerHTML = d.sign
-    ? `<span class="display__sign">${d.sign}</span>${formatDuration(r)}`
-    : formatDuration(r);
-  targetEl.textContent = `목표: ${formatLocal(target)}`;
+  const sign = d.sign ? `<span class="display__sign">${d.sign}</span>` : '';
+  const label = item.label ? `<span class="card__label">${esc(item.label)}</span>` : '';
+  return `<article class="card ${d.cls}">
+    <button class="card__del" data-id="${esc(item.id)}" title="삭제" aria-label="삭제">✕</button>
+    ${label}
+    <div class="card__time">${sign}${formatDuration(r)}</div>
+    <div class="card__meta">${d.emoji} ${d.label} · 목표 ${formatLocal(target)}</div>
+  </article>`;
 }
 
-function setActiveZone() {
-  for (const [name, el] of Object.entries(zones)) {
-    el.classList.toggle('zone--active', name === source);
-  }
+function render() {
+  const sorted = sortByUrgency(list);
+  emptyHint.hidden = sorted.length > 0;
+  listEl.innerHTML = sorted.map(cardHTML).join('');
 }
 
-function applyTarget(date, src) {
-  target = date;
-  source = src;
-  setActiveZone();
-  display.hidden = false;
-  emptyHint.hidden = true;
-  render();
-  if (timer) clearInterval(timer);
-  timer = setInterval(render, 1000);
-}
-
-// 텍스트 입력: 타이핑할 때마다 해석 결과를 미리 보여준다(적용은 버튼/Enter).
-function updateTextPreview() {
+function updatePreview() {
   const raw = textInput.value.trim();
   if (raw === '') {
     textPreview.className = 'zone__preview preview--idle';
-    textPreview.textContent = '형식을 입력하면 해석 결과가 여기 표시됩니다.';
+    textPreview.textContent = '형식을 입력하면 해석 결과가 표시됩니다.';
     return;
   }
   const d = parseFlexible(raw);
@@ -70,42 +64,57 @@ function updateTextPreview() {
     textPreview.textContent = '❌ 인식할 수 없는 형식입니다.';
     return;
   }
-  const r = diff(d);
-  const dir = DIRS[r.direction];
+  const dir = DIRS[diff(d).direction];
   textPreview.className = 'zone__preview preview--ok';
   textPreview.textContent = `✅ ${formatLocal(d)}  ·  ${dir.emoji} ${dir.label}`;
 }
 
-function applyFromText() {
-  const d = parseFlexible(textInput.value.trim());
-  if (!d) {
-    textPreview.className = 'zone__preview preview--err';
-    textPreview.textContent = '❌ 인식할 수 없는 형식입니다.';
+function addFrom(source) {
+  const raw = (source === 'text' ? textInput.value : pickerInput.value).trim();
+  const date = parseFlexible(raw);
+  if (!date) {
+    if (source === 'text') {
+      textPreview.className = 'zone__preview preview--err';
+      textPreview.textContent = '❌ 인식할 수 없는 형식입니다.';
+    } else {
+      alert('달력에서 시각을 먼저 선택하세요.');
+    }
     return;
   }
-  applyTarget(d, 'text');
-}
-
-function applyFromPicker() {
-  const d = parseFlexible(pickerInput.value.trim());
-  if (!d) {
-    alert('달력에서 시각을 먼저 선택하세요.');
-    return;
+  add(localStorage, { label: labelInput.value.trim(), targetISO: toLocalISO(date) });
+  list = load(localStorage);
+  labelInput.value = '';
+  if (source === 'text') {
+    textInput.value = '';
+    updatePreview();
   }
-  applyTarget(d, 'picker');
+  render();
 }
 
 // 이벤트 배선
-textInput.addEventListener('input', updateTextPreview);
+textInput.addEventListener('input', updatePreview);
 textInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
-    applyFromText();
+    addFrom('text');
+  }
+});
+labelInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    textInput.focus();
   }
 });
 document.querySelectorAll('.zone__apply').forEach((btn) => {
-  btn.addEventListener('click', () => {
-    if (btn.dataset.source === 'text') applyFromText();
-    else applyFromPicker();
-  });
+  btn.addEventListener('click', () => addFrom(btn.dataset.source));
 });
+listEl.addEventListener('click', (e) => {
+  const del = e.target.closest('.card__del');
+  if (del) {
+    list = remove(localStorage, del.dataset.id);
+    render();
+  }
+});
+
+setInterval(render, 1000);
+render();

@@ -6,8 +6,8 @@
   --muted: #9aa0bd;
   --line: #2c3358;
   --accent: #5b8cff;
-  --future: #34d399; /* 미래(남은 시간) = 초록 */
-  --past: #f87171;   /* 과거(지난 시간) = 빨강 */
+  --future: #34d399; /* 남은(미래) = 초록 */
+  --past: #f87171;   /* 지난(과거) = 빨강 */
   --ok: #34d399;
   --err: #f87171;
 }
@@ -26,59 +26,42 @@ body {
 }
 
 .app {
-  width: min(100%, 30rem);
+  width: min(100%, 32rem);
   display: flex;
   flex-direction: column;
   gap: 1.1rem;
 }
 
-.app__title {
-  margin: 0;
-  font-size: 1.35rem;
-  font-weight: 700;
-  text-align: center;
-}
+.app__title { margin: 0; font-size: 1.35rem; font-weight: 700; text-align: center; }
 
-/* ── 입력 구역 ───────────────────────────── */
-.zones { display: flex; flex-direction: column; gap: 0.75rem; }
+/* ── 추가 영역 ───────────────────────────── */
+.add { display: flex; flex-direction: column; gap: 0.7rem; }
+
+.add__label {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+  color: var(--fg);
+  font-size: 1rem;
+}
+.add__label:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.zones { display: flex; flex-direction: column; gap: 0.6rem; }
 
 .zone {
   background: var(--card);
-  border: 2px solid transparent;
+  border: 1px solid var(--line);
   border-radius: 0.85rem;
-  padding: 1rem;
+  padding: 0.9rem 1rem;
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  opacity: 0.78;
-  transition: opacity 0.15s, border-color 0.15s, box-shadow 0.15s;
-}
-.zone:focus-within { opacity: 1; }
-
-/* 현재 적용 중인 구역 강조 */
-.zone--active {
-  opacity: 1;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(91, 140, 255, 0.15);
+  gap: 0.55rem;
 }
 
-.zone__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
+.zone__head { display: flex; align-items: center; justify-content: space-between; }
 .zone__name { font-size: 0.9rem; color: var(--muted); font-weight: 600; }
-
-.zone__badge {
-  display: none;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #0b1020;
-  background: var(--accent);
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-}
-.zone--active .zone__badge { display: inline-block; }
 
 .zone__input {
   width: 100%;
@@ -91,12 +74,7 @@ body {
 }
 .zone__input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-.zone__preview {
-  margin: 0;
-  font-size: 0.85rem;
-  min-height: 1.2em;
-  font-variant-numeric: tabular-nums;
-}
+.zone__preview { margin: 0; font-size: 0.85rem; min-height: 1.2em; font-variant-numeric: tabular-nums; }
 .preview--idle { color: var(--muted); }
 .preview--ok { color: var(--ok); }
 .preview--err { color: var(--err); }
@@ -124,33 +102,49 @@ body {
   color: var(--fg);
 }
 
-/* ── 카운트다운 표시 ──────────────────────── */
-.display {
+/* ── 카운트다운 목록 ──────────────────────── */
+.list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.card {
+  position: relative;
   background: var(--card);
-  padding: 1.5rem;
-  border-radius: 0.85rem;
-  text-align: center;
   border: 2px solid var(--line);
+  border-left-width: 6px;
+  border-radius: 0.75rem;
+  padding: 0.9rem 2.2rem 0.9rem 1rem;
 }
-.display--future { border-color: var(--future); }
-.display--past { border-color: var(--past); }
+.card.display--future { border-color: var(--future); }
+.card.display--past { border-color: var(--past); }
 
-.display__label { margin: 0 0 0.4rem; font-size: 0.95rem; font-weight: 600; color: var(--muted); }
-.display--future .display__label { color: var(--future); }
-.display--past .display__label { color: var(--past); }
+.card__label { display: block; font-size: 0.85rem; color: var(--muted); font-weight: 600; margin-bottom: 0.25rem; }
 
-.display__time {
-  margin: 0;
-  font-size: 2.6rem;
+.card__time {
+  font-size: 1.9rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
+  line-height: 1.1;
 }
-.display--future .display__time { color: var(--future); }
-.display--past .display__time { color: var(--past); }
+.card.display--future .card__time { color: var(--future); }
+.card.display--past .card__time { color: var(--past); }
 
-.display__sign { font-weight: 800; margin-right: 0.15em; }
+.display__sign { font-weight: 800; margin-right: 0.12em; }
 
-.display__target { margin: 0.7rem 0 0; color: var(--muted); font-size: 0.85rem; }
+.card__meta { margin-top: 0.35rem; font-size: 0.8rem; color: var(--muted); }
+
+.card__del {
+  position: absolute;
+  top: 0.45rem;
+  right: 0.5rem;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.25rem 0.4rem;
+  border-radius: 0.4rem;
+  cursor: pointer;
+}
+.card__del:hover { color: var(--past); background: rgba(248, 113, 113, 0.14); }
 
 .hint { margin: 0; text-align: center; color: var(--muted); font-size: 0.85rem; }

@@ -18,6 +18,7 @@
 
       <!-- 추가 영역 -->
       <section class="add">
+        <label class="sr-only" for="label-input">카운트다운 이름 (선택)</label>
         <input
           type="text"
           id="label-input"
@@ -28,7 +29,7 @@
         <div class="zones">
           <!-- 텍스트 자유 입력 -->
           <div class="zone" id="zone-text">
-            <header class="zone__head"><span class="zone__name">⌨️ 텍스트</span></header>
+            <header class="zone__head"><label class="zone__name" for="text-input">⌨️ 텍스트</label></header>
             <input
               type="text"
               id="text-input"
@@ -55,16 +56,19 @@
 
           <!-- 달력 선택기 -->
           <div class="zone" id="zone-picker">
-            <header class="zone__head"><span class="zone__name">📅 선택기</span></header>
+            <header class="zone__head"><label class="zone__name" for="picker-input">📅 선택기</label></header>
             <input type="datetime-local" id="picker-input" class="zone__input" step="1" />
             <button class="zone__apply" data-source="picker" type="button">＋ 추가</button>
           </div>
         </div>
       </section>
 
-      <!-- 카운트다운 목록 -->
-      <section class="list" id="list" aria-live="polite"></section>
+      <!-- 카운트다운 목록 (매초 갱신되므로 aria-live 미사용 → 스팸 방지) -->
+      <section class="list" id="list"></section>
       <p class="hint" id="empty-hint">아직 카운트다운이 없습니다. 위에서 시각을 입력해 추가하세요.</p>
+
+      <!-- 추가/삭제 시에만 스크린리더에 알리는 상태 영역 -->
+      <p id="sr-status" class="sr-only" aria-live="polite" role="status"></p>
     </main>
 
     <script type="module" src="src/app.js"></script>

@@ -1,0 +1,11 @@
+{
+  "name": "countdown-timer",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "특정 datetime까지 남은/지난 시간을 표시하는 웹/PWA (의존성 0)",
+  "scripts": {
+    "test": "node --test",
+    "start": "node serve.mjs"
+  }
+}

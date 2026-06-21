@@ -8,19 +8,57 @@
   </head>
   <body>
     <main class="app">
-      <h1 class="app__title">카운트다운 타이머</h1>
+      <h1 class="app__title">⏳ 카운트다운 타이머</h1>
 
-      <form id="target-form" class="target-form">
-        <label for="target-input">목표 시각</label>
-        <input type="datetime-local" id="target-input" step="1" required />
-        <button type="submit">설정</button>
-      </form>
+      <div class="zones">
+        <!-- 구역 1: 텍스트 자유 입력 (Beeftext 등) -->
+        <section class="zone" id="zone-text">
+          <header class="zone__head">
+            <span class="zone__name">⌨️ 텍스트 입력</span>
+            <span class="zone__badge">● 적용 중</span>
+          </header>
+          <input
+            type="text"
+            id="text-input"
+            class="zone__input"
+            placeholder="예: 260621일110333 · 2026-06-21 11:03 · 110338"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <p class="zone__preview preview--idle" id="text-preview">
+            형식을 입력하면 해석 결과가 여기 표시됩니다.
+          </p>
+          <button class="zone__apply" data-source="text" type="button">이 시각 적용</button>
+          <details class="zone__formats">
+            <summary>지원 형식 보기</summary>
+            <ul>
+              <li><code>2026-06-21 일 11:03:30</code> · <code>2026-06-21 11:03</code></li>
+              <li><code>2026-06-21T11:03:55</code> · <code>2026-06-21</code></li>
+              <li><code>260621일110333</code> · <code>260621-110334</code> · <code>260621</code></li>
+              <li><code>110338</code>(시:분:초) · <code>11:03:41</code> · <code>11:03</code></li>
+              <li>유닉스 타임스탬프(10/13자리)</li>
+            </ul>
+          </details>
+        </section>
 
-      <section id="display" class="display" aria-live="polite" hidden>
+        <!-- 구역 2: 달력 선택기 -->
+        <section class="zone" id="zone-picker">
+          <header class="zone__head">
+            <span class="zone__name">📅 달력 선택기</span>
+            <span class="zone__badge">● 적용 중</span>
+          </header>
+          <input type="datetime-local" id="picker-input" class="zone__input" step="1" />
+          <button class="zone__apply" data-source="picker" type="button">이 시각 적용</button>
+        </section>
+      </div>
+
+      <!-- 카운트다운 표시 -->
+      <section class="display" id="display" aria-live="polite" hidden>
         <p class="display__label" id="display-label"></p>
         <p class="display__time" id="display-time">--:--:--</p>
         <p class="display__target" id="display-target"></p>
       </section>
+      <p class="hint" id="empty-hint">↑ 목표 시각을 입력하고 <b>적용</b>을 누르세요.</p>
     </main>
 
     <script type="module" src="src/app.js"></script>

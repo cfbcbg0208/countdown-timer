@@ -1,9 +1,15 @@
 :root {
   --bg: #0f1220;
   --card: #1a1f35;
+  --card-2: #0e1326;
   --fg: #e8eaf2;
   --muted: #9aa0bd;
+  --line: #2c3358;
   --accent: #5b8cff;
+  --future: #34d399; /* 미래(남은 시간) = 초록 */
+  --past: #f87171;   /* 과거(지난 시간) = 빨강 */
+  --ok: #34d399;
+  --err: #f87171;
 }
 
 * { box-sizing: border-box; }
@@ -13,73 +19,138 @@ body {
   min-height: 100vh;
   display: grid;
   place-items: start center;
-  padding: 2rem 1rem;
-  background: var(--bg);
+  padding: 2rem 1rem 4rem;
+  background: radial-gradient(1200px 600px at 50% -10%, #18203d 0%, var(--bg) 60%);
   color: var(--fg);
   font-family: system-ui, "Segoe UI", "Malgun Gothic", sans-serif;
 }
 
 .app {
-  width: min(100%, 28rem);
+  width: min(100%, 30rem);
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.1rem;
 }
 
 .app__title {
   margin: 0;
-  font-size: 1.25rem;
-  font-weight: 600;
+  font-size: 1.35rem;
+  font-weight: 700;
   text-align: center;
 }
 
-.target-form {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
+/* ── 입력 구역 ───────────────────────────── */
+.zones { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.zone {
   background: var(--card);
+  border: 2px solid transparent;
+  border-radius: 0.85rem;
   padding: 1rem;
-  border-radius: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  opacity: 0.78;
+  transition: opacity 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+.zone:focus-within { opacity: 1; }
+
+/* 현재 적용 중인 구역 강조 */
+.zone--active {
+  opacity: 1;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(91, 140, 255, 0.15);
 }
 
-.target-form label { flex: 1 0 100%; color: var(--muted); font-size: 0.85rem; }
+.zone__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.zone__name { font-size: 0.9rem; color: var(--muted); font-weight: 600; }
 
-.target-form input {
-  flex: 1 1 auto;
-  padding: 0.5rem 0.6rem;
+.zone__badge {
+  display: none;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0b1020;
+  background: var(--accent);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+}
+.zone--active .zone__badge { display: inline-block; }
+
+.zone__input {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
   border-radius: 0.5rem;
-  border: 1px solid #2c3358;
-  background: #0e1326;
+  border: 1px solid var(--line);
+  background: var(--card-2);
   color: var(--fg);
   font-size: 1rem;
 }
+.zone__input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-.target-form button {
-  padding: 0.5rem 1rem;
+.zone__preview {
+  margin: 0;
+  font-size: 0.85rem;
+  min-height: 1.2em;
+  font-variant-numeric: tabular-nums;
+}
+.preview--idle { color: var(--muted); }
+.preview--ok { color: var(--ok); }
+.preview--err { color: var(--err); }
+
+.zone__apply {
+  align-self: flex-start;
+  padding: 0.45rem 1rem;
   border: none;
   border-radius: 0.5rem;
   background: var(--accent);
   color: white;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
 }
+.zone__apply:hover { filter: brightness(1.08); }
 
+.zone__formats { font-size: 0.8rem; color: var(--muted); }
+.zone__formats summary { cursor: pointer; }
+.zone__formats ul { margin: 0.4rem 0 0; padding-left: 1.1rem; line-height: 1.7; }
+.zone__formats code {
+  background: var(--card-2);
+  padding: 0.05rem 0.3rem;
+  border-radius: 0.3rem;
+  color: var(--fg);
+}
+
+/* ── 카운트다운 표시 ──────────────────────── */
 .display {
   background: var(--card);
   padding: 1.5rem;
-  border-radius: 0.75rem;
+  border-radius: 0.85rem;
   text-align: center;
+  border: 2px solid var(--line);
 }
+.display--future { border-color: var(--future); }
+.display--past { border-color: var(--past); }
 
-.display__label { margin: 0 0 0.5rem; color: var(--muted); font-size: 0.9rem; }
+.display__label { margin: 0 0 0.4rem; font-size: 0.95rem; font-weight: 600; color: var(--muted); }
+.display--future .display__label { color: var(--future); }
+.display--past .display__label { color: var(--past); }
 
 .display__time {
   margin: 0;
-  font-size: 2.5rem;
-  font-weight: 700;
+  font-size: 2.6rem;
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
 }
+.display--future .display__time { color: var(--future); }
+.display--past .display__time { color: var(--past); }
 
-.display__target { margin: 0.75rem 0 0; color: var(--muted); font-size: 0.85rem; }
+.display__sign { font-weight: 800; margin-right: 0.15em; }
+
+.display__target { margin: 0.7rem 0 0; color: var(--muted); font-size: 0.85rem; }
+
+.hint { margin: 0; text-align: center; color: var(--muted); font-size: 0.85rem; }

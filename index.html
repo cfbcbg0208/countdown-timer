@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>카운트다운 타이머</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <h1 class="app__title">카운트다운 타이머</h1>
+
+      <form id="target-form" class="target-form">
+        <label for="target-input">목표 시각</label>
+        <input type="datetime-local" id="target-input" step="1" required />
+        <button type="submit">설정</button>
+      </form>
+
+      <section id="display" class="display" aria-live="polite" hidden>
+        <p class="display__label" id="display-label"></p>
+        <p class="display__time" id="display-time">--:--:--</p>
+        <p class="display__target" id="display-target"></p>
+      </section>
+    </main>
+
+    <script type="module" src="src/app.js"></script>
+  </body>
+</html>

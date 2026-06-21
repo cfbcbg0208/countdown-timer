@@ -16,9 +16,10 @@ const targetEl = $('display-target');
 const emptyHint = $('empty-hint');
 
 // 방향별 표시 메타: 라벨 · 이모지 · 부호 · CSS 클래스
+// 부호는 D-Day 관례를 따른다: 남은=− (D-7), 지난=+ (D+3). 색은 부호와 별개(남은=초록/지난=빨강).
 const DIRS = {
-  future: { label: '남은 시간', emoji: '⏳', sign: '+', cls: 'display--future' },
-  past: { label: '지난 시간', emoji: '⌛', sign: '−', cls: 'display--past' },
+  future: { label: '남은 시간', emoji: '⏳', sign: '−', cls: 'display--future' },
+  past: { label: '지난 시간', emoji: '⌛', sign: '+', cls: 'display--past' },
   now: { label: '바로 지금!', emoji: '🎯', sign: '', cls: '' },
 };
 

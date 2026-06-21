@@ -118,3 +118,10 @@ listEl.addEventListener('click', (e) => {
 
 setInterval(render, 1000);
 render();
+
+// PWA: 서비스 워커 등록(오프라인·설치). 실패해도 앱 동작엔 지장 없음.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}

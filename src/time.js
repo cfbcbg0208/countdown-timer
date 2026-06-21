@@ -24,6 +24,11 @@ function makeLocal(y, mo, d, h = 0, mi = 0, s = 0) {
   return ok ? dt : null;
 }
 
+// 시간 숫자덩어리(2/4/6자리) → [시, 분, 초]
+function digitsToHMS(str) {
+  return [+str.slice(0, 2), +(str.slice(2, 4) || 0), +(str.slice(4, 6) || 0)];
+}
+
 /**
  * 다양한 입력을 Date로 정규화한다. 실패하면 null.
  * 허용: Date, 숫자(유닉스 초/밀리초), 숫자 문자열, ISO/로컬 datetime 문자열
@@ -80,56 +85,79 @@ export function formatLocal(date) {
 }
 
 /**
- * Beeftext 등에서 쓰는 다양한 사람 친화 형식을 Date로 파싱한다. 실패하면 null.
+ * Beeftext 등에서 쓰는 사람 친화 형식 + 그 파생/변형들을 Date로 파싱한다. 실패하면 null.
  * 시간 없는 입력은 00:00:00, 날짜 없는(시간만) 입력은 now의 날짜를 쓴다.
- * 지원 예:
- *   "2026-06-21 일 11:03:30" / "2026-06-21 11:03:32" / "2026-06-21T11:03:55"
- *   "2026-06-21 일" / "2026-06-21"
- *   "260621일110333" / "260621-110334" / "260621일" / "260621"
- *   "110338"(HHMMSS) / "11:03:41" / "11:03"
- *   10자리(초)·13자리(밀리초) 유닉스 타임스탬프
- * 모호한 6자리 숫자는 날짜(YYMMDD)를 우선 시도하고, 날짜로 무효하면 시간(HHMMSS)으로 해석한다.
+ *
+ * - 날짜 구분자: "-" "/" "." "년월일", 점·공백 혼합("2026. 6. 21.") 모두 허용. 연도는 4/2자리.
+ * - 컴팩트(YYYYMMDD·YYMMDD) 뒤 시간은 2/4/6자리(HH·HHMM·HHMMSS), 구분자(- _ . T 공백)로 연결 가능.
+ * - 시간: "11:03:30" "11:03" "110338" "1300" "11시 03분 30초" / 오전·오후(am·pm) 보정.
+ * - 유닉스: 10자리(초)·13자리(밀리초). 6자리 숫자는 날짜(YYMMDD) 우선, 무효하면 시간(HHMMSS).
  */
 export function parseFlexible(input, now = new Date()) {
   if (input == null) return null;
-  const s = String(input).trim();
+  let s = String(input).trim();
   if (s === '') return null;
 
   const Y = now.getFullYear();
   const Mo = now.getMonth() + 1;
   const D = now.getDate();
-  const wd = `[${WEEKDAY}]`;
+  const ey = (y) => (y < 100 ? 2000 + y : y); // 2자리 연도 → 20xx
+
+  // 오전/오후(am/pm) 추출 → 시(hour) 보정에 사용
+  let ampm = null;
+  const ap = s.match(/오전|오후|\b(?:am|pm)\b/i);
+  if (ap) {
+    ampm = /오후|pm/i.test(ap[0]) ? 'pm' : 'am';
+    s = (s.slice(0, ap.index) + ' ' + s.slice(ap.index + ap[0].length)).trim();
+  }
+  const fixH = (h) => {
+    if (ampm === 'pm' && h < 12) return h + 12;
+    if (ampm === 'am' && h === 12) return 0;
+    return h;
+  };
+
+  // 한국어·점·슬래시 구분자 정규화 → 표준 "YYYY-M-D" / "H:M:S" 로
+  s = s
+    .replace(/(\d{1,4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일?/, '$1-$2-$3')
+    .replace(/(\d{1,2})\s*월\s*(\d{1,2})\s*일?/, `${Y}-$1-$2`)
+    .replace(/(\d{1,2})\s*시\s*(\d{1,2})\s*분\s*(\d{1,2})\s*초?/, '$1:$2:$3')
+    .replace(/(\d{1,2})\s*시\s*(\d{1,2})\s*분?/, '$1:$2')
+    .replace(/(\d{1,2})\s*시/, '$1:00')
+    .replace(/(\d{2,4})\s*[.\/]\s*(\d{1,2})\s*[.\/]\s*(\d{1,2})\.?/, '$1-$2-$3')
+    .replace(/[일월화수목금토]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
   let m;
 
-  // ISO: 2026-06-21T11:03[:55]
-  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})T(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/)))
-    return makeLocal(+m[1], +m[2], +m[3], +m[4], +m[5], +(m[6] ?? 0));
+  // 대시 날짜(+시간): YYYY|YY - M - D  [(공백|T) H:M[:S]]
+  if ((m = s.match(/^(\d{2,4})-(\d{1,2})-(\d{1,2})(?:[ T]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/)))
+    return makeLocal(ey(+m[1]), +m[2], +m[3], fixH(+(m[4] ?? 0)), +(m[5] ?? 0), +(m[6] ?? 0));
 
-  // 풀 날짜(-구분) [요일] [시간]: 2026-06-21 [일] [11:03[:30]]
-  if ((m = s.match(new RegExp(`^(\\d{4})-(\\d{1,2})-(\\d{1,2})(?:\\s+${wd})?(?:\\s+(\\d{1,2}):(\\d{1,2})(?::(\\d{1,2}))?)?$`))))
-    return makeLocal(+m[1], +m[2], +m[3], +(m[4] ?? 0), +(m[5] ?? 0), +(m[6] ?? 0));
-
-  // 8자리 날짜: 20260621 [요일] [-|공백] [110333]
-  if ((m = s.match(new RegExp(`^(\\d{4})(\\d{2})(\\d{2})(?:${wd})?(?:[-\\s]?(\\d{2})(\\d{2})(\\d{2}))?$`)))) {
-    const d = makeLocal(+m[1], +m[2], +m[3], +(m[4] ?? 0), +(m[5] ?? 0), +(m[6] ?? 0));
+  // 8자리 컴팩트: YYYYMMDD [구분] [HH|HHMM|HHMMSS]
+  if ((m = s.match(/^(\d{4})(\d{2})(\d{2})(?:[-\s_.T\/]?(\d{2}(?:\d{2}){0,2}))?$/))) {
+    const [h, mi, se] = m[4] ? digitsToHMS(m[4]) : [0, 0, 0];
+    const d = makeLocal(+m[1], +m[2], +m[3], fixH(h), mi, se);
     if (d) return d;
   }
 
-  // 컴팩트 6자리 날짜: 260621 [요일] [-|공백] [110333]
-  if ((m = s.match(new RegExp(`^(\\d{2})(\\d{2})(\\d{2})(?:${wd})?(?:[-\\s]?(\\d{2})(\\d{2})(\\d{2}))?$`)))) {
-    const d = makeLocal(2000 + +m[1], +m[2], +m[3], +(m[4] ?? 0), +(m[5] ?? 0), +(m[6] ?? 0));
-    if (d) return d; // 날짜로 무효(예: 110338)면 아래 시간 해석으로 넘어감
-  }
-
-  // 시간만(HHMMSS): 110338 → 오늘 날짜
-  if ((m = s.match(/^(\d{2})(\d{2})(\d{2})$/))) {
-    const d = makeLocal(Y, Mo, D, +m[1], +m[2], +m[3]);
+  // 6자리 컴팩트: YYMMDD [구분] [HH|HHMM|HHMMSS] (날짜로 무효하면 아래 시간 해석)
+  if ((m = s.match(/^(\d{2})(\d{2})(\d{2})(?:[-\s_.T\/]?(\d{2}(?:\d{2}){0,2}))?$/))) {
+    const [h, mi, se] = m[4] ? digitsToHMS(m[4]) : [0, 0, 0];
+    const d = makeLocal(2000 + +m[1], +m[2], +m[3], fixH(h), mi, se);
     if (d) return d;
   }
 
-  // 시간만(HH:MM[:SS]): 11:03:41 / 11:03 → 오늘 날짜
+  // 시간만(콜론): H:M[:S] → 오늘 날짜
   if ((m = s.match(/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?$/))) {
-    const d = makeLocal(Y, Mo, D, +m[1], +m[2], +(m[3] ?? 0));
+    const d = makeLocal(Y, Mo, D, fixH(+m[1]), +m[2], +(m[3] ?? 0));
+    if (d) return d;
+  }
+
+  // 시간만(숫자 4/6자리): 1300 / 130011 → 오늘 날짜
+  if ((m = s.match(/^(\d{4}|\d{6})$/))) {
+    const [h, mi, se] = digitsToHMS(m[1]);
+    const d = makeLocal(Y, Mo, D, fixH(h), mi, se);
     if (d) return d;
   }
 

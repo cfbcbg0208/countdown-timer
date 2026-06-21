@@ -21,7 +21,7 @@
             type="text"
             id="text-input"
             class="zone__input"
-            placeholder="예: 260621일110333 · 2026-06-21 11:03 · 110338"
+            placeholder="예: 260621일1300 · 2026.6.21 · 오후 11:30 · 1300"
             autocomplete="off"
             spellcheck="false"
           />
@@ -32,11 +32,11 @@
           <details class="zone__formats">
             <summary>지원 형식 보기</summary>
             <ul>
-              <li><code>2026-06-21 일 11:03:30</code> · <code>2026-06-21 11:03</code></li>
-              <li><code>2026-06-21T11:03:55</code> · <code>2026-06-21</code></li>
-              <li><code>260621일110333</code> · <code>260621-110334</code> · <code>260621</code></li>
-              <li><code>110338</code>(시:분:초) · <code>11:03:41</code> · <code>11:03</code></li>
-              <li>유닉스 타임스탬프(10/13자리)</li>
+              <li><b>날짜</b> <code>2026-06-21</code> · <code>2026/6/21</code> · <code>2026.6.21</code> · <code>26-06-21</code> · <code>2026년 6월 21일</code></li>
+              <li><b>컴팩트</b> <code>260621</code> · <code>260621일110333</code> · <code>260621일1300</code> · <code>260621-13</code></li>
+              <li><b>날짜+시간</b> <code>2026-06-21 11:03:30</code> · <code>2026-06-21T11:03</code> · <code>...일 오후 1시 30분</code></li>
+              <li><b>시간만</b> <code>110338</code> · <code>1300</code> · <code>11:03:41</code> · <code>오후 11:30</code> (→ 오늘)</li>
+              <li><b>유닉스</b> 10자리(초)·13자리(밀리초)</li>
             </ul>
           </details>
         </section>

@@ -1,6 +1,14 @@
 # 검토용 스크래치 (프롬프트·스크린샷) — 버전관리 제외
 .prompts/
 
+# docs/ 에 실수로 저장된 스크린샷·날짜형 프롬프트 스크래치도 공개 금지
+# (정식 문서 docs/deploy.md 등은 글자로 시작하므로 영향 없음)
+docs/*.png
+docs/*.jpg
+docs/*.jpeg
+docs/*.webp
+docs/[0-9]*.md
+
 # OS / 에디터 부산물
 Thumbs.db
 Desktop.ini

@@ -85,7 +85,7 @@ function draw(N) {
 }
 
 mkdirSync(ICONS_DIR, { recursive: true });
-for (const N of [192, 512]) {
+for (const N of [16, 32, 192, 512]) {
   writeFileSync(ICONS_DIR + `icon-${N}.png`, encodePng(N, draw(N)));
   console.log(`icons/icon-${N}.png 생성`);
 }

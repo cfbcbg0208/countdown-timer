@@ -1,7 +1,7 @@
 // 서비스 워커: 앱 셸을 캐시해 오프라인 동작 + 설치 가능하게 한다.
 // 전략: 네트워크 우선(최신 우선) → 실패 시 캐시 → 그래도 없으면 index.html.
 // (개발 중 최신 파일을 우선 받도록 네트워크 우선. 오프라인이면 캐시로 폴백.)
-const CACHE = 'countdown-v1';
+const CACHE = 'countdown-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,9 @@ const ASSETS = [
   './src/time.js',
   './src/store.js',
   './manifest.webmanifest',
+  './icons/icon.svg',
+  './icons/icon-16.png',
+  './icons/icon-32.png',
   './icons/icon-192.png',
   './icons/icon-512.png',
 ];

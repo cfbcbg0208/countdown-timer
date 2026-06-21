@@ -3,6 +3,13 @@
 // 추가 영역은 우하단 FAB로 열리는 드로어(오버레이)에 들어 있다.
 import { parseFlexible, diff, formatDuration, formatLocal } from './time.js';
 import { load, add, remove, reorder } from './store.js';
+import {
+  load as loadSettings,
+  update as updateSettings,
+  reset as resetSettings,
+  ACCENTS,
+  DENSITY,
+} from './settings.js';
 
 const $ = (id) => document.getElementById(id);
 const labelInput = $('label-input');
@@ -12,8 +19,11 @@ const pickerInput = $('picker-input');
 const listEl = $('list');
 const emptyHint = $('empty-hint');
 const srStatus = $('sr-status');
+const appTitle = $('app-title');
 const fab = $('fab');
 const drawer = $('drawer');
+const settingsFab = $('settings-fab');
+const settingsDrawer = $('settings-drawer');
 
 // 부호는 D-Day 관례: 남은=− (D-7), 지난=+ (D+3). 색은 부호와 별개(남은=초록/지난=빨강).
 const DIRS = {
@@ -144,20 +154,23 @@ function addFrom(source) {
   srStatus.textContent = `${labelText || '카운트다운'} 추가됨`;
 }
 
-// ── 추가 패널 드로어: FAB로 열고, 배경/✕/Esc로 닫기 ──
+// ── 드로어(추가/설정 공용): FAB로 열고, 배경/✕/Esc로 닫기 ──
 let lastFocus = null;
-function openDrawer() {
+let openEl = null;
+function openDrawer(el, trigger, focusEl) {
   lastFocus = document.activeElement;
-  drawer.hidden = false;
-  fab.setAttribute('aria-expanded', 'true');
-  labelInput.focus();
+  el.hidden = false;
+  openEl = el;
+  if (trigger) trigger.setAttribute('aria-expanded', 'true');
+  (focusEl || el.querySelector('input, select, button:not([data-close])'))?.focus();
 }
 function closeDrawer() {
-  if (drawer.hidden) return;
-  drawer.hidden = true;
+  if (!openEl) return;
+  openEl.hidden = true;
+  openEl = null;
   fab.setAttribute('aria-expanded', 'false');
+  settingsFab.setAttribute('aria-expanded', 'false');
   if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
-  else fab.focus();
 }
 
 // 이벤트 배선
@@ -186,13 +199,77 @@ listEl.addEventListener('click', (e) => {
   }
 });
 
-// 드로어 열기/닫기
-fab.addEventListener('click', openDrawer);
-drawer.addEventListener('click', (e) => {
-  if (e.target.closest('[data-close]')) closeDrawer();
+// 드로어 열기/닫기 (추가 ＋ / 설정 ⚙️)
+fab.addEventListener('click', () => openDrawer(drawer, fab, labelInput));
+settingsFab.addEventListener('click', () => openDrawer(settingsDrawer, settingsFab));
+[drawer, settingsDrawer].forEach((d) => {
+  d.addEventListener('click', (e) => {
+    if (e.target.closest('[data-close]')) closeDrawer();
+  });
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') closeDrawer();
+});
+
+// ── 디자인 설정: 저장 → CSS 변수/제목 표시에 즉시 반영 ──
+const setTitleShown = $('set-title-shown');
+const setTitleScale = $('set-title-scale');
+const setTimerScale = $('set-timer-scale');
+const setDensity = $('set-density');
+const accentBox = $('set-accent');
+const setReset = $('set-reset');
+
+let settings = loadSettings(localStorage);
+
+function applySettings(s) {
+  const root = document.documentElement.style;
+  appTitle.hidden = !s.titleShown;
+  root.setProperty('--title-size', (1.35 * s.titleScale).toFixed(3) + 'rem');
+  root.setProperty('--card-time-size', (1.9 * s.timerScale).toFixed(3) + 'rem');
+  root.setProperty('--accent', ACCENTS[s.accent]);
+  root.setProperty('--list-gap', DENSITY[s.density]);
+}
+
+function syncSettingControls(s) {
+  setTitleShown.checked = s.titleShown;
+  setTitleScale.value = s.titleScale;
+  setTimerScale.value = s.timerScale;
+  setDensity.value = s.density;
+  for (const b of accentBox.children) {
+    b.setAttribute('aria-pressed', String(b.dataset.accent === s.accent));
+  }
+}
+
+// 강조색 스와치 동적 생성(프리셋 키마다 원형 버튼).
+for (const key of Object.keys(ACCENTS)) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'swatch';
+  b.dataset.accent = key;
+  b.style.background = ACCENTS[key];
+  b.setAttribute('aria-label', `강조색 ${key}`);
+  b.setAttribute('aria-pressed', 'false');
+  accentBox.append(b);
+}
+
+function changeSetting(patch) {
+  settings = updateSettings(localStorage, patch);
+  applySettings(settings);
+  syncSettingControls(settings);
+}
+
+setTitleShown.addEventListener('change', () => changeSetting({ titleShown: setTitleShown.checked }));
+setTitleScale.addEventListener('input', () => changeSetting({ titleScale: +setTitleScale.value }));
+setTimerScale.addEventListener('input', () => changeSetting({ timerScale: +setTimerScale.value }));
+setDensity.addEventListener('change', () => changeSetting({ density: setDensity.value }));
+accentBox.addEventListener('click', (e) => {
+  const b = e.target.closest('.swatch');
+  if (b) changeSetting({ accent: b.dataset.accent });
+});
+setReset.addEventListener('click', () => {
+  settings = resetSettings(localStorage);
+  applySettings(settings);
+  syncSettingControls(settings);
 });
 
 // ── 드래그&드롭 재배치 (Pointer Events: 마우스+터치 공용, 모바일 대응) ──
@@ -246,6 +323,10 @@ listEl.addEventListener('pointerdown', (e) => {
   handle.addEventListener('pointerup', onDragEnd);
   handle.addEventListener('pointercancel', onDragEnd);
 });
+
+// 초기 적용: 저장된 설정 → 화면, 컨트롤 동기화.
+applySettings(settings);
+syncSettingControls(settings);
 
 setInterval(tick, 1000);
 rebuild();

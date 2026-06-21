@@ -45,7 +45,8 @@ body {
   gap: 1.1rem;
 }
 
-.app__title { margin: 0; font-size: 1.35rem; font-weight: 700; text-align: center; }
+.app__title { margin: 0; font-size: var(--title-size, 1.35rem); font-weight: 700; text-align: center; }
+.app__title[hidden] { display: none; }
 
 /* ── 추가 영역 ───────────────────────────── */
 .add { display: flex; flex-direction: column; gap: 0.7rem; }
@@ -116,7 +117,7 @@ body {
 }
 
 /* ── 카운트다운 목록 ──────────────────────── */
-.list { display: flex; flex-direction: column; gap: 0.6rem; }
+.list { display: flex; flex-direction: column; gap: var(--list-gap, 0.6rem); }
 
 .card {
   position: relative;
@@ -132,7 +133,7 @@ body {
 .card__label { display: block; font-size: 0.85rem; color: var(--muted); font-weight: 600; margin-bottom: 0.25rem; }
 
 .card__time {
-  font-size: 1.9rem;
+  font-size: var(--card-time-size, 1.9rem);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
@@ -163,25 +164,29 @@ body {
 .hint { margin: 0; text-align: center; color: var(--muted); font-size: 0.85rem; }
 
 /* ── 드래그 핸들 / 드래그 중 카드 ─────────────── */
-.card { padding-left: 2.4rem; } /* 좌측 핸들 자리 확보(기존 padding 위에 덮어씀) */
+.card { padding-left: 2.9rem; } /* 좌측 핸들 자리 확보(기존 padding 위에 덮어씀) */
 
+/* 카드 왼쪽 전체 높이를 잡는 그립 → 터치 타깃 충분(≈46px 폭 × 카드 높이) */
 .card__handle {
   position: absolute;
-  top: 0.45rem;
-  left: 0.35rem;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 2.9rem;
+  display: grid;
+  place-items: center;
   background: transparent;
   border: none;
   color: var(--muted);
-  font-size: 1.15rem;
+  font-size: 1.4rem;
   line-height: 1;
-  padding: 0.25rem 0.4rem;
-  border-radius: 0.4rem;
+  border-radius: 0.75rem 0 0 0.75rem;
   cursor: grab;
   touch-action: none; /* 터치 드래그가 페이지 스크롤로 새지 않도록 */
 }
 .card__handle:hover { color: var(--fg); background: rgba(255, 255, 255, 0.06); }
 .card__handle:active { cursor: grabbing; }
-.card__handle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.card__handle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 .card--dragging {
   opacity: 0.9;
@@ -210,6 +215,68 @@ body {
 }
 .fab:hover { filter: brightness(1.08); }
 .fab:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
+/* 보조(설정) FAB: 추가 ＋ 버튼 바로 위, 살짝 작고 차분한 색 */
+.fab--settings {
+  width: 3rem;
+  height: 3rem;
+  font-size: 1.35rem;
+  background: var(--card);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  right: calc(max(1rem, env(safe-area-inset-right)) + 0.25rem);
+  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 4.25rem);
+}
+
+/* ── 디자인 설정 패널 ─────────────────────────── */
+.settings { display: flex; flex-direction: column; gap: 0.2rem; }
+.set-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.1rem;
+  border-bottom: 1px solid var(--line);
+}
+.set-row__name { font-size: 0.92rem; color: var(--fg); }
+.set-row__ctrl { flex: 0 0 auto; }
+input[type='range'].set-row__ctrl { width: 11rem; max-width: 55%; accent-color: var(--accent); }
+input[type='checkbox'].set-row__ctrl { width: 1.2rem; height: 1.2rem; accent-color: var(--accent); }
+select.set-row__ctrl {
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+  color: var(--fg);
+  font-size: 0.9rem;
+}
+.set-row__ctrl:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.swatches { display: flex; gap: 0.45rem; flex-wrap: wrap; }
+.swatch {
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 0 0 1px var(--line);
+}
+.swatch[aria-pressed='true'] { border-color: var(--fg); box-shadow: 0 0 0 2px var(--fg); }
+.swatch:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+.set-reset {
+  align-self: flex-start;
+  margin-top: 0.8rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--card-2);
+  color: var(--muted);
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+.set-reset:hover { color: var(--fg); border-color: var(--muted); }
 
 /* ── 추가 패널 드로어(오버레이) ───────────────── */
 .drawer[hidden] { display: none; }

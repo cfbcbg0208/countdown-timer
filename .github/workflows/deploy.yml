@@ -1,0 +1,46 @@
+# main 에 push 될 때마다 dist/ 를 빌드해 GitHub Pages 로 배포.
+# 사전 설정(1회): 저장소 Settings → Pages → Source 를 "GitHub Actions" 로 변경.
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: # 수동 실행 버튼
+
+# Pages 배포에 필요한 권한
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 동시 배포 1건만(연달아 push 시 중간 빌드는 취소)
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 테스트(순수 로직 검증)
+        run: node --test
+      - name: 배포용 dist 빌드
+        run: node tools/build-dist.mjs
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,6 +1,26 @@
-# 배포 가이드 (Netlify Drop)
+# 배포 가이드
 
 정적 PWA라 무료 HTTPS 정적 호스팅에 올리면 데스크톱·모바일에서 열리고 **설치**된다.
+
+## 0. 자동 배포 (GitHub Actions → GitHub Pages, 권장)
+
+`main` 에 **push 될 때마다** 자동으로 `dist/` 를 빌드해 GitHub Pages 에 올린다.
+워크플로: [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml)
+
+**최초 1회 설정(필수):**
+1. GitHub 저장소 → **Settings → Pages**
+2. **Source** 를 **`GitHub Actions`** 로 선택(저장)
+3. 이후 push 하면 Actions 탭에서 빌드·배포가 자동 실행됨
+4. 배포 주소: `https://cfbcbg0208.github.io/countdown-timer/`
+
+> 설정을 바꾸기 전 첫 실행은 "Pages 미설정"으로 실패할 수 있다. 위 2번을 마친 뒤
+> Actions 탭에서 **Re-run** 하거나 아무 커밋이나 다시 push 하면 된다.
+
+아래 Netlify Drop 은 GitHub 없이 빠르게 올릴 때의 **대안**이다.
+
+---
+
+# 대안: Netlify Drop (수동)
 
 ## 1. 배포용 폴더 만들기
 ```

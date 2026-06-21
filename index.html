@@ -29,7 +29,7 @@
   </head>
   <body>
     <main class="app">
-      <h1 class="app__title">⏳ 카운트다운 타이머</h1>
+      <h1 class="app__title" id="app-title" hidden>⏳ 카운트다운 타이머</h1>
 
       <!-- 추가 영역: 평소 숨김, 우하단 ＋ 버튼(FAB)으로 열리는 드로어 -->
       <div class="drawer" id="drawer" hidden>
@@ -87,6 +87,44 @@
         </div>
       </div>
 
+      <!-- 디자인 설정: 평소 숨김, 우하단 ⚙️ 버튼으로 열리는 드로어 -->
+      <div class="drawer" id="settings-drawer" hidden>
+        <div class="drawer__backdrop" data-close></div>
+        <div class="drawer__panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+          <header class="drawer__head">
+            <h2 class="drawer__title" id="settings-title">⚙️ 디자인 설정</h2>
+            <button class="drawer__close" type="button" data-close aria-label="닫기">✕</button>
+          </header>
+          <div class="settings">
+            <div class="set-row">
+              <label class="set-row__name" for="set-title-shown">제목 표시</label>
+              <input type="checkbox" id="set-title-shown" class="set-row__ctrl" />
+            </div>
+            <div class="set-row">
+              <label class="set-row__name" for="set-title-scale">제목 크기</label>
+              <input type="range" id="set-title-scale" class="set-row__ctrl" min="0.8" max="1.8" step="0.1" />
+            </div>
+            <div class="set-row">
+              <label class="set-row__name" for="set-timer-scale">타이머 숫자 크기</label>
+              <input type="range" id="set-timer-scale" class="set-row__ctrl" min="0.8" max="1.8" step="0.1" />
+            </div>
+            <div class="set-row">
+              <span class="set-row__name" id="set-accent-label">강조색</span>
+              <div class="swatches" id="set-accent" role="group" aria-labelledby="set-accent-label"></div>
+            </div>
+            <div class="set-row">
+              <label class="set-row__name" for="set-density">카드 간격</label>
+              <select id="set-density" class="set-row__ctrl">
+                <option value="compact">좁게</option>
+                <option value="normal">보통</option>
+                <option value="comfortable">넓게</option>
+              </select>
+            </div>
+            <button type="button" class="set-reset" id="set-reset">기본값으로 되돌리기</button>
+          </div>
+        </div>
+      </div>
+
       <!-- 카운트다운 목록 (매초 갱신되므로 aria-live 미사용 → 스팸 방지) -->
       <section class="list" id="list"></section>
       <p class="hint" id="empty-hint">아직 카운트다운이 없습니다. 오른쪽 아래 ＋ 버튼으로 추가하세요.</p>
@@ -94,6 +132,19 @@
       <!-- 추가/삭제 시에만 스크린리더에 알리는 상태 영역 -->
       <p id="sr-status" class="sr-only" aria-live="polite" role="status"></p>
     </main>
+
+    <!-- 디자인 설정 패널을 여는 플로팅 버튼(보조) -->
+    <button
+      class="fab fab--settings"
+      id="settings-fab"
+      type="button"
+      aria-haspopup="dialog"
+      aria-controls="settings-drawer"
+      aria-expanded="false"
+    >
+      <span aria-hidden="true">⚙️</span>
+      <span class="sr-only">디자인 설정 패널 열기</span>
+    </button>
 
     <!-- 추가 패널을 여는 플로팅 버튼 -->
     <button

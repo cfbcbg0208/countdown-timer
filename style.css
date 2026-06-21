@@ -32,7 +32,7 @@ body {
   min-height: 100vh;
   display: grid;
   place-items: start center;
-  padding: 2rem 1rem 4rem;
+  padding: 2rem 1rem 6rem; /* 하단 여백: FAB가 마지막 카드를 가리지 않도록 */
   background: radial-gradient(1200px 600px at 50% -10%, #18203d 0%, var(--bg) 60%);
   color: var(--fg);
   font-family: system-ui, "Segoe UI", "Malgun Gothic", sans-serif;
@@ -161,3 +161,111 @@ body {
 .card__del:hover { color: var(--past); background: rgba(248, 113, 113, 0.14); }
 
 .hint { margin: 0; text-align: center; color: var(--muted); font-size: 0.85rem; }
+
+/* ── 드래그 핸들 / 드래그 중 카드 ─────────────── */
+.card { padding-left: 2.4rem; } /* 좌측 핸들 자리 확보(기존 padding 위에 덮어씀) */
+
+.card__handle {
+  position: absolute;
+  top: 0.45rem;
+  left: 0.35rem;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 0.25rem 0.4rem;
+  border-radius: 0.4rem;
+  cursor: grab;
+  touch-action: none; /* 터치 드래그가 페이지 스크롤로 새지 않도록 */
+}
+.card__handle:hover { color: var(--fg); background: rgba(255, 255, 255, 0.06); }
+.card__handle:active { cursor: grabbing; }
+.card__handle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.card--dragging {
+  opacity: 0.9;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  cursor: grabbing;
+}
+
+/* ── 플로팅 추가 버튼(FAB) ────────────────────── */
+.fab {
+  position: fixed;
+  right: max(1rem, env(safe-area-inset-right));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  width: 3.5rem;
+  height: 3.5rem;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.7rem;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  z-index: 30;
+}
+.fab:hover { filter: brightness(1.08); }
+.fab:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
+/* ── 추가 패널 드로어(오버레이) ───────────────── */
+.drawer[hidden] { display: none; }
+.drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.drawer__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+.drawer__panel {
+  position: relative;
+  width: min(100%, 32rem);
+  margin: 0 auto;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 1rem 1rem 0 0;
+  padding: 0.9rem 1rem calc(1rem + env(safe-area-inset-bottom));
+  box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.5);
+  animation: drawer-up 0.22s ease-out;
+}
+@keyframes drawer-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.6rem;
+}
+.drawer__title { margin: 0; font-size: 1.05rem; font-weight: 700; }
+.drawer__close {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1;
+  padding: 0.3rem 0.5rem;
+  border-radius: 0.4rem;
+  cursor: pointer;
+}
+.drawer__close:hover { color: var(--fg); background: rgba(255, 255, 255, 0.06); }
+.drawer__close:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* 드로어 안의 추가 영역은 카드 배경 위가 아니므로 상단 여백만 정리 */
+.drawer .add { gap: 0.7rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer__panel { animation: none; }
+}

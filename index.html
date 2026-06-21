@@ -31,7 +31,14 @@
     <main class="app">
       <h1 class="app__title">⏳ 카운트다운 타이머</h1>
 
-      <!-- 추가 영역 -->
+      <!-- 추가 영역: 평소 숨김, 우하단 ＋ 버튼(FAB)으로 열리는 드로어 -->
+      <div class="drawer" id="drawer" hidden>
+        <div class="drawer__backdrop" data-close></div>
+        <div class="drawer__panel" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+          <header class="drawer__head">
+            <h2 class="drawer__title" id="drawer-title">＋ 카운트다운 추가</h2>
+            <button class="drawer__close" type="button" data-close aria-label="닫기">✕</button>
+          </header>
       <section class="add">
         <label class="sr-only" for="label-input">카운트다운 이름 (선택)</label>
         <input
@@ -77,14 +84,29 @@
           </div>
         </div>
       </section>
+        </div>
+      </div>
 
       <!-- 카운트다운 목록 (매초 갱신되므로 aria-live 미사용 → 스팸 방지) -->
       <section class="list" id="list"></section>
-      <p class="hint" id="empty-hint">아직 카운트다운이 없습니다. 위에서 시각을 입력해 추가하세요.</p>
+      <p class="hint" id="empty-hint">아직 카운트다운이 없습니다. 오른쪽 아래 ＋ 버튼으로 추가하세요.</p>
 
       <!-- 추가/삭제 시에만 스크린리더에 알리는 상태 영역 -->
       <p id="sr-status" class="sr-only" aria-live="polite" role="status"></p>
     </main>
+
+    <!-- 추가 패널을 여는 플로팅 버튼 -->
+    <button
+      class="fab"
+      id="fab"
+      type="button"
+      aria-haspopup="dialog"
+      aria-controls="drawer"
+      aria-expanded="false"
+    >
+      <span aria-hidden="true">＋</span>
+      <span class="sr-only">카운트다운 추가 패널 열기</span>
+    </button>
 
     <script type="module" src="src/app.js"></script>
   </body>

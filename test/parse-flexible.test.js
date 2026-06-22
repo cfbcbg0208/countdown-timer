@@ -39,6 +39,6 @@ test('인식 불가 → null', () => {
     assert.equal(parseFlexible(bad, NOW), null, `"${bad}"`);
 });
 
-test('formatLocal: 요일 포함 표기', () => {
-  assert.equal(formatLocal(new Date(2026, 5, 21, 11, 3, 33)), '2026-06-21 (일) 11:03:33');
+test('formatLocal: 요일 포함 표기(괄호 없음)', () => {
+  assert.equal(formatLocal(new Date(2026, 5, 21, 11, 3, 33)), '2026-06-21 일 11:03:33');
 });

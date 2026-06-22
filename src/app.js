@@ -118,7 +118,7 @@ function updateCard(refs) {
   refs.timeEl.innerHTML =
     (d.sign ? `<span class="display__sign">${d.sign}</span>` : '') + formatDuration(r);
   const pausedTag = item.paused ? '⏸ 정지됨 · ' : '';
-  refs.metaEl.textContent = `${pausedTag}${d.emoji} ${d.label} · 목표 ${formatLocal(target)}`;
+  refs.metaEl.textContent = `${pausedTag}${d.emoji} ${d.label} · 기준일시 ${formatLocal(target)}`;
   refs.pauseEl.textContent = item.paused ? '▶ 재개' : '⏸ 일시정지';
   refs.pauseEl.setAttribute('aria-pressed', String(!!item.paused));
   refs.dir = r.direction;
@@ -325,8 +325,27 @@ settingsFab.addEventListener('click', () => openDrawer(settingsDrawer, settingsF
     if (e.target.closest('[data-close]')) closeDrawer();
   });
 });
+// 전역 단축키: Esc는 항상 닫기. '+'/'='로 추가 드로어, ','로 설정 드로어 열기.
+// 단, 입력칸에 타이핑 중이거나 이미 드로어가 열려 있거나 수정자키와 함께면 무시(오작동 방지).
+function isTyping(el) {
+  return (
+    el &&
+    (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)
+  );
+}
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeDrawer();
+  if (e.key === 'Escape') {
+    closeDrawer();
+    return;
+  }
+  if (openEl || isTyping(document.activeElement) || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === '+' || e.key === '=') {
+    e.preventDefault();
+    openDrawer(drawer, fab, labelInput);
+  } else if (e.key === ',') {
+    e.preventDefault();
+    openDrawer(settingsDrawer, settingsFab);
+  }
 });
 
 // ── 디자인 설정: 저장 → CSS 변수/제목 표시에 즉시 반영 ──

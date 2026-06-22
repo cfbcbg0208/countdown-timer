@@ -76,11 +76,11 @@ export function formatDuration({ days, hours, minutes, seconds }) {
   return days > 0 ? `${days}일 ${hms}` : hms;
 }
 
-/** Date → "YYYY-MM-DD (요일) HH:MM:SS" (미리보기·확인용). */
+/** Date → "YYYY-MM-DD 요일 HH:MM:SS" (미리보기·확인용). */
 export function formatLocal(date) {
   return (
     `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ` +
-    `(${WEEKDAY[date.getDay()]}) ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`
+    `${WEEKDAY[date.getDay()]} ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`
   );
 }
 

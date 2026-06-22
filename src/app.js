@@ -92,35 +92,72 @@ function makeCard(item) {
   metaEl.className = 'card__meta';
   card.append(timeEl, metaEl);
 
-  const pauseEl = document.createElement('button');
-  pauseEl.className = 'card__pause';
-  pauseEl.type = 'button';
-  pauseEl.dataset.id = item.id;
-  card.append(pauseEl);
+  // 랩(스냅샷): 기준일시는 절대 불변. 지금 이 순간의 값을 '기록'으로 남긴다.
+  const lapEl = document.createElement('button');
+  lapEl.className = 'card__lap';
+  lapEl.type = 'button';
+  lapEl.dataset.id = item.id;
+  lapEl.title = '지금 이 순간의 값을 기록(랩)';
+  lapEl.setAttribute('aria-label', `${item.label || '카운트다운'} 현재 값 기록`);
+  lapEl.textContent = '📍 기록';
+  card.append(lapEl);
 
-  const refs = { card, timeEl, metaEl, pauseEl, item, dir: null };
+  const lapsEl = document.createElement('ul');
+  lapsEl.className = 'card__laps';
+  card.append(lapsEl);
+
+  const refs = { card, timeEl, metaEl, lapsEl, item, dir: null };
+  renderLaps(refs);
   updateCard(refs);
   return refs;
 }
 
-// 카드의 시간/색/메타만 갱신(DOM 구조는 그대로).
-// 일시정지 상태면 '현재' 대신 정지 시점(pausedAt) 기준으로 계산해 값을 얼린다.
+// 기록(랩) 목록 렌더: 각 랩은 '기록 당시의 상대값 + 기록 시각'. 기준일시·기록시각 모두
+// 불변이라 값이 변하지 않으므로 매초 갱신(updateCard) 대신 데이터 변경 시에만 그린다.
+function renderLaps(refs) {
+  const target = new Date(refs.item.targetISO);
+  const laps = Array.isArray(refs.item.laps) ? refs.item.laps : [];
+  refs.lapsEl.hidden = laps.length === 0;
+  refs.lapsEl.replaceChildren(
+    ...laps.map((iso, i) => {
+      const at = new Date(iso);
+      const r = diff(target, at);
+      const d = DIRS[r.direction];
+      const li = document.createElement('li');
+      li.className = 'lap';
+      const val = document.createElement('span');
+      val.className = 'lap__val';
+      val.textContent = (d.sign || '') + formatDuration(r);
+      const when = document.createElement('span');
+      when.className = 'lap__when';
+      when.textContent = `기록 ${formatLocal(at)}`;
+      const del = document.createElement('button');
+      del.className = 'lap__del';
+      del.type = 'button';
+      del.dataset.id = refs.item.id;
+      del.dataset.index = String(i);
+      del.title = '기록 삭제';
+      del.setAttribute('aria-label', '기록 삭제');
+      del.textContent = '✕';
+      li.append(val, when, del);
+      return li;
+    }),
+  );
+}
+
+// 카드의 시간/색/메타만 갱신(DOM 구조는 그대로). 항상 '현재' 기준(기준일시는 불변).
 function updateCard(refs) {
   const item = refs.item;
   const target = new Date(item.targetISO);
-  const at = item.paused && item.pausedAt ? new Date(item.pausedAt) : new Date();
-  const r = diff(target, at);
+  const r = diff(target, new Date());
   const d = DIRS[r.direction];
   // className 통째로 덮어쓰면 드래그 중(card--dragging) 클래스가 지워지므로 toggle 사용.
   refs.card.classList.toggle('display--future', r.direction === 'future');
   refs.card.classList.toggle('display--past', r.direction === 'past');
-  refs.card.classList.toggle('card--paused', !!item.paused);
   refs.timeEl.innerHTML =
     (d.sign ? `<span class="display__sign">${d.sign}</span>` : '') + formatDuration(r);
-  const pausedTag = item.paused ? '⏸ 정지됨 · ' : '';
-  refs.metaEl.textContent = `${pausedTag}${d.emoji} ${d.label} · 기준일시 ${formatLocal(target)}`;
-  refs.pauseEl.textContent = item.paused ? '▶ 재개' : '⏸ 일시정지';
-  refs.pauseEl.setAttribute('aria-pressed', String(!!item.paused));
+  // '남은 시간/지난 시간' 라벨은 제거(부호·색이 방향을 이미 표현). 이모지+기준일시만.
+  refs.metaEl.textContent = `${d.emoji} 기준일시 ${formatLocal(target)}`;
   refs.dir = r.direction;
 }
 
@@ -219,26 +256,22 @@ function itemById(id) {
   return list.find((t) => t.id === id);
 }
 
-// 일시정지 ↔ 재개 (키친타이머식): 정지 동안 카운트가 멈추고, 재개 시 멈춰 있던
-// 만큼 목표시각을 뒤로 밀어 남은/지난 값이 끊김 없이 이어지게 한다.
-function togglePause(id) {
+// 랩(스냅샷) 기록: 기준일시는 건드리지 않고 '지금 이 순간'을 목록에 남긴다(최신 먼저).
+function addLap(id) {
   const item = itemById(id);
   if (!item) return;
-  if (item.paused) {
-    const pausedMs = new Date(item.pausedAt).getTime();
-    const shift = Number.isNaN(pausedMs) ? 0 : Date.now() - pausedMs;
-    const newTarget = new Date(new Date(item.targetISO).getTime() + shift);
-    list = updateItem(localStorage, id, {
-      paused: false,
-      pausedAt: null,
-      targetISO: toLocalISO(newTarget),
-    });
-    srStatus.textContent = '재개됨';
-  } else {
-    list = updateItem(localStorage, id, { paused: true, pausedAt: new Date().toISOString() });
-    srStatus.textContent = '일시정지됨';
-  }
+  const laps = [new Date().toISOString(), ...(Array.isArray(item.laps) ? item.laps : [])];
+  list = updateItem(localStorage, id, { laps });
   rebuild();
+  srStatus.textContent = '현재 값 기록됨';
+}
+
+function removeLap(id, index) {
+  const item = itemById(id);
+  if (!item || !Array.isArray(item.laps)) return;
+  list = updateItem(localStorage, id, { laps: item.laps.filter((_, i) => i !== index) });
+  rebuild();
+  srStatus.textContent = '기록 삭제됨';
 }
 
 // 끝시간 인라인 에디터 열기/닫기/저장.
@@ -288,12 +321,7 @@ function commitEdit(card, id) {
     input.setAttribute('aria-invalid', 'true');
     return;
   }
-  // 끝시간을 바꾸면 정지 기준이 무의미해지므로 일시정지는 해제.
-  list = updateItem(localStorage, id, {
-    targetISO: toLocalISO(date),
-    paused: false,
-    pausedAt: null,
-  });
+  list = updateItem(localStorage, id, { targetISO: toLocalISO(date) });
   rebuild();
   srStatus.textContent = '끝시간 변경됨';
 }
@@ -302,12 +330,15 @@ listEl.addEventListener('click', (e) => {
   const card = e.target.closest('.card');
   if (!card) return;
   const id = card.dataset.id;
+  const lapDel = e.target.closest('.lap__del');
   if (e.target.closest('.card__del')) {
     list = remove(localStorage, id);
     rebuild();
     srStatus.textContent = '카운트다운 삭제됨';
-  } else if (e.target.closest('.card__pause')) {
-    togglePause(id);
+  } else if (lapDel) {
+    removeLap(id, +lapDel.dataset.index);
+  } else if (e.target.closest('.card__lap')) {
+    addLap(id);
   } else if (e.target.closest('.card__edit')) {
     openEditor(card, id);
   } else if (e.target.closest('.card__save')) {

@@ -177,8 +177,8 @@ body {
 }
 .card__edit:hover { color: var(--accent); background: rgba(91, 140, 255, 0.14); }
 
-/* 일시정지/재개 알약 버튼(메타 아래) */
-.card__pause {
+/* 랩(기록) 알약 버튼(메타 아래) */
+.card__lap {
   margin-top: 0.55rem;
   padding: 0.35rem 0.8rem;
   border: 1px solid var(--line);
@@ -188,10 +188,34 @@ body {
   font-size: 0.82rem;
   cursor: pointer;
 }
-.card__pause:hover { color: var(--fg); border-color: var(--muted); }
-.card--paused { border-style: dashed; }
-.card--paused .card__time { opacity: 0.8; }
-.card--paused .card__pause { color: var(--accent); border-color: var(--accent); }
+.card__lap:hover { color: var(--fg); border-color: var(--muted); }
+.card__lap:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* 기록(랩) 목록: 기준일시 불변 → 값이 고정된 스냅샷들 */
+.card__laps { list-style: none; margin: 0.5rem 0 0; padding: 0; display: grid; gap: 0.3rem; }
+.card__laps[hidden] { display: none; }
+.lap {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  border-left: 2px solid var(--line);
+  padding: 0.1rem 0 0.1rem 0.5rem;
+}
+.lap__val { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--fg); }
+.lap__when { flex: 1; }
+.lap__del {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0 0.2rem;
+}
+.lap__del:hover { color: var(--past); }
+.lap__del:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* 끝시간 인라인 에디터 */
 .card__editor {

@@ -161,10 +161,70 @@ body {
 }
 .card__del:hover { color: var(--past); background: rgba(248, 113, 113, 0.14); }
 
+/* 끝시간 수정 버튼: 삭제(✕) 왼쪽 */
+.card__edit {
+  position: absolute;
+  top: 0.45rem;
+  right: 2rem;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.25rem 0.4rem;
+  border-radius: 0.4rem;
+  cursor: pointer;
+}
+.card__edit:hover { color: var(--accent); background: rgba(91, 140, 255, 0.14); }
+
+/* 일시정지/재개 알약 버튼(메타 아래) */
+.card__pause {
+  margin-top: 0.55rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card-2);
+  color: var(--muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.card__pause:hover { color: var(--fg); border-color: var(--muted); }
+.card--paused { border-style: dashed; }
+.card--paused .card__time { opacity: 0.8; }
+.card--paused .card__pause { color: var(--accent); border-color: var(--accent); }
+
+/* 끝시간 인라인 에디터 */
+.card__editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.6rem;
+}
+.card__editinput {
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+  color: var(--fg);
+  font-size: 0.9rem;
+}
+.card__editinput[aria-invalid='true'] { border-color: var(--err); }
+.card__save,
+.card__cancel {
+  padding: 0.4rem 0.8rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--line);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.card__save { background: var(--accent); color: #fff; border-color: transparent; }
+.card__cancel { background: var(--card-2); color: var(--muted); }
+
 .hint { margin: 0; text-align: center; color: var(--muted); font-size: 0.85rem; }
 
 /* ── 드래그 핸들 / 드래그 중 카드 ─────────────── */
-.card { padding-left: 2.9rem; } /* 좌측 핸들 자리 확보(기존 padding 위에 덮어씀) */
+.card { padding-left: 2.9rem; padding-right: 3.7rem; } /* 좌측 핸들·우측 버튼(✎ ✕) 자리 */
 
 /* 카드 왼쪽 전체 높이를 잡는 그립 → 터치 타깃 충분(≈46px 폭 × 카드 높이) */
 .card__handle {

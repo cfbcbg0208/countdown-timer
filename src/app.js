@@ -2,7 +2,7 @@
 // 렌더 전략: 데이터 변경 시에만 DOM을 (재)구성하고, 매초엔 각 카드의 시간/색만 갱신한다.
 // 추가 영역은 우하단 FAB로 열리는 드로어(오버레이)에 들어 있다.
 import { parseFlexible, diff, formatDuration, formatLocal } from './time.js';
-import { load, add, remove, reorder } from './store.js';
+import { load, add, remove, reorder, updateItem } from './store.js';
 import {
   load as loadSettings,
   update as updateSettings,
@@ -58,6 +58,15 @@ function makeCard(item) {
   handle.textContent = '≡';
   card.append(handle);
 
+  const edit = document.createElement('button');
+  edit.className = 'card__edit';
+  edit.type = 'button';
+  edit.dataset.id = item.id;
+  edit.title = '끝시간 수정';
+  edit.setAttribute('aria-label', `${item.label || '카운트다운'} 끝시간 수정`);
+  edit.textContent = '✎';
+  card.append(edit);
+
   const del = document.createElement('button');
   del.className = 'card__del';
   del.type = 'button';
@@ -80,22 +89,35 @@ function makeCard(item) {
   metaEl.className = 'card__meta';
   card.append(timeEl, metaEl);
 
-  const refs = { card, timeEl, metaEl, item, dir: null };
+  const pauseEl = document.createElement('button');
+  pauseEl.className = 'card__pause';
+  pauseEl.type = 'button';
+  pauseEl.dataset.id = item.id;
+  card.append(pauseEl);
+
+  const refs = { card, timeEl, metaEl, pauseEl, item, dir: null };
   updateCard(refs);
   return refs;
 }
 
 // 카드의 시간/색/메타만 갱신(DOM 구조는 그대로).
+// 일시정지 상태면 '현재' 대신 정지 시점(pausedAt) 기준으로 계산해 값을 얼린다.
 function updateCard(refs) {
-  const target = new Date(refs.item.targetISO);
-  const r = diff(target);
+  const item = refs.item;
+  const target = new Date(item.targetISO);
+  const at = item.paused && item.pausedAt ? new Date(item.pausedAt) : new Date();
+  const r = diff(target, at);
   const d = DIRS[r.direction];
   // className 통째로 덮어쓰면 드래그 중(card--dragging) 클래스가 지워지므로 toggle 사용.
   refs.card.classList.toggle('display--future', r.direction === 'future');
   refs.card.classList.toggle('display--past', r.direction === 'past');
+  refs.card.classList.toggle('card--paused', !!item.paused);
   refs.timeEl.innerHTML =
     (d.sign ? `<span class="display__sign">${d.sign}</span>` : '') + formatDuration(r);
-  refs.metaEl.textContent = `${d.emoji} ${d.label} · 목표 ${formatLocal(target)}`;
+  const pausedTag = item.paused ? '⏸ 정지됨 · ' : '';
+  refs.metaEl.textContent = `${pausedTag}${d.emoji} ${d.label} · 목표 ${formatLocal(target)}`;
+  refs.pauseEl.textContent = item.paused ? '▶ 재개' : '⏸ 일시정지';
+  refs.pauseEl.setAttribute('aria-pressed', String(!!item.paused));
   refs.dir = r.direction;
 }
 
@@ -190,12 +212,105 @@ labelInput.addEventListener('keydown', (e) => {
 document.querySelectorAll('.zone__apply').forEach((btn) => {
   btn.addEventListener('click', () => addFrom(btn.dataset.source));
 });
+function itemById(id) {
+  return list.find((t) => t.id === id);
+}
+
+// 일시정지 ↔ 재개 (키친타이머식): 정지 동안 카운트가 멈추고, 재개 시 멈춰 있던
+// 만큼 목표시각을 뒤로 밀어 남은/지난 값이 끊김 없이 이어지게 한다.
+function togglePause(id) {
+  const item = itemById(id);
+  if (!item) return;
+  if (item.paused) {
+    const pausedMs = new Date(item.pausedAt).getTime();
+    const shift = Number.isNaN(pausedMs) ? 0 : Date.now() - pausedMs;
+    const newTarget = new Date(new Date(item.targetISO).getTime() + shift);
+    list = updateItem(localStorage, id, {
+      paused: false,
+      pausedAt: null,
+      targetISO: toLocalISO(newTarget),
+    });
+    srStatus.textContent = '재개됨';
+  } else {
+    list = updateItem(localStorage, id, { paused: true, pausedAt: new Date().toISOString() });
+    srStatus.textContent = '일시정지됨';
+  }
+  rebuild();
+}
+
+// 끝시간 인라인 에디터 열기/닫기/저장.
+function openEditor(card, id) {
+  if (card.querySelector('.card__editor')) return;
+  const item = itemById(id);
+  if (!item) return;
+  const editor = document.createElement('div');
+  editor.className = 'card__editor';
+  const input = document.createElement('input');
+  input.type = 'datetime-local';
+  input.step = '1';
+  input.className = 'card__editinput';
+  input.value = toLocalISO(new Date(item.targetISO));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitEdit(card, id);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      closeEditor(card);
+    }
+  });
+  const save = document.createElement('button');
+  save.type = 'button';
+  save.className = 'card__save';
+  save.textContent = '저장';
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'card__cancel';
+  cancel.textContent = '취소';
+  editor.append(input, save, cancel);
+  card.append(editor);
+  input.focus();
+}
+
+function closeEditor(card) {
+  card.querySelector('.card__editor')?.remove();
+}
+
+function commitEdit(card, id) {
+  const input = card.querySelector('.card__editinput');
+  if (!input) return;
+  const date = parseFlexible(input.value);
+  if (!date) {
+    input.setAttribute('aria-invalid', 'true');
+    return;
+  }
+  // 끝시간을 바꾸면 정지 기준이 무의미해지므로 일시정지는 해제.
+  list = updateItem(localStorage, id, {
+    targetISO: toLocalISO(date),
+    paused: false,
+    pausedAt: null,
+  });
+  rebuild();
+  srStatus.textContent = '끝시간 변경됨';
+}
+
 listEl.addEventListener('click', (e) => {
-  const del = e.target.closest('.card__del');
-  if (del) {
-    list = remove(localStorage, del.dataset.id);
+  const card = e.target.closest('.card');
+  if (!card) return;
+  const id = card.dataset.id;
+  if (e.target.closest('.card__del')) {
+    list = remove(localStorage, id);
     rebuild();
     srStatus.textContent = '카운트다운 삭제됨';
+  } else if (e.target.closest('.card__pause')) {
+    togglePause(id);
+  } else if (e.target.closest('.card__edit')) {
+    openEditor(card, id);
+  } else if (e.target.closest('.card__save')) {
+    commitEdit(card, id);
+  } else if (e.target.closest('.card__cancel')) {
+    closeEditor(card);
   }
 });
 
@@ -291,11 +406,10 @@ function onDragMove(e) {
 
 function onDragEnd() {
   if (!drag) return;
-  const { handle, card, pointerId } = drag;
-  handle.releasePointerCapture?.(pointerId);
-  handle.removeEventListener('pointermove', onDragMove);
-  handle.removeEventListener('pointerup', onDragEnd);
-  handle.removeEventListener('pointercancel', onDragEnd);
+  const { card } = drag;
+  document.removeEventListener('pointermove', onDragMove);
+  document.removeEventListener('pointerup', onDragEnd);
+  document.removeEventListener('pointercancel', onDragEnd);
   card.classList.remove('card--dragging');
   drag = null;
   commitOrder();
@@ -316,12 +430,16 @@ listEl.addEventListener('pointerdown', (e) => {
   const card = handle.closest('.card');
   if (!card) return;
   e.preventDefault();
-  drag = { handle, card, pointerId: e.pointerId };
+  drag = { card };
   card.classList.add('card--dragging');
-  handle.setPointerCapture?.(e.pointerId);
-  handle.addEventListener('pointermove', onDragMove);
-  handle.addEventListener('pointerup', onDragEnd);
-  handle.addEventListener('pointercancel', onDragEnd);
+  // 이동/종료는 document에서 듣는다: 카드가 DOM에서 옮겨져도(insertBefore) 포인터
+  // 캡처가 풀려 이벤트가 끊기는 문제를 피한다. (setPointerCapture는 터치 보조용)
+  try {
+    handle.setPointerCapture(e.pointerId);
+  } catch {}
+  document.addEventListener('pointermove', onDragMove);
+  document.addEventListener('pointerup', onDragEnd);
+  document.addEventListener('pointercancel', onDragEnd);
 });
 
 // 초기 적용: 저장된 설정 → 화면, 컨트롤 동기화.

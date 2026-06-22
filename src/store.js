@@ -37,6 +37,15 @@ export function remove(storage, id) {
   return list;
 }
 
+/** id 항목의 일부 필드(label/targetISO 등)를 갱신 후 남은 목록을 반환. id·createdAt·순서는 보존. */
+export function updateItem(storage, id, patch) {
+  const list = load(storage).map((t) =>
+    t.id === id ? { ...t, ...patch, id: t.id, createdAt: t.createdAt } : t,
+  );
+  save(storage, list);
+  return list;
+}
+
 /**
  * 저장 목록을 orderedIds 순서대로 재배치 후 저장하고 새 목록을 반환.
  * 목록에 없는 id는 무시하고, orderedIds에 빠진 항목은 원래 상대순서로 끝에 보존(유실 방지).

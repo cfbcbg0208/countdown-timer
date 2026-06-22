@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { load, save, add, remove, reorder, sortByUrgency } from '../src/store.js';
+import { load, save, add, remove, reorder, updateItem, sortByUrgency } from '../src/store.js';
 
 function fakeStorage() {
   const m = new Map();
@@ -51,6 +51,35 @@ test('손상된 JSON → [] 로 안전 복구', () => {
   const s = fakeStorage();
   s.setItem('countdowns', '{not json');
   assert.deepEqual(load(s), []);
+});
+
+test('updateItem: targetISO 갱신, id·createdAt·순서·다른 항목 보존', () => {
+  const s = fakeStorage();
+  const a = add(s, { label: 'a', targetISO: '2026-01-01T00:00:00' });
+  const b = add(s, { label: 'b', targetISO: '2026-02-01T00:00:00' });
+  const after = updateItem(s, a.id, { targetISO: '2026-03-03T03:03:03' });
+  assert.equal(after.length, 2);
+  assert.equal(after[0].id, a.id); // 순서 유지(첫째)
+  assert.equal(after[0].targetISO, '2026-03-03T03:03:03');
+  assert.equal(after[0].createdAt, a.createdAt); // 보존
+  assert.equal(after[1].targetISO, b.targetISO); // 다른 항목 불변
+});
+
+test('updateItem: id·createdAt는 patch로 못 바꿈', () => {
+  const s = fakeStorage();
+  const a = add(s, { label: 'a', targetISO: '2026-01-01T00:00:00' });
+  const after = updateItem(s, a.id, { id: 'HACK', createdAt: 'X', label: 'a2' });
+  assert.equal(after[0].id, a.id);
+  assert.equal(after[0].createdAt, a.createdAt);
+  assert.equal(after[0].label, 'a2');
+});
+
+test('updateItem: 없는 id면 변화 없음', () => {
+  const s = fakeStorage();
+  add(s, { label: 'a', targetISO: '2026-01-01T00:00:00' });
+  const after = updateItem(s, 'ghost', { targetISO: '2099-01-01T00:00:00' });
+  assert.equal(after.length, 1);
+  assert.equal(after[0].targetISO, '2026-01-01T00:00:00');
 });
 
 test('reorder: 주어진 id 순서대로 저장 목록 재배치 + 영속', () => {

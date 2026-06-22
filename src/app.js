@@ -2,7 +2,7 @@
 // 렌더 전략: 데이터 변경 시에만 DOM을 (재)구성하고, 매초엔 각 카드의 시간/색만 갱신한다.
 // 추가 영역은 우하단 FAB로 열리는 드로어(오버레이)에 들어 있다.
 import { parseFlexible, diff, formatDuration, formatLocal } from './time.js';
-import { load, add, remove, reorder, updateItem } from './store.js';
+import { load, add, remove, reorder, updateItem, moveId } from './store.js';
 import {
   load as loadSettings,
   update as updateSettings,
@@ -53,8 +53,11 @@ function makeCard(item) {
   const handle = document.createElement('button');
   handle.className = 'card__handle';
   handle.type = 'button';
-  handle.title = '드래그하여 순서 변경';
-  handle.setAttribute('aria-label', `${item.label || '카운트다운'} 순서 변경(드래그)`);
+  handle.title = '드래그 또는 ↑/↓ 키로 순서 변경';
+  handle.setAttribute(
+    'aria-label',
+    `${item.label || '카운트다운'} 순서 변경. 드래그하거나 화살표 위/아래, Home/End 키 사용`,
+  );
   handle.textContent = '≡';
   card.append(handle);
 
@@ -466,6 +469,26 @@ listEl.addEventListener('pointerdown', (e) => {
   document.addEventListener('pointermove', onDragMove);
   document.addEventListener('pointerup', onDragEnd);
   document.addEventListener('pointercancel', onDragEnd);
+});
+
+// ── 키보드 순서 변경(드래그의 포인터 전용 한계를 보완하는 접근성 대체수단) ──
+// 핸들(≡)에 포커스한 채 ↑/↓ 한 칸, Home/End 맨 위/아래로 카드를 옮긴다.
+// 순수 moveId로 새 순서를 계산 → 같은 카드 노드를 재배치하고 commitOrder로 영속화.
+const KEY_DELTA = { ArrowUp: -1, ArrowDown: 1, Home: -Infinity, End: Infinity };
+listEl.addEventListener('keydown', (e) => {
+  const handle = e.target.closest('.card__handle');
+  if (!handle || !(e.key in KEY_DELTA)) return;
+  e.preventDefault();
+  const id = handle.closest('.card').dataset.id;
+  const ids = [...listEl.querySelectorAll('.card')].map((c) => c.dataset.id);
+  const nextIds = moveId(ids, id, KEY_DELTA[e.key]);
+  if (nextIds.join() === ids.join()) return; // 이미 끝 → 이동 없음
+  const byId = new Map([...listEl.querySelectorAll('.card')].map((c) => [c.dataset.id, c]));
+  listEl.append(...nextIds.map((x) => byId.get(x))); // 같은 노드를 새 순서로 재삽입
+  commitOrder();
+  handle.focus(); // 재삽입으로 풀렸을 수 있는 포커스 복구
+  const pos = nextIds.indexOf(id) + 1;
+  srStatus.textContent = `${itemById(id)?.label || '카운트다운'} ${pos}/${nextIds.length}번째로 이동`;
 });
 
 // 초기 적용: 저장된 설정 → 화면, 컨트롤 동기화.

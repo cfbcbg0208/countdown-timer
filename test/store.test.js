@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { load, save, add, remove, reorder, updateItem, sortByUrgency } from '../src/store.js';
+import { load, save, add, remove, reorder, updateItem, moveId, sortByUrgency } from '../src/store.js';
 
 function fakeStorage() {
   const m = new Map();
@@ -102,6 +102,30 @@ test('reorder: 모르는 id 무시, 빠진 항목은 끝에 보존', () => {
   assert.deepEqual(after.map((x) => x.label), ['b', 'a', 'c']);
   assert.equal(after.length, 3);
   assert.ok(a.id && c.id);
+});
+
+test('moveId: 아래로(+1) 한 칸 이동', () => {
+  assert.deepEqual(moveId(['a', 'b', 'c'], 'a', 1), ['b', 'a', 'c']);
+});
+
+test('moveId: 위로(−1) 한 칸 이동', () => {
+  assert.deepEqual(moveId(['a', 'b', 'c'], 'c', -1), ['a', 'c', 'b']);
+});
+
+test('moveId: 범위 밖 delta는 양 끝으로 클램프(Home/End)', () => {
+  assert.deepEqual(moveId(['a', 'b', 'c'], 'c', -3), ['c', 'a', 'b']); // 맨 위로
+  assert.deepEqual(moveId(['a', 'b', 'c'], 'a', 3), ['b', 'c', 'a']); // 맨 아래로
+});
+
+test('moveId: 끝에서 더 못 가면 그대로(원본 불변)', () => {
+  const ids = ['a', 'b', 'c'];
+  assert.deepEqual(moveId(ids, 'a', -1), ['a', 'b', 'c']); // 첫째를 위로 → 변화 없음
+  assert.deepEqual(moveId(ids, 'c', 1), ['a', 'b', 'c']); // 막내를 아래로 → 변화 없음
+  assert.deepEqual(ids, ['a', 'b', 'c']); // 입력 배열 불변
+});
+
+test('moveId: 없는 id면 원본 그대로 반환', () => {
+  assert.deepEqual(moveId(['a', 'b'], 'ghost', 1), ['a', 'b']);
 });
 
 test('sortByUrgency: 미래 임박 순 먼저, 과거 최근 순 뒤', () => {

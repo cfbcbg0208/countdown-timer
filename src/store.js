@@ -67,6 +67,23 @@ export function reorder(storage, orderedIds) {
   return next;
 }
 
+/**
+ * id 배열에서 id를 delta만큼(+ 아래/− 위) 이동한 새 배열을 반환. 원본 불변.
+ * 목적지가 범위를 벗어나면 양 끝으로 클램프(Home=−길이, End=+길이로 호출 가능).
+ * id가 없거나 위치가 그대로면 원본의 얕은 복사를 그대로 반환한다.
+ * 드래그 대신 키보드(↑/↓/Home/End)로 순서를 바꿀 때 쓴다.
+ */
+export function moveId(ids, id, delta) {
+  const from = ids.indexOf(id);
+  if (from < 0) return [...ids];
+  const to = Math.max(0, Math.min(ids.length - 1, from + delta));
+  if (to === from) return [...ids];
+  const next = [...ids];
+  next.splice(from, 1);
+  next.splice(to, 0, id);
+  return next;
+}
+
 /** 정렬: 미래(임박 순) 먼저, 그다음 과거(최근 지난 순). 원본 불변. */
 export function sortByUrgency(list, now = Date.now()) {
   return [...list].sort((a, b) => {

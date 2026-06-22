@@ -1,0 +1,20 @@
+# push/PR 마다 순수 로직 테스트만 실행한다.
+# 배포는 GitHub Pages가 main 브랜치 루트(/)에서 자동으로 처리하므로 여기서 하지 않는다.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: 테스트(node:test)
+        run: node --test

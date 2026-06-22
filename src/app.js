@@ -388,14 +388,41 @@ setReset.addEventListener('click', () => {
 });
 
 // ── 드래그&드롭 재배치 (Pointer Events: 마우스+터치 공용, 모바일 대응) ──
-// 핸들에서 시작 → 포인터를 따라 카드 사이에 끼워 넣고, 놓으면 DOM 순서를 영속화.
+// 데스크톱 파일 드래그처럼: 카드가 '들려' 포인터를 따라다니는 떠다니는 클론을 만들고,
+// 원본은 빈 자리(placeholder)로 남아 형제들 사이를 오가며 떨어질 위치를 보여준다.
+// 놓으면 클론 제거 + DOM 순서를 영속화. (이동/종료는 document에서 청취해 캡처 풀림에 안전)
 let drag = null;
+const DRAG_THRESHOLD = 4; // 이 거리 이상 움직여야 드래그 시작(클릭과 구분)
+
+function beginDrag() {
+  const card = drag.card;
+  const rect = card.getBoundingClientRect();
+  const clone = card.cloneNode(true);
+  clone.classList.add('card--drag-clone');
+  clone.style.width = `${rect.width}px`;
+  clone.style.left = `${rect.left}px`;
+  clone.style.top = `${rect.top}px`;
+  document.body.append(clone);
+  card.classList.add('card--placeholder');
+  document.body.classList.add('dragging-active');
+  drag.clone = clone;
+  drag.offsetX = drag.startX - rect.left;
+  drag.offsetY = drag.startY - rect.top;
+  drag.started = true;
+}
 
 function onDragMove(e) {
   if (!drag) return;
+  if (!drag.started) {
+    if (Math.abs(e.clientX - drag.startX) + Math.abs(e.clientY - drag.startY) < DRAG_THRESHOLD) return;
+    beginDrag();
+  }
+  // 떠 있는 클론을 포인터에 붙여 이동
+  drag.clone.style.left = `${e.clientX - drag.offsetX}px`;
+  drag.clone.style.top = `${e.clientY - drag.offsetY}px`;
+  // 빈 자리(원본 카드)를 포인터 세로 위치에 맞춰 형제들 사이로 이동
   const y = e.clientY;
-  const others = [...listEl.querySelectorAll('.card:not(.card--dragging)')];
-  // 포인터 세로 위치가 중점보다 위인 첫 카드 '앞'에 삽입, 없으면 맨 끝.
+  const others = [...listEl.querySelectorAll('.card:not(.card--placeholder)')];
   const next = others.find((c) => {
     const r = c.getBoundingClientRect();
     return y < r.top + r.height / 2;
@@ -406,13 +433,15 @@ function onDragMove(e) {
 
 function onDragEnd() {
   if (!drag) return;
-  const { card } = drag;
+  const wasStarted = drag.started;
+  drag.clone?.remove();
+  drag.card.classList.remove('card--placeholder');
+  document.body.classList.remove('dragging-active');
   document.removeEventListener('pointermove', onDragMove);
   document.removeEventListener('pointerup', onDragEnd);
   document.removeEventListener('pointercancel', onDragEnd);
-  card.classList.remove('card--dragging');
   drag = null;
-  commitOrder();
+  if (wasStarted) commitOrder(); // 실제로 끌었을 때만 순서 저장
 }
 
 // 현재 DOM 카드 순서를 저장소에 반영하고 내부 상태(list/refsList)를 맞춘다.
@@ -430,10 +459,7 @@ listEl.addEventListener('pointerdown', (e) => {
   const card = handle.closest('.card');
   if (!card) return;
   e.preventDefault();
-  drag = { card };
-  card.classList.add('card--dragging');
-  // 이동/종료는 document에서 듣는다: 카드가 DOM에서 옮겨져도(insertBefore) 포인터
-  // 캡처가 풀려 이벤트가 끊기는 문제를 피한다. (setPointerCapture는 터치 보조용)
+  drag = { card, startX: e.clientX, startY: e.clientY, started: false, clone: null };
   try {
     handle.setPointerCapture(e.pointerId);
   } catch {}

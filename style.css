@@ -248,11 +248,25 @@ body {
 .card__handle:active { cursor: grabbing; }
 .card__handle:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
-.card--dragging {
-  opacity: 0.9;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+/* 포인터를 따라다니는 '들린' 클론 */
+.card--drag-clone {
+  position: fixed;
+  margin: 0;
+  z-index: 60;
+  pointer-events: none;
+  transform: scale(1.03) rotate(-0.4deg);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55);
+  opacity: 0.97;
   cursor: grabbing;
 }
+/* 원본이 남긴 빈 자리: 높이는 유지하고 내용은 감춰 점선 슬롯으로 보여줌 */
+.card--placeholder {
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.03);
+}
+.card--placeholder > * { visibility: hidden; }
+/* 드래그 중 페이지 전체: 커서·선택 방지 */
+body.dragging-active { cursor: grabbing; user-select: none; }
 
 /* ── 플로팅 추가 버튼(FAB) ────────────────────── */
 .fab {

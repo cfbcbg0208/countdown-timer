@@ -99,6 +99,60 @@ export function formatLocal(date) {
 }
 
 /**
+ * 'd…' 기간(duration) 입력을 분해해 {years,months,days,hours,minutes,seconds}로 반환. 실패 시 null.
+ * 대소문자 무관. 'd'/'D' 접두 필수. '지금부터 그만큼의 카운트다운' 추가용.
+ * - 무단위 숫자: 자릿수로 해석 → 1~2자리=분, 3~4자리=HHMM, 5~6자리=HHMMSS (분·초는 ≤59 검증).
+ *   예) d30=30분, d0530=5시간30분, d0400=4시간, d053000=5시간30분0초.
+ * - 단위 접미: 초 s "  초 sec second(s) / 분 m ' 분 min minute(s) / 시 h 시 시간 hour(s) /
+ *   일 d 일 day(s) / 월 mo month(s) 월 개월 / 년 y 년 year(s).
+ *   ※ m/분/'·무단위 = '분', 월은 mo·month·월 로 명시(분과 월 충돌 회피).
+ */
+export function parseDuration(input) {
+  if (input == null) return null;
+  const m = String(input).trim().match(/^[dD]\s*(\d+)\s*(.*)$/);
+  if (!m) return null;
+  const digits = m[1];
+  const n = parseInt(digits, 10);
+  const unit = m[2].trim().toLowerCase();
+  const z = { years: 0, months: 0, days: 0, hours: 0, minutes: 0, seconds: 0 };
+
+  if (unit === '') {
+    if (digits.length <= 2) return { ...z, minutes: n };
+    if (digits.length <= 4) {
+      const mm = +digits.slice(-2);
+      if (mm > 59) return null;
+      return { ...z, hours: +digits.slice(0, -2), minutes: mm };
+    }
+    if (digits.length <= 6) {
+      const ss = +digits.slice(-2);
+      const mm = +digits.slice(-4, -2);
+      if (mm > 59 || ss > 59) return null;
+      return { ...z, hours: +digits.slice(0, -4), minutes: mm, seconds: ss };
+    }
+    return null;
+  }
+  if (['s', '"', '초', 'sec', 'secs', 'second', 'seconds'].includes(unit)) return { ...z, seconds: n };
+  if (['m', "'", '분', 'min', 'mins', 'minute', 'minutes'].includes(unit)) return { ...z, minutes: n };
+  if (['h', '시', '시간', 'hr', 'hrs', 'hour', 'hours'].includes(unit)) return { ...z, hours: n };
+  if (['d', '일', 'day', 'days'].includes(unit)) return { ...z, days: n };
+  if (['mo', 'month', 'months', '월', '개월'].includes(unit)) return { ...z, months: n };
+  if (['y', '년', 'yr', 'yrs', 'year', 'years'].includes(unit)) return { ...z, years: n };
+  return null;
+}
+
+// 기간(parseDuration 결과)을 기준 시각에 더한 새 Date. 시·분·초·일·월·년 모두 Date 정규화로 자리올림.
+function applyDuration(now, dur) {
+  const d = new Date(now);
+  d.setFullYear(d.getFullYear() + dur.years);
+  d.setMonth(d.getMonth() + dur.months);
+  d.setDate(d.getDate() + dur.days);
+  d.setHours(d.getHours() + dur.hours);
+  d.setMinutes(d.getMinutes() + dur.minutes);
+  d.setSeconds(d.getSeconds() + dur.seconds);
+  return d;
+}
+
+/**
  * Beeftext 등에서 쓰는 사람 친화 형식 + 그 파생/변형들을 Date로 파싱한다. 실패하면 null.
  * 시간 없는 입력은 00:00:00, 날짜 없는(시간만) 입력은 now의 날짜를 쓴다.
  *
@@ -111,6 +165,10 @@ export function parseFlexible(input, now = new Date()) {
   if (input == null) return null;
   let s = String(input).trim();
   if (s === '') return null;
+
+  // 'd…' 기간 입력은 '지금부터 그만큼 뒤'로 해석(정규화 전에 먼저 가로챔).
+  const dur = parseDuration(s);
+  if (dur) return applyDuration(now, dur);
 
   const Y = now.getFullYear();
   const Mo = now.getMonth() + 1;

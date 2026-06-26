@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseFlexible, formatLocal } from '../src/time.js';
+import { parseFlexible, formatLocal, parseDuration } from '../src/time.js';
 
 // 시간만/날짜만 입력의 기본값 검증을 위해 now를 고정한다.
 const NOW = new Date(2026, 5, 21, 9, 30, 15); // 2026-06-21(일) 09:30:15
@@ -41,4 +41,46 @@ test('인식 불가 → null', () => {
 
 test('formatLocal: 요일 포함 표기(괄호 없음)', () => {
   assert.equal(formatLocal(new Date(2026, 5, 21, 11, 3, 33)), '2026-06-21 일 11:03:33');
+});
+
+// ── parseDuration: 'd…' 기간 해석 ──
+const Z = { years: 0, months: 0, days: 0, hours: 0, minutes: 0, seconds: 0 };
+
+test('parseDuration 무단위: 자릿수 규칙(분/HHMM/HHMMSS)', () => {
+  assert.deepEqual(parseDuration('d30'), { ...Z, minutes: 30 }); // 2자리=분
+  assert.deepEqual(parseDuration('d5'), { ...Z, minutes: 5 });
+  assert.deepEqual(parseDuration('d0530'), { ...Z, hours: 5, minutes: 30 }); // 4자리=HHMM
+  assert.deepEqual(parseDuration('d0400'), { ...Z, hours: 4, minutes: 0 });
+  assert.deepEqual(parseDuration('d530'), { ...Z, hours: 5, minutes: 30 }); // 3자리=HMM
+  assert.deepEqual(parseDuration('d053000'), { ...Z, hours: 5, minutes: 30, seconds: 0 }); // 6자리
+  assert.equal(parseDuration('d0560'), null); // 분 60 → 무효
+});
+
+test('parseDuration 단위: 초/분/시/일/월/년', () => {
+  for (const s of ['d30s', 'd30"', 'd30초', 'd30sec', 'd30seconds'])
+    assert.deepEqual(parseDuration(s), { ...Z, seconds: 30 }, s);
+  for (const s of ['d30m', "d30'", 'd30분', 'd30min', 'd30minutes'])
+    assert.deepEqual(parseDuration(s), { ...Z, minutes: 30 }, s);
+  for (const s of ['d30h', 'd30시', 'd30시간', 'd30hours'])
+    assert.deepEqual(parseDuration(s), { ...Z, hours: 30 }, s);
+  for (const s of ['d30d', 'd30일', 'd30days'])
+    assert.deepEqual(parseDuration(s), { ...Z, days: 30 }, s);
+  for (const s of ['d30mo', 'd30month', 'd30월'])
+    assert.deepEqual(parseDuration(s), { ...Z, months: 30 }, s);
+  for (const s of ['d30y', 'd30년', 'd30years'])
+    assert.deepEqual(parseDuration(s), { ...Z, years: 30 }, s);
+});
+
+test('parseDuration: 대소문자 무관, 무효 입력은 null', () => {
+  assert.deepEqual(parseDuration('D30M'), { ...Z, minutes: 30 });
+  assert.deepEqual(parseDuration('D30H'), { ...Z, hours: 30 });
+  for (const s of ['d', 'd30x', '30', 'abc', '', 'dm']) assert.equal(parseDuration(s), null, s);
+});
+
+test('parseFlexible: d… 는 now 기준 미래로', () => {
+  const now = new Date(2026, 5, 21, 9, 0, 0);
+  assert.equal(parseFlexible('d30', now).getTime(), new Date(2026, 5, 21, 9, 30, 0).getTime());
+  assert.equal(parseFlexible('d0530', now).getTime(), new Date(2026, 5, 21, 14, 30, 0).getTime());
+  assert.equal(parseFlexible('d2h', now).getTime(), new Date(2026, 5, 21, 11, 0, 0).getTime());
+  assert.equal(parseFlexible('d1일', now).getTime(), new Date(2026, 5, 22, 9, 0, 0).getTime());
 });

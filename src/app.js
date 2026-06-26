@@ -40,6 +40,15 @@ function toLocalISO(date) {
   );
 }
 
+// 제목을 비웠을 때 기준일시로 만드는 자동 제목("YYYY-MM-DD HH:MM").
+function autoTitle(date) {
+  const p = (n) => String(n).padStart(2, '0');
+  return (
+    `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())} ` +
+    `${p(date.getHours())}:${p(date.getMinutes())}`
+  );
+}
+
 let list = load(localStorage);
 let refsList = []; // 화면에 그려진 카드들의 참조 { card, timeEl, metaEl, item, dir }
 
@@ -173,7 +182,7 @@ function updatePreview() {
   const raw = textInput.value.trim();
   if (raw === '') {
     textPreview.className = 'zone__preview preview--idle';
-    textPreview.textContent = '형식을 입력하면 해석 결과가 표시됩니다.';
+    textPreview.textContent = '기준일시를 입력하면 해석 결과가 표시됩니다.';
     return;
   }
   const d = parseFlexible(raw);
@@ -199,7 +208,8 @@ function addFrom(source) {
     }
     return;
   }
-  const labelText = labelInput.value.trim();
+  // 제목을 비우면 기준일시 기반 자동 제목으로 생성(고유 식별 가능).
+  const labelText = labelInput.value.trim() || autoTitle(date);
   const item = add(localStorage, { label: labelText, targetISO: toLocalISO(date) });
   list = load(localStorage);
   // 추가 위치 설정: 기본 'top'이면 방금 추가한 항목을 맨 앞으로 재배치(영속).
@@ -235,18 +245,21 @@ function closeDrawer() {
   if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
 }
 
-// 이벤트 배선
+// 이벤트 배선 — 추가 흐름: 기준일시 입력 → Enter → (제목 입력 →) Enter → 생성.
+// ① 기준일시→Enter→Enter(빈 제목): 기준일시 자동 제목으로 생성.
+// ② 기준일시→Enter→제목 입력→Enter: 그 제목으로 생성.
 textInput.addEventListener('input', updatePreview);
 textInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
-    addFrom('text');
+    if (parseFlexible(textInput.value.trim())) labelInput.focus(); // 유효하면 제목으로 이동
+    else updatePreview(); // 형식 오류 표시(이동 안 함)
   }
 });
 labelInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
     e.preventDefault();
-    textInput.focus();
+    addFrom('text');
   }
 });
 document.querySelectorAll('.zone__apply').forEach((btn) => {
@@ -401,7 +414,7 @@ listEl.addEventListener('click', (e) => {
 });
 
 // 드로어 열기/닫기 (추가 ＋ / 설정 ⚙️)
-fab.addEventListener('click', () => openDrawer(drawer, fab, labelInput));
+fab.addEventListener('click', () => openDrawer(drawer, fab, textInput));
 settingsFab.addEventListener('click', () => openDrawer(settingsDrawer, settingsFab));
 [drawer, settingsDrawer].forEach((d) => {
   d.addEventListener('click', (e) => {
@@ -424,7 +437,7 @@ document.addEventListener('keydown', (e) => {
   if (openEl || isTyping(document.activeElement) || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.key === '+' || e.key === '=') {
     e.preventDefault();
-    openDrawer(drawer, fab, labelInput);
+    openDrawer(drawer, fab, textInput);
   } else if (e.key === ',') {
     e.preventDefault();
     openDrawer(settingsDrawer, settingsFab);

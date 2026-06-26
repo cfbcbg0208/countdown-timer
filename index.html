@@ -34,53 +34,55 @@
         <div class="drawer__backdrop" data-close></div>
         <div class="drawer__panel" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
           <header class="drawer__head">
-            <h2 class="drawer__title" id="drawer-title">＋ 카운트다운 추가</h2>
+            <h2 class="drawer__title" id="drawer-title">＋ 카운트다운 추가 <kbd class="drawer__kbd" title="단축키">+</kbd></h2>
             <button class="drawer__close" type="button" data-close aria-label="닫기">✕</button>
           </header>
       <section class="add">
-        <label class="sr-only" for="label-input">카운트다운 이름 (선택)</label>
+        <!-- 기준일시(메인): 자유 텍스트 → 해석. 드로어 열면 여기에 먼저 포커스 -->
+        <div class="zone" id="zone-text">
+          <header class="zone__head"><label class="zone__name" for="text-input">⌨️ 기준일시</label></header>
+          <input
+            type="text"
+            id="text-input"
+            class="zone__input"
+            placeholder="예: 260626금1800 · 2026-06-26 18:00 · 오후 6시"
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <p class="zone__preview preview--idle" id="text-preview">
+            기준일시를 입력하면 해석 결과가 표시됩니다.
+          </p>
+        </div>
+
+        <!-- 제목(선택): 비우고 Enter면 기준일시로 자동 생성 -->
+        <label class="sr-only" for="label-input">제목 (선택)</label>
         <input
           type="text"
           id="label-input"
           class="add__label"
-          placeholder="이름 (선택) · 예: 시험 D-Day"
+          placeholder="제목 (선택) · 비우면 기준일시로 자동 생성"
           autocomplete="off"
         />
-        <div class="zones">
-          <!-- 텍스트 자유 입력 -->
-          <div class="zone" id="zone-text">
-            <header class="zone__head"><label class="zone__name" for="text-input">⌨️ 텍스트</label></header>
-            <input
-              type="text"
-              id="text-input"
-              class="zone__input"
-              placeholder="예: 260621일1300 · 2026.6.21 · 오후 11:30 · 1300"
-              autocomplete="off"
-              spellcheck="false"
-            />
-            <p class="zone__preview preview--idle" id="text-preview">
-              형식을 입력하면 해석 결과가 표시됩니다.
-            </p>
-            <button class="zone__apply" data-source="text" type="button">＋ 추가</button>
-            <details class="zone__formats">
-              <summary>지원 형식 보기</summary>
-              <ul>
-                <li><b>날짜</b> <code>2026-06-21</code> · <code>2026/6/21</code> · <code>2026.6.21</code> · <code>26-06-21</code> · <code>2026년 6월 21일</code></li>
-                <li><b>컴팩트</b> <code>260621</code> · <code>260621일110333</code> · <code>260621일1300</code></li>
-                <li><b>날짜+시간</b> <code>2026-06-21 11:03:30</code> · <code>2026-06-21T11:03</code> · <code>…일 오후 1시 30분</code></li>
-                <li><b>시간만</b> <code>110338</code> · <code>1300</code> · <code>11:03:41</code> · <code>오후 11:30</code> (→ 오늘)</li>
-                <li><b>유닉스</b> 10자리(초)·13자리(밀리초)</li>
-              </ul>
-            </details>
-          </div>
 
-          <!-- 달력 선택기 -->
-          <div class="zone" id="zone-picker">
-            <header class="zone__head"><label class="zone__name" for="picker-input">📅 선택기</label></header>
-            <input type="datetime-local" id="picker-input" class="zone__input" step="1" />
-            <button class="zone__apply" data-source="picker" type="button">＋ 추가</button>
-          </div>
-        </div>
+        <button class="zone__apply" data-source="text" type="button">＋ 추가</button>
+
+        <details class="zone__formats">
+          <summary>지원 형식 보기</summary>
+          <ul>
+            <li><b>날짜</b> <code>2026-06-21</code> · <code>2026/6/21</code> · <code>2026.6.21</code> · <code>26-06-21</code> · <code>2026년 6월 21일</code></li>
+            <li><b>컴팩트</b> <code>260621</code> · <code>260621일110333</code> · <code>260621일1300</code></li>
+            <li><b>날짜+시간</b> <code>2026-06-21 11:03:30</code> · <code>2026-06-21T11:03</code> · <code>…일 오후 1시 30분</code></li>
+            <li><b>시간만</b> <code>110338</code> · <code>1300</code> · <code>11:03:41</code> · <code>오후 11:30</code> (→ 오늘)</li>
+            <li><b>유닉스</b> 10자리(초)·13자리(밀리초)</li>
+          </ul>
+        </details>
+
+        <!-- 선택기: 거의 안 쓰므로 접어서 숨김(삭제는 아님, 접근성은 유지) -->
+        <details class="add__picker">
+          <summary>📅 달력 선택기로 입력</summary>
+          <input type="datetime-local" id="picker-input" class="zone__input" step="1" />
+          <button class="zone__apply" data-source="picker" type="button">＋ 선택기로 추가</button>
+        </details>
       </section>
         </div>
       </div>
@@ -90,7 +92,7 @@
         <div class="drawer__backdrop" data-close></div>
         <div class="drawer__panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
           <header class="drawer__head">
-            <h2 class="drawer__title" id="settings-title">⚙️ 디자인 설정</h2>
+            <h2 class="drawer__title" id="settings-title">⚙️ 디자인 설정 <kbd class="drawer__kbd" title="단축키">,</kbd></h2>
             <button class="drawer__close" type="button" data-close aria-label="닫기">✕</button>
           </header>
           <div class="settings">
@@ -149,6 +151,7 @@
       aria-expanded="false"
     >
       <span aria-hidden="true">⚙️</span>
+      <kbd class="fab__key" aria-hidden="true">,</kbd>
       <span class="sr-only">디자인 설정 패널 열기 (단축키 쉼표)</span>
     </button>
 
@@ -163,6 +166,7 @@
       aria-expanded="false"
     >
       <span aria-hidden="true">＋</span>
+      <kbd class="fab__key" aria-hidden="true">+</kbd>
       <span class="sr-only">카운트다운 추가 패널 열기 (단축키 더하기)</span>
     </button>
 

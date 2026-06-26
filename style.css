@@ -113,6 +113,23 @@ body {
   color: var(--fg);
 }
 
+/* 선택기: 거의 안 쓰므로 접어서 숨김(접근성 유지). 펼치면 입력+버튼이 세로로. */
+.add__picker { font-size: 0.85rem; color: var(--muted); }
+.add__picker summary { cursor: pointer; padding: 0.2rem 0; }
+.add__picker .zone__input { margin-top: 0.5rem; }
+.add__picker .zone__apply { margin-top: 0.5rem; }
+
+/* 단축키 표기용 키캡 */
+kbd {
+  display: inline-block;
+  font-family: inherit;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  border-radius: 0.35rem;
+  box-shadow: 0 1px 0 var(--line);
+}
+.drawer__kbd { font-size: 0.75rem; padding: 0.05rem 0.4rem; color: var(--muted); vertical-align: middle; }
+
 /* ── 카운트다운 목록 ──────────────────────── */
 .list { display: flex; flex-direction: column; gap: var(--list-gap, 0.6rem); }
 
@@ -337,6 +354,22 @@ body.dragging-active { cursor: grabbing; user-select: none; }
 }
 .fab:hover { filter: brightness(1.08); }
 .fab:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
+/* FAB 우상단 단축키 키캡(항상 보이게 표기) */
+.fab__key {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 1.05rem;
+  height: 1.05rem;
+  padding: 0 0.2rem;
+  font-size: 0.68rem;
+  line-height: calc(1.05rem - 2px);
+  text-align: center;
+  color: var(--fg);
+  background: var(--card-2);
+  box-shadow: none;
+}
 
 /* 보조(설정) FAB: 추가 ＋ 버튼 바로 위, 살짝 작고 차분한 색 */
 .fab--settings {

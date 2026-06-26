@@ -235,33 +235,7 @@ function openDrawer(el, trigger, focusEl) {
   el.hidden = false;
   openEl = el;
   if (trigger) trigger.setAttribute('aria-expanded', 'true');
-  const target = focusEl || el.querySelector('input, select, button:not([data-close])');
-  if (!target) return;
-  const focusTarget = () => {
-    if (openEl !== el) return; // 그 사이 닫혔으면 무시
-    target.focus();
-    try {
-      const end = (target.value ?? '').length;
-      target.setSelectionRange?.(end, end);
-    } catch {} // range/checkbox 등 텍스트 아닌 입력은 무시
-  };
-  // 드로어가 slide(transform) 애니메이션 '중'에 동기 focus 하면, 변형 때문에 캐럿의 화면
-  // 좌표가 흔들려 외부 텍스트확장기(Beeftext/Textspend)의 확장 단축키가 안 먹혔다
-  // (사용자가 ←→로 커서를 흔들면 좌표 재계산돼 동작). → 애니메이션이 끝난 뒤 포커스한다.
-  const panel = el.querySelector('.drawer__panel');
-  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (panel && !reduce) {
-    let done = false;
-    const run = () => {
-      if (done) return;
-      done = true;
-      focusTarget();
-    };
-    panel.addEventListener('animationend', run, { once: true });
-    setTimeout(run, 280); // 애니메이션 미발생/누락 대비 폴백
-  } else {
-    focusTarget();
-  }
+  (focusEl || el.querySelector('input, select, button:not([data-close])'))?.focus();
 }
 function closeDrawer() {
   if (!openEl) return;

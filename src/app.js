@@ -27,8 +27,6 @@ import {
   load as loadSettings,
   update as updateSettings,
   reset as resetSettings,
-  ACCENTS,
-  DENSITY,
 } from './settings.js';
 
 const $ = (id) => document.getElementById(id);
@@ -158,7 +156,7 @@ function makeCard(item) {
   if (item.label) labelEl.append(chip('제목'));
   card.append(labelEl);
 
-  // 시간 행: [시간 + 방향 칩](좌측)  …  [📍 기록](우측, 큰 숫자 줄의 빈 공간 활용).
+  // 시간 행: [시간 + 방향 칩](좌측)  …  [기록](우측, 큰 숫자 줄의 빈 공간 활용).
   const timeEl = document.createElement('div');
   timeEl.className = 'card__time';
   const lapEl = document.createElement('button');
@@ -167,7 +165,7 @@ function makeCard(item) {
   lapEl.dataset.id = item.id;
   lapEl.title = '지금 이 순간의 값을 기록(랩)';
   lapEl.setAttribute('aria-label', `${item.label || '타임카드'} 현재 값 기록`);
-  lapEl.textContent = '📍 기록';
+  lapEl.textContent = '기록'; // 빨간 핀(📍) 제거 → CSS로 녹색 점
   const timeRow = document.createElement('div');
   timeRow.className = 'card__row card__row--time';
   timeRow.append(timeEl, lapEl);
@@ -919,17 +917,12 @@ function openCalendar() {
 }
 calendarFab.addEventListener('click', openCalendar);
 
-// ── 디자인 설정: 저장 → CSS 변수/제목 표시에 즉시 반영 ──
-const setTimerScale = $('set-timer-scale');
-const setMetaScale = $('set-meta-scale');
-const setLapScale = $('set-lap-scale');
-const setDensity = $('set-density');
+// ── 디자인 설정: 변경 시 즉시 반영 ──
 const setAddPosition = $('set-add-position');
 const setProgressStyle = $('set-progress-style');
 const setProgressBase = $('set-progress-base');
 const setDates = $('set-dates');
 const setTheme = $('set-theme');
-const accentBox = $('set-accent');
 const setCancel = $('set-cancel');
 const setOk = $('set-ok');
 const themeColorMeta = document.querySelector('meta[name="theme-color"]');
@@ -950,41 +943,16 @@ function onSeg(el, handler) {
 
 function applySettings(s) {
   const el = document.documentElement;
-  el.dataset.theme = s.theme; // 라이트/다크 팔레트 전환
+  el.dataset.theme = s.theme; // 라이트/다크 팔레트 전환(나머지 색·크기는 CSS 고정)
   if (themeColorMeta) themeColorMeta.content = s.theme === 'light' ? '#eef4f0' : '#0e1512';
-  const root = el.style;
-  root.setProperty('--card-time-size', (1.9 * s.timerScale).toFixed(3) + 'rem');
-  root.setProperty('--card-meta-size', (0.8 * s.metaScale).toFixed(3) + 'rem');
-  root.setProperty('--card-lap-size', (0.8 * s.lapScale).toFixed(3) + 'rem');
-  root.setProperty('--accent', ACCENTS[s.accent]);
-  root.setProperty('--list-gap', DENSITY[s.density]);
 }
 
 function syncSettingControls(s) {
-  setTimerScale.value = s.timerScale;
-  setMetaScale.value = s.metaScale;
-  setLapScale.value = s.lapScale;
-  syncSeg(setDensity, s.density);
   syncSeg(setAddPosition, s.addPosition);
   syncSeg(setProgressStyle, s.progressStyle);
   syncSeg(setProgressBase, s.progressBase);
   for (const b of setDates.querySelectorAll('.seg')) b.setAttribute('aria-pressed', String(!!s[b.dataset.key]));
   syncSeg(setTheme, s.theme);
-  for (const b of accentBox.children) {
-    b.setAttribute('aria-pressed', String(b.dataset.accent === s.accent));
-  }
-}
-
-// 강조색 스와치 동적 생성(프리셋 키마다 원형 버튼).
-for (const key of Object.keys(ACCENTS)) {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.className = 'swatch';
-  b.dataset.accent = key;
-  b.style.background = ACCENTS[key];
-  b.setAttribute('aria-label', `강조색 ${key}`);
-  b.setAttribute('aria-pressed', 'false');
-  accentBox.append(b);
 }
 
 function changeSetting(patch) {
@@ -993,10 +961,6 @@ function changeSetting(patch) {
   syncSettingControls(settings);
 }
 
-setTimerScale.addEventListener('input', () => changeSetting({ timerScale: +setTimerScale.value }));
-setMetaScale.addEventListener('input', () => changeSetting({ metaScale: +setMetaScale.value }));
-setLapScale.addEventListener('input', () => changeSetting({ lapScale: +setLapScale.value }));
-onSeg(setDensity, (v) => changeSetting({ density: v }));
 onSeg(setAddPosition, (v) => changeSetting({ addPosition: v }));
 // 진행률 설정은 렌더 로직(updateCard)이 읽으므로, 변경 즉시 tick으로 카드에 반영.
 onSeg(setProgressStyle, (v) => {
@@ -1015,10 +979,6 @@ setDates.addEventListener('click', (e) => {
   rebuild();
 });
 onSeg(setTheme, (v) => changeSetting({ theme: v }));
-accentBox.addEventListener('click', (e) => {
-  const b = e.target.closest('.swatch');
-  if (b) changeSetting({ accent: b.dataset.accent });
-});
 setReset.addEventListener('click', () => {
   settings = resetSettings(localStorage);
   applySettings(settings);

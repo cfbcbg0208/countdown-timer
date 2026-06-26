@@ -295,6 +295,9 @@ kbd {
 .card__lap {
   flex: none;
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
   padding: 0.3rem 0.7rem;
   border: 1px solid var(--line);
   border-radius: 999px;
@@ -303,6 +306,14 @@ kbd {
   font-size: 0.78rem;
   white-space: nowrap;
   cursor: pointer;
+}
+/* 빨간 핀 대신 녹색(강조색) 점 */
+.card__lap::before {
+  content: '';
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 50%;
+  background: var(--accent);
 }
 .card__lap:hover { color: var(--fg); border-color: var(--muted); }
 .card__lap:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -746,19 +757,6 @@ select.set-row__ctrl {
 .seg:hover:not([aria-pressed='true']) { color: var(--fg); background: rgba(127, 127, 127, 0.12); }
 .seg[aria-pressed='true'] { background: var(--accent); color: #fff; }
 .seg:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-
-.swatches { display: flex; gap: 0.45rem; flex-wrap: wrap; }
-.swatch {
-  width: 1.75rem;
-  height: 1.75rem;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
-  padding: 0;
-  box-shadow: 0 0 0 1px var(--line);
-}
-.swatch[aria-pressed='true'] { border-color: var(--fg); box-shadow: 0 0 0 2px var(--fg); }
-.swatch:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 
 .set-reset {
   align-self: flex-start;

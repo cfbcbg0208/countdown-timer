@@ -160,6 +160,7 @@ async function main() {
        drawerTitle: document.getElementById('drawer-title')?.textContent.trim(),
        dirChip: document.querySelector('.card__time .chip')?.textContent,
        theme: document.documentElement.dataset.theme,
+       lapText: document.querySelector('.card__lap')?.textContent,
      }))()`,
   );
   const fails = [];
@@ -170,6 +171,7 @@ async function main() {
   if (!String(checks.drawerTitle).includes('타임카드 추가')) fails.push(`드로어 제목="${checks.drawerTitle}"`);
   if (checks.dirChip !== '남은시간') fails.push(`방향 칩="${checks.dirChip}" (남은시간 기대)`);
   if (checks.theme !== 'dark') fails.push(`기본 테마 dark 기대, 실제 ${checks.theme}`);
+  if (checks.lapText !== '기록' || /📍/.test(checks.lapText)) fails.push(`기록 버튼 텍스트="${checks.lapText}" (빨간핀 제거·'기록' 기대)`);
 
   // 7) 카드 화면 스크린샷
   const shot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
@@ -276,11 +278,11 @@ async function main() {
     browser,
     `document.querySelector('#set-theme .seg[data-value="light"]')?.getAttribute('aria-pressed')`,
   );
-  if (s10.segCount !== 6) fails.push(`세그먼트 6개(셀렉트5+날짜1) 기대, 실제 ${s10.segCount}`);
+  if (s10.segCount !== 5) fails.push(`세그먼트 5개(셀렉트4+날짜1) 기대, 실제 ${s10.segCount}`);
   if (s10.dateToggles !== 3) fails.push(`날짜 토글 3개 기대, 실제 ${s10.dateToggles}`);
   if (s10.footerBtns !== 2) fails.push(`푸터 버튼 2개(취소/확인) 기대, 실제 ${s10.footerBtns}`);
   if (s10.headerClose) fails.push('설정 헤더 ✕가 아직 있음(제거 기대)');
-  if (s10.accents !== 4) fails.push(`강조색 4개 기대, 실제 ${s10.accents}`);
+  if (s10.accents !== 0) fails.push(`강조색 제거 기대, 실제 ${s10.accents}`);
   if (theme !== 'light') fails.push(`세그먼트로 라이트 전환 실패: ${theme}`);
   if (segPressed !== 'true') fails.push('세그먼트 선택 표시(aria-pressed) 실패');
   const lightShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });

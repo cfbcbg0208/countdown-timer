@@ -722,6 +722,31 @@ select.set-row__ctrl {
 }
 .set-row__ctrl:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
+/* 세그먼트 컨트롤(드롭다운 대체): 한 번 클릭으로 선택, 펼침 없음 */
+.segmented {
+  display: inline-flex;
+  flex: 0 1 auto;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  overflow: hidden;
+  background: var(--card-2);
+}
+.seg {
+  border: none;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.seg:first-child { border-left: none; }
+.seg:hover:not([aria-pressed='true']) { color: var(--fg); background: rgba(127, 127, 127, 0.12); }
+.seg[aria-pressed='true'] { background: var(--accent); color: #fff; }
+.seg:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
 .swatches { display: flex; gap: 0.45rem; flex-wrap: wrap; }
 .swatch {
   width: 1.75rem;

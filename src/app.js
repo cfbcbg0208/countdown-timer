@@ -937,6 +937,17 @@ const setReset = $('set-reset');
 
 let settings = loadSettings(localStorage);
 
+// 세그먼트 컨트롤(드롭다운 대체): 선택값 표시(aria-pressed) + 클릭 위임.
+function syncSeg(el, value) {
+  for (const b of el.querySelectorAll('.seg')) b.setAttribute('aria-pressed', String(b.dataset.value === value));
+}
+function onSeg(el, handler) {
+  el.addEventListener('click', (e) => {
+    const b = e.target.closest('.seg');
+    if (b) handler(b.dataset.value);
+  });
+}
+
 function applySettings(s) {
   const el = document.documentElement;
   el.dataset.theme = s.theme; // 라이트/다크 팔레트 전환
@@ -953,14 +964,14 @@ function syncSettingControls(s) {
   setTimerScale.value = s.timerScale;
   setMetaScale.value = s.metaScale;
   setLapScale.value = s.lapScale;
-  setDensity.value = s.density;
-  setAddPosition.value = s.addPosition;
-  setProgressStyle.value = s.progressStyle;
-  setProgressBase.value = s.progressBase;
+  syncSeg(setDensity, s.density);
+  syncSeg(setAddPosition, s.addPosition);
+  syncSeg(setProgressStyle, s.progressStyle);
+  syncSeg(setProgressBase, s.progressBase);
   setShowTarget.checked = s.showTarget;
   setShowCreated.checked = s.showCreated;
   setShowUpdated.checked = s.showUpdated;
-  setTheme.value = s.theme;
+  syncSeg(setTheme, s.theme);
   for (const b of accentBox.children) {
     b.setAttribute('aria-pressed', String(b.dataset.accent === s.accent));
   }
@@ -987,15 +998,15 @@ function changeSetting(patch) {
 setTimerScale.addEventListener('input', () => changeSetting({ timerScale: +setTimerScale.value }));
 setMetaScale.addEventListener('input', () => changeSetting({ metaScale: +setMetaScale.value }));
 setLapScale.addEventListener('input', () => changeSetting({ lapScale: +setLapScale.value }));
-setDensity.addEventListener('change', () => changeSetting({ density: setDensity.value }));
-setAddPosition.addEventListener('change', () => changeSetting({ addPosition: setAddPosition.value }));
+onSeg(setDensity, (v) => changeSetting({ density: v }));
+onSeg(setAddPosition, (v) => changeSetting({ addPosition: v }));
 // 진행률 설정은 렌더 로직(updateCard)이 읽으므로, 변경 즉시 tick으로 카드에 반영.
-setProgressStyle.addEventListener('change', () => {
-  changeSetting({ progressStyle: setProgressStyle.value });
+onSeg(setProgressStyle, (v) => {
+  changeSetting({ progressStyle: v });
   tick();
 });
-setProgressBase.addEventListener('change', () => {
-  changeSetting({ progressBase: setProgressBase.value });
+onSeg(setProgressBase, (v) => {
+  changeSetting({ progressBase: v });
   tick();
 });
 // 기준/등록/수정 일시 표시 토글은 카드 구조(행 hidden)를 바꾸므로 rebuild로 반영.
@@ -1011,7 +1022,7 @@ setShowUpdated.addEventListener('change', () => {
   changeSetting({ showUpdated: setShowUpdated.checked });
   rebuild();
 });
-setTheme.addEventListener('change', () => changeSetting({ theme: setTheme.value }));
+onSeg(setTheme, (v) => changeSetting({ theme: v }));
 accentBox.addEventListener('click', (e) => {
   const b = e.target.closest('.swatch');
   if (b) changeSetting({ accent: b.dataset.accent });

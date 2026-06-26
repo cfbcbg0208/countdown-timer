@@ -903,13 +903,18 @@ const setProgressBase = $('set-progress-base');
 const setShowTarget = $('set-show-target');
 const setShowCreated = $('set-show-created');
 const setShowUpdated = $('set-show-updated');
+const setTheme = $('set-theme');
 const accentBox = $('set-accent');
+const themeColorMeta = document.querySelector('meta[name="theme-color"]');
 const setReset = $('set-reset');
 
 let settings = loadSettings(localStorage);
 
 function applySettings(s) {
-  const root = document.documentElement.style;
+  const el = document.documentElement;
+  el.dataset.theme = s.theme; // 라이트/다크 팔레트 전환
+  if (themeColorMeta) themeColorMeta.content = s.theme === 'light' ? '#eef1f8' : '#0f1220';
+  const root = el.style;
   root.setProperty('--card-time-size', (1.9 * s.timerScale).toFixed(3) + 'rem');
   root.setProperty('--card-meta-size', (0.8 * s.metaScale).toFixed(3) + 'rem');
   root.setProperty('--card-lap-size', (0.8 * s.lapScale).toFixed(3) + 'rem');
@@ -928,6 +933,7 @@ function syncSettingControls(s) {
   setShowTarget.checked = s.showTarget;
   setShowCreated.checked = s.showCreated;
   setShowUpdated.checked = s.showUpdated;
+  setTheme.value = s.theme;
   for (const b of accentBox.children) {
     b.setAttribute('aria-pressed', String(b.dataset.accent === s.accent));
   }
@@ -978,6 +984,7 @@ setShowUpdated.addEventListener('change', () => {
   changeSetting({ showUpdated: setShowUpdated.checked });
   rebuild();
 });
+setTheme.addEventListener('change', () => changeSetting({ theme: setTheme.value }));
 accentBox.addEventListener('click', (e) => {
   const b = e.target.closest('.swatch');
   if (b) changeSetting({ accent: b.dataset.accent });

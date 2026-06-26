@@ -31,6 +31,7 @@ export const DEFAULTS = {
   showTarget: true, // 카드에 기준일시 표시
   showCreated: true, // 카드에 등록일시 표시
   showUpdated: true, // 카드에 수정일시 표시
+  theme: 'dark', // 화면 테마: 'dark' | 'light'
 };
 
 const PROGRESS_STYLES = ['none', 'bar', 'pie', 'both'];
@@ -55,6 +56,7 @@ function coerce(s) {
     showTarget: !!o.showTarget,
     showCreated: !!o.showCreated,
     showUpdated: !!o.showUpdated,
+    theme: o.theme === 'light' ? 'light' : 'dark', // 그 외/누락 → dark
   };
 }
 

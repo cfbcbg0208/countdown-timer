@@ -6,11 +6,26 @@
   --muted: #9aa0bd;
   --line: #2c3358;
   --accent: #5b8cff;
-  --future: #34d399; /* 남은(미래) = 초록 */
-  --past: #f87171;   /* 지난(과거) = 빨강 */
+  --future: #4ea1ff; /* 남은(미래) = 청색(적색편이 관례) */
+  --past: #f87171;   /* 지난(과거) = 적색 */
   --ok: #34d399;
   --err: #f87171;
   --track: #2c3358;  /* 진행률 바/파이의 빈(미진행) 부분 */
+}
+
+/* 라이트 테마: 구조색·미래/과거색만 덮어씀(강조색은 사용자 선택 인라인이 우선) */
+[data-theme='light'] {
+  --bg: #eef1f8;
+  --card: #ffffff;
+  --card-2: #e7ebf5;
+  --fg: #1b2138;
+  --muted: #5a6182;
+  --line: #d2d8e8;
+  --future: #1f74d6; /* 미래=청색(밝은 배경용으로 진하게) */
+  --past: #dc4446;   /* 과거=적색 */
+  --ok: #1f9d57;
+  --err: #dc4446;
+  --track: #d8deee;
 }
 
 * { box-sizing: border-box; }

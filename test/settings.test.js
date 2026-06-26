@@ -60,6 +60,13 @@ test('showTarget/showCreated/showUpdated: 기본 true, 불리언 강제', () => 
   assert.equal(update(st, { showTarget: 0 }).showTarget, false); // falsy → false
 });
 
+test('theme: 기본 dark, light만 허용, 그 외 → dark', () => {
+  const st = fakeStorage();
+  assert.equal(load(st).theme, 'dark');
+  assert.equal(update(st, { theme: 'light' }).theme, 'light');
+  assert.equal(update(st, { theme: 'solarized' }).theme, 'dark'); // 폴백
+});
+
 test('progressBase: 기본 created, updated만 허용, 그 외 → created', () => {
   const st = fakeStorage();
   assert.equal(load(st).progressBase, 'created'); // 기본값

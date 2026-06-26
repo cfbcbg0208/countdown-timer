@@ -232,10 +232,22 @@ async function main() {
   if (p4b.cards !== 1) fails.push(`단독 보기 카드 1 기대, 실제 ${p4b.cards}`);
   if (!p4b.calClosed) fails.push('단독 보기 후 캘린더 안 닫힘');
 
+  // 10) 라이트 테마 적용 후 스크린샷
+  await evalJS(browser, "localStorage.setItem('settings', JSON.stringify({theme:'light'})); location.reload();");
+  await until(
+    () => evalJS(browser, "document.readyState==='complete' && document.documentElement.dataset.theme"),
+    { label: 'theme applied' },
+  );
+  const theme = await evalJS(browser, 'document.documentElement.dataset.theme');
+  if (theme !== 'light') fails.push(`라이트 테마 적용 실패: ${theme}`);
+  const lightShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  await writeFile(join(ARTIFACTS, 'verify-light.png'), Buffer.from(lightShot.data, 'base64'));
+
   console.log('카드 검증:', JSON.stringify(checks, null, 2));
   console.log('캘린더 검증:', JSON.stringify(cal, null, 2));
   console.log('P4 검증:', JSON.stringify({ ...p4a, menuBtns, ...p4b }, null, 2));
-  console.log('스크린샷:', out, '+ verify-calendar.png');
+  console.log('테마 검증:', theme);
+  console.log('스크린샷:', out, '+ verify-calendar.png + verify-light.png');
   if (fails.length) {
     console.error('❌ 실패:\n - ' + fails.join('\n - '));
     process.exitCode = 1;

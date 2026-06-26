@@ -67,10 +67,10 @@ body {
 }
 
 .app {
-  width: min(100%, 78rem); /* 데스크톱: 넓게 써서 카드를 다열 그리드로 — 좌우 여백 낭비 제거 */
+  width: min(100%, 32rem); /* 모바일 우선: 단일 컬럼(PC 다열 그리드는 보류) */
   display: flex;
   flex-direction: column;
-  gap: 0.8rem;
+  gap: 0.7rem;
 }
 
 /* ── 추가 영역 ───────────────────────────── */
@@ -159,13 +159,7 @@ kbd {
 .drawer__kbd { font-size: 0.75rem; padding: 0.05rem 0.4rem; color: var(--muted); vertical-align: middle; }
 
 /* ── 카운트다운 목록 ──────────────────────── */
-/* 카드 목록: 화면 폭에 맞춰 자동 다열(데스크톱 정보밀도 ↑). 카드 높이는 내용대로(stretch 금지). */
-.list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr));
-  gap: var(--list-gap, 0.7rem);
-  align-items: start;
-}
+.list { display: flex; flex-direction: column; gap: var(--list-gap, 0.6rem); }
 
 /* 카드: 중립 얇은 테두리 + 부드러운 그림자(현대적). 방향색은 좌측 얇은 액센트 바로만. */
 .card {
@@ -174,8 +168,19 @@ kbd {
   border: 1px solid var(--line);
   border-left: 3px solid var(--line);
   border-radius: 0.85rem;
-  padding: 0.6rem 1rem;
+  padding: 0.55rem 0.7rem 0.6rem 2.3rem; /* 좌측=핸들 자리. 우측은 액션 레일이 채움 */
   box-shadow: var(--card-shadow);
+}
+/* 본문(좌, 정보) + 우측 액션 레일(기록·조합) — 낭비되던 우측 공간 활용 */
+.card__body { display: flex; align-items: flex-start; gap: 0.5rem; }
+.card__main { flex: 1; min-width: 0; }
+.card__aside {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.3rem;
+  padding-top: 1.25rem; /* 우상단 ✕ 자리 비우기 */
 }
 .card.display--future { border-left-color: var(--future); }
 .card.display--past { border-left-color: var(--past); }
@@ -203,13 +208,13 @@ kbd {
 .card__label--empty { font-weight: 500; font-style: italic; opacity: 0.7; }
 
 .card__time {
-  font-size: var(--card-time-size, 1.65rem);
+  font-size: var(--card-time-size, 1.6rem);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
-  line-height: 1.1;
-  white-space: nowrap;
+  line-height: 1.15;
 }
+.card__num { white-space: nowrap; } /* 숫자 자체는 줄바꿈 금지(방향 칩은 좁으면 다음 줄로) */
 .card.display--future .card__time { color: var(--future); }
 .card.display--past .card__time { color: var(--past); }
 
@@ -270,7 +275,6 @@ kbd {
 
 /* 카드 내 행(요소 + 칩, 또는 시간 + 기록 인라인) */
 .card__row { display: flex; align-items: center; gap: 0.5rem; }
-.card__row--time { justify-content: space-between; gap: 0.75rem; }
 .card__row--date { gap: 0.4rem; margin-top: 0.15rem; }
 .card__row--date[hidden] { display: none; }
 .card__datemeta { font-size: var(--card-meta-size, 0.8rem); color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -396,7 +400,6 @@ kbd {
 .hint { margin: 0; text-align: center; color: var(--muted); font-size: 0.85rem; }
 
 /* ── 드래그 핸들 / 드래그 중 카드 ─────────────── */
-.card { padding-left: 2.4rem; padding-right: 2rem; } /* 좌측 핸들·우측 삭제(✕) 자리 */
 
 /* 카드 왼쪽 전체 높이를 잡는 그립 → 터치 타깃 충분 */
 .card__handle {
@@ -587,6 +590,7 @@ body.dragging-active { cursor: grabbing; user-select: none; }
 
 /* ── 카드↔조합 칩 + 재생목록식 선택기 ───────────── */
 .card__groups { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-top: 0.35rem; }
+.card__groups:empty { display: none; } /* 소속 조합 없으면 줄 자체를 숨겨 공간 절약 */
 .card__group {
   display: inline-flex; align-items: center; gap: 0.3em;
   padding: 0.12rem 0.55rem;
@@ -609,6 +613,21 @@ body.dragging-active { cursor: grabbing; user-select: none; }
   cursor: pointer;
 }
 .card__groupbtn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* 우측 액션 레일 안의 기록·조합 버튼: 같은 너비·중앙정렬·컴팩트(통일감) */
+.card__aside .card__lap,
+.card__aside .card__groupbtn {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35em;
+  white-space: nowrap;
+  margin: 0;
+  padding: 0.34rem 0.5rem;
+  font-size: 0.74rem;
+  border-radius: 0.55rem;
+}
 
 /* 조합 선택기(카드 팝오버 + 추가 드로어 공용) */
 .combo-pop {

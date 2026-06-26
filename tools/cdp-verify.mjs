@@ -118,12 +118,12 @@ async function main() {
   await browser.open;
   await browser.send('Page.enable');
   await browser.send('Runtime.enable');
-  // 스크린샷이 2000px를 넘지 않도록 뷰포트 고정(Read로 직접 볼 수 있게).
+  // 모바일 우선 개발 → 폰 크기 뷰포트로 검증/스크린샷(밀도·레이아웃을 모바일 기준으로 판단).
   await browser.send('Emulation.setDeviceMetricsOverride', {
-    width: 820,
-    height: 1180,
+    width: 390,
+    height: 844,
     deviceScaleFactor: 1,
-    mobile: false,
+    mobile: true,
   });
 
   // 4) 앱으로 이동 + 로드 완료 대기
@@ -161,7 +161,8 @@ async function main() {
        dirChip: document.querySelector('.card__time .chip')?.textContent,
        theme: document.documentElement.dataset.theme,
        lapText: document.querySelector('.card__lap')?.textContent,
-       listDisplay: getComputedStyle(document.getElementById('list')).display,
+       asideHasLap: !!document.querySelector('.card__aside .card__lap'),
+       asideHasGroupBtn: !!document.querySelector('.card__aside .card__groupbtn'),
      }))()`,
   );
   const fails = [];
@@ -173,7 +174,8 @@ async function main() {
   if (checks.dirChip !== '남은시간') fails.push(`방향 칩="${checks.dirChip}" (남은시간 기대)`);
   if (checks.theme !== 'dark') fails.push(`기본 테마 dark 기대, 실제 ${checks.theme}`);
   if (checks.lapText !== '기록' || /📍/.test(checks.lapText)) fails.push(`기록 버튼 텍스트="${checks.lapText}" (빨간핀 제거·'기록' 기대)`);
-  if (checks.listDisplay !== 'grid') fails.push(`리스트 다열 그리드 기대, 실제 display=${checks.listDisplay}`);
+  if (!checks.asideHasLap) fails.push('기록 버튼이 우측 액션 레일(.card__aside)에 없음');
+  if (!checks.asideHasGroupBtn) fails.push('＋조합 버튼이 우측 액션 레일에 없음');
 
   // 6.6) 조합(재생목록식): 카드 ＋조합 → 팝오버 → 새 조합 생성·토글 → 칩 표시 + 영속
   if (!(await evalJS(browser, "!!document.querySelector('.card .card__groupbtn')")))
@@ -329,11 +331,10 @@ async function main() {
   const lightShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-light.png'), Buffer.from(lightShot.data, 'base64'));
 
-  // 11) 밀도 데모: 넓은 뷰포트 + 여러 카드 → 다열 그리드 스크린샷(단언과 분리, 시각 판단용)
-  await browser.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+  // 11) 밀도 데모: 모바일 폭에서 여러 카드 스택 스크린샷(우측 액션 레일·압축 레이아웃 판단용)
   const many = JSON.stringify(
-    Array.from({ length: 7 }, (_, i) => {
-      const dir = i % 3 === 0 ? 1 : -1; // 미래/과거 섞기
+    Array.from({ length: 4 }, (_, i) => {
+      const dir = i % 2 === 0 ? 1 : -1; // 미래/과거 섞기
       const dt = new Date(Date.now() + dir * (i + 1) * 5 * 3600 * 1000);
       const pp = (n) => String(n).padStart(2, '0');
       const iso = `${dt.getFullYear()}-${pp(dt.getMonth() + 1)}-${pp(dt.getDate())}T${pp(dt.getHours())}:${pp(dt.getMinutes())}:00`;
@@ -341,15 +342,12 @@ async function main() {
     }),
   );
   await evalJS(browser, `localStorage.setItem('countdowns', ${JSON.stringify(many)}); location.reload();`);
-  await until(() => evalJS(browser, 'document.querySelectorAll(".card").length >= 7'), { label: 'grid cards' });
-  const cols = await evalJS(browser, "getComputedStyle(document.getElementById('list')).gridTemplateColumns.split(' ').length");
-  if (cols < 2) fails.push(`넓은 화면 다열 기대(2+), 실제 열 수 ${cols}`);
-  const gridShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
-  await writeFile(join(ARTIFACTS, 'verify-grid.png'), Buffer.from(gridShot.data, 'base64'));
+  await until(() => evalJS(browser, 'document.querySelectorAll(".card").length >= 4'), { label: 'list cards' });
+  const listShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  await writeFile(join(ARTIFACTS, 'verify-list.png'), Buffer.from(listShot.data, 'base64'));
 
   console.log('카드 검증:', JSON.stringify(checks, null, 2));
   console.log('조합 검증:', JSON.stringify(combo));
-  console.log('그리드 열 수:', cols);
   console.log('캘린더 검증:', JSON.stringify(cal, null, 2));
   console.log('P4 검증:', JSON.stringify({ ...p4a, menuBtns, ...p4b }, null, 2));
   console.log('설정/세그먼트 검증:', JSON.stringify({ theme, segPressed, ...s10 }));

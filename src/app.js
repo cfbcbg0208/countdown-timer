@@ -142,7 +142,6 @@ function makeCard(item) {
     `${item.label || '타임카드'} 순서 변경. 드래그하거나 화살표 위/아래, Home/End 키 사용`,
   );
   handle.textContent = '≡';
-  card.append(handle);
 
   const del = document.createElement('button');
   del.className = 'card__del';
@@ -151,7 +150,6 @@ function makeCard(item) {
   del.title = '삭제';
   del.setAttribute('aria-label', `${item.label || '타임카드'} 삭제`);
   del.textContent = '✕';
-  card.append(del);
 
   // 제목: 클릭하면 그 자리에서 바로 수정. 비어 있으면 '＋ 제목' 안내. 제목 있으면 [제목] 칩.
   const labelEl = document.createElement('button');
@@ -161,21 +159,10 @@ function makeCard(item) {
   labelEl.setAttribute('aria-label', `제목 수정: ${item.label || '없음'}`);
   labelEl.textContent = item.label || '＋ 제목';
   if (item.label) labelEl.append(chip('제목'));
-  card.append(labelEl);
 
-  // 시간 행: [시간 + 방향 칩](좌측)  …  [기록](우측, 큰 숫자 줄의 빈 공간 활용).
+  // 큰 시간 + 방향 칩(updateCard가 채움).
   const timeEl = document.createElement('div');
   timeEl.className = 'card__time';
-  const lapEl = document.createElement('button');
-  lapEl.className = 'card__lap';
-  lapEl.type = 'button';
-  lapEl.dataset.id = item.id;
-  lapEl.title = '지금 이 순간의 값을 기록(랩)';
-  lapEl.setAttribute('aria-label', `${item.label || '타임카드'} 현재 값 기록`);
-  lapEl.textContent = '기록'; // 빨간 핀(📍) 제거 → CSS로 녹색 점
-  const timeRow = document.createElement('div');
-  timeRow.className = 'card__row card__row--time';
-  timeRow.append(timeEl, lapEl);
 
   // 진행률(미래 카드만): '둘 다'면 파이 → 바 순서. 클릭하면 진행 시작 일시 지정.
   const progressEl = document.createElement('div');
@@ -204,15 +191,43 @@ function makeCard(item) {
   const createdRow = dateRow('등록일시', item.createdAt, settings.showCreated);
   const updatedRow = dateRow('수정일시', item.updatedAt, settings.showUpdated);
 
-  // 조합(그룹) 칩 줄: 이 카드가 속한 조합 + '＋ 조합' 버튼(생성/편집에서 직접 추가).
+  // 소속 조합 칩(클릭→그 조합 보기). 추가 버튼은 우측 레일에.
   const groupsRow = document.createElement('div');
   groupsRow.className = 'card__groups';
-  card.append(timeRow, progressEl, targetRow, createdRow, updatedRow, groupsRow);
   fillCardGroups(groupsRow, item.id);
+
+  // 본문(좌): 정보에 집중
+  const main = document.createElement('div');
+  main.className = 'card__main';
+  main.append(labelEl, timeEl, progressEl, targetRow, createdRow, updatedRow, groupsRow);
+
+  // 우측 액션 레일: 기록 + 조합 추가 (낭비되던 우측 공간 활용)
+  const lapEl = document.createElement('button');
+  lapEl.className = 'card__lap';
+  lapEl.type = 'button';
+  lapEl.dataset.id = item.id;
+  lapEl.title = '지금 이 순간의 값을 기록(랩)';
+  lapEl.setAttribute('aria-label', `${item.label || '타임카드'} 현재 값 기록`);
+  lapEl.textContent = '기록'; // 빨간 핀(📍) 제거 → CSS로 녹색 점
+  const groupBtn = document.createElement('button');
+  groupBtn.className = 'card__groupbtn';
+  groupBtn.type = 'button';
+  groupBtn.dataset.id = item.id;
+  groupBtn.title = '이 카드를 조합에 추가/제거';
+  groupBtn.setAttribute('aria-label', '조합에 추가 또는 제거');
+  groupBtn.textContent = '＋ 조합';
+  const aside = document.createElement('div');
+  aside.className = 'card__aside';
+  aside.append(lapEl, groupBtn);
+
+  const body = document.createElement('div');
+  body.className = 'card__body';
+  body.append(main, aside);
 
   const lapsEl = document.createElement('ul');
   lapsEl.className = 'card__laps';
-  card.append(lapsEl);
+
+  card.append(handle, del, body, lapsEl);
 
   const refs = { card, timeEl, progressEl, barFillEl, pieEl, metaEl, lapsEl, item, dir: null };
   renderLaps(refs);
@@ -264,8 +279,7 @@ function updateCard(refs) {
   refs.card.classList.toggle('display--past', r.direction === 'past');
   // 시간 + 방향 칩(남은시간/지난시간). 칩 색은 방향 따라(미래=초록/과거=빨강).
   refs.timeEl.innerHTML =
-    (d.sign ? `<span class="display__sign">${d.sign}</span>` : '') +
-    formatDuration(r) +
+    `<span class="card__num">${d.sign ? `<span class="display__sign">${d.sign}</span>` : ''}${formatDuration(r)}</span>` +
     ` <span class="chip chip--${r.direction}">${d.chip}</span>`;
   // 기준일시: 값(좌측) + [기준일시] 칩. (formatLocal 출력은 숫자·하이픈·요일뿐이라 innerHTML에 안전)
   refs.metaEl.innerHTML = `${formatLocal(target)} <span class="chip">기준일시</span>`;
@@ -715,23 +729,17 @@ function viewGroup(id) {
 // 카드의 .card__groups 칸을 (소속 조합 칩들 + ＋버튼)으로 다시 채운다.
 function fillCardGroups(container, id) {
   const groups = groupsForItem(loadGroups(localStorage), id);
-  const chips = groups.map((g) => {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'card__group';
-    b.dataset.gid = g.id;
-    b.textContent = g.name || '조합';
-    b.title = `조합 "${g.name || ''}" 보기`;
-    return b;
-  });
-  const addBtn = document.createElement('button');
-  addBtn.type = 'button';
-  addBtn.className = 'card__groupbtn';
-  addBtn.dataset.id = id;
-  addBtn.title = '이 카드를 조합에 추가/제거';
-  addBtn.setAttribute('aria-label', '조합에 추가 또는 제거');
-  addBtn.textContent = groups.length ? '＋' : '＋ 조합';
-  container.replaceChildren(...chips, addBtn);
+  container.replaceChildren(
+    ...groups.map((g) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'card__group';
+      b.dataset.gid = g.id;
+      b.textContent = g.name || '조합';
+      b.title = `조합 "${g.name || ''}" 보기`;
+      return b;
+    }),
+  );
 }
 // 리스트에서 그 id 카드의 조합 칩만 다시 그린다(전체 rebuild 없이 즉시 반영).
 function refreshCardGroups(id) {
@@ -1197,26 +1205,15 @@ function onDragMove(e) {
   // 떠 있는 클론을 포인터에 붙여 이동
   drag.clone.style.left = `${e.clientX - drag.offsetX}px`;
   drag.clone.style.top = `${e.clientY - drag.offsetY}px`;
-  // 빈 자리(원본 카드)를 포인터에 가장 가까운 카드 앞/뒤로 이동(다열 그리드 2D 대응).
-  // 같은 행이면 좌우(x), 다른 행이면 상하(y)로 앞/뒤를 정한다.
-  const x = e.clientX, y = e.clientY;
+  // 빈 자리(원본 카드)를 포인터 세로 위치에 맞춰 형제들 사이로 이동(단일 컬럼 기준).
+  const y = e.clientY;
   const others = [...listEl.querySelectorAll('.card:not(.card--placeholder)')];
-  let best = null, bestDist = Infinity;
-  for (const c of others) {
+  const next = others.find((c) => {
     const r = c.getBoundingClientRect();
-    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    const d = (x - cx) ** 2 + (y - cy) ** 2;
-    if (d < bestDist) { bestDist = d; best = c; }
-  }
-  if (best) {
-    const r = best.getBoundingClientRect();
-    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    const after = Math.abs(y - cy) <= r.height / 2 ? x > cx : y > cy;
-    if (after) best.after(drag.card);
-    else best.before(drag.card);
-  } else {
-    listEl.appendChild(drag.card);
-  }
+    return y < r.top + r.height / 2;
+  });
+  if (next) listEl.insertBefore(drag.card, next);
+  else listEl.appendChild(drag.card);
 }
 
 function onDragEnd() {

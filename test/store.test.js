@@ -37,6 +37,23 @@ test('add: 고유 id 부여', () => {
   assert.notEqual(a.id, b.id);
 });
 
+test('add: createdAt·updatedAt 설정(처음엔 동일)', () => {
+  const s = fakeStorage();
+  const item = add(s, { targetISO: '2026-01-01T00:00:00' });
+  assert.ok(item.createdAt);
+  assert.equal(item.updatedAt, item.createdAt);
+});
+
+test('updateItem: updatedAt 갱신, createdAt 보존', async () => {
+  const s = fakeStorage();
+  const a = add(s, { label: 'a', targetISO: '2026-01-01T00:00:00' });
+  await new Promise((r) => setTimeout(r, 2)); // ISO ms가 달라지도록 약간 대기
+  const after = updateItem(s, a.id, { label: 'a2' });
+  assert.equal(after[0].createdAt, a.createdAt); // 등록 일시 보존
+  assert.notEqual(after[0].updatedAt, a.updatedAt); // 수정 일시 갱신됨
+  assert.ok(after[0].updatedAt > a.updatedAt); // 더 이후 시각
+});
+
 test('remove → 해당 항목만 삭제', () => {
   const s = fakeStorage();
   const a = add(s, { label: 'a', targetISO: '2026-01-01T00:00:00' });

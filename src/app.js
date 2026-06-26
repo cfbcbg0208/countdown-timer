@@ -246,38 +246,11 @@ function closeDrawer() {
   if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
 }
 
-// ── 외부 텍스트확장기(Beeftext/Textspend) 호환: 자동 포커스 유지하면서 캐럿 신호 발생 ──
-// JS 자동 포커스만으론 OS 캐럿이 '클릭/←→'만큼 확실히 안 잡혀 확장 단축키가 안 먹혔다.
-// 그래서 사용자가 '첫 글자를 친 직후' 캐럿을 한 칸 옮겼다 되돌려 ←→와 같은 신호를 한 번 낸다.
-// (확장 입력은 combo '이후'라 시점이 겹치지 않아 충돌 없음. 첫 input에서만 1회 실행.)
-let armCaretSignal = false;
-function nudgeCaretSignal(el) {
-  if (document.activeElement !== el) return;
-  const pos = el.selectionEnd;
-  if (pos == null) return;
-  try {
-    if (pos > 0) {
-      el.setSelectionRange(pos - 1, pos - 1);
-      el.setSelectionRange(pos, pos);
-    } else if (el.value.length > 0) {
-      el.setSelectionRange(1, 1);
-      el.setSelectionRange(0, 0);
-    }
-  } catch {}
-}
-textInput.addEventListener('focus', () => {
-  armCaretSignal = true;
-});
 // 이벤트 배선 — 추가 흐름: 기준일시 입력 → Enter → (제목 입력 →) Enter → 생성.
 // ① 기준일시→Enter→Enter(빈 제목): 기준일시 자동 제목으로 생성.
 // ② 기준일시→Enter→제목 입력→Enter: 그 제목으로 생성.
-textInput.addEventListener('input', (e) => {
-  updatePreview();
-  if (armCaretSignal && !e.isComposing) {
-    armCaretSignal = false;
-    nudgeCaretSignal(textInput);
-  }
-});
+// (Beeftext 무클릭 호환은 JS로 불가 확인 — 자동 포커스 유지, 확장기는 클릭/→ 1회 필요.)
+textInput.addEventListener('input', updatePreview);
 textInput.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter') return;
   e.preventDefault();

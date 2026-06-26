@@ -1,5 +1,6 @@
 // 카운트다운 목록 저장소. storage(localStorage 호환 객체)를 주입받아 테스트 가능하게 한다.
-// 항목 형태: { id, label, targetISO, createdAt }
+// 항목 형태: { id, label, targetISO, createdAt, updatedAt }
+//   createdAt=등록 일시, updatedAt=마지막 수정 일시(updateItem 시 갱신). 둘 다 ISO 문자열.
 const KEY = 'countdowns';
 
 function newId() {
@@ -24,7 +25,8 @@ export function save(storage, list) {
 /** 새 항목 추가 후 그 항목을 반환. */
 export function add(storage, { label = '', targetISO }) {
   const list = load(storage);
-  const item = { id: newId(), label, targetISO, createdAt: new Date().toISOString() };
+  const now = new Date().toISOString();
+  const item = { id: newId(), label, targetISO, createdAt: now, updatedAt: now };
   list.push(item);
   save(storage, list);
   return item;
@@ -37,10 +39,13 @@ export function remove(storage, id) {
   return list;
 }
 
-/** id 항목의 일부 필드(label/targetISO 등)를 갱신 후 남은 목록을 반환. id·createdAt·순서는 보존. */
+/** id 항목의 일부 필드(label/targetISO 등)를 갱신 후 남은 목록을 반환.
+ *  id·createdAt·순서는 보존하고, updatedAt은 현재 시각으로 갱신(patch로 못 바꿈). */
 export function updateItem(storage, id, patch) {
   const list = load(storage).map((t) =>
-    t.id === id ? { ...t, ...patch, id: t.id, createdAt: t.createdAt } : t,
+    t.id === id
+      ? { ...t, ...patch, id: t.id, createdAt: t.createdAt, updatedAt: new Date().toISOString() }
+      : t,
   );
   save(storage, list);
   return list;

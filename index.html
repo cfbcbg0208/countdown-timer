@@ -34,7 +34,7 @@
         <div class="drawer__backdrop" data-close></div>
         <div class="drawer__panel" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
           <header class="drawer__head">
-            <h2 class="drawer__title" id="drawer-title">＋ 카운트다운 추가 <kbd class="drawer__kbd" title="단축키">A</kbd></h2>
+            <h2 class="drawer__title" id="drawer-title">＋ 타임카드 추가 <kbd class="drawer__kbd" title="단축키">A</kbd></h2>
             <button class="drawer__close" type="button" data-close aria-label="닫기">✕</button>
           </header>
       <section class="add">
@@ -169,7 +169,7 @@
 
       <!-- 카운트다운 목록 (매초 갱신되므로 aria-live 미사용 → 스팸 방지) -->
       <section class="list" id="list"></section>
-      <p class="hint" id="empty-hint">아직 카운트다운이 없습니다. 오른쪽 아래 ＋ 버튼으로 추가하세요.</p>
+      <p class="hint" id="empty-hint">아직 타임카드가 없습니다. 오른쪽 아래 ＋ 버튼으로 추가하세요.</p>
 
       <!-- 조합(그룹) 패널: 평소 숨김, 🗂️ FAB로 열기 -->
       <div class="drawer" id="groups-drawer" hidden>
@@ -234,14 +234,14 @@
       class="fab"
       id="fab"
       type="button"
-      title="카운트다운 추가 (단축키: A)"
+      title="타임카드 추가 (단축키: A)"
       aria-haspopup="dialog"
       aria-controls="drawer"
       aria-expanded="false"
     >
       <span aria-hidden="true">＋</span>
       <kbd class="fab__key" aria-hidden="true">A</kbd>
-      <span class="sr-only">카운트다운 추가 패널 열기 (단축키 A)</span>
+      <span class="sr-only">타임카드 추가 패널 열기 (단축키 A)</span>
     </button>
 
     <script type="module" src="src/app.js"></script>

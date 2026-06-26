@@ -116,7 +116,7 @@ function makeCard(item) {
   handle.title = '드래그 또는 ↑/↓ 키로 순서 변경';
   handle.setAttribute(
     'aria-label',
-    `${item.label || '카운트다운'} 순서 변경. 드래그하거나 화살표 위/아래, Home/End 키 사용`,
+    `${item.label || '타임카드'} 순서 변경. 드래그하거나 화살표 위/아래, Home/End 키 사용`,
   );
   handle.textContent = '≡';
   card.append(handle);
@@ -126,7 +126,7 @@ function makeCard(item) {
   del.type = 'button';
   del.dataset.id = item.id;
   del.title = '삭제';
-  del.setAttribute('aria-label', `${item.label || '카운트다운'} 삭제`);
+  del.setAttribute('aria-label', `${item.label || '타임카드'} 삭제`);
   del.textContent = '✕';
   card.append(del);
 
@@ -148,7 +148,7 @@ function makeCard(item) {
   lapEl.type = 'button';
   lapEl.dataset.id = item.id;
   lapEl.title = '지금 이 순간의 값을 기록(랩)';
-  lapEl.setAttribute('aria-label', `${item.label || '카운트다운'} 현재 값 기록`);
+  lapEl.setAttribute('aria-label', `${item.label || '타임카드'} 현재 값 기록`);
   lapEl.textContent = '📍 기록';
   const timeRow = document.createElement('div');
   timeRow.className = 'card__row card__row--time';
@@ -298,9 +298,12 @@ function updatePreview() {
     textPreview.textContent = '❌ 인식할 수 없는 형식입니다.';
     return;
   }
-  const dir = DIRS[diff(d).direction];
+  const r = diff(d);
+  const dir = DIRS[r.direction];
+  // 해석된 기준일시까지/부터 남은·지난 양도 함께(방향 라벨 우측 빈 공간 활용).
+  const amount = r.direction === 'now' ? '' : `  ·  ${formatDuration(r)}`;
   textPreview.className = 'zone__preview preview--ok';
-  textPreview.textContent = `✅ ${formatLocal(d)}  ·  ${dir.emoji} ${dir.label}`;
+  textPreview.textContent = `✅ ${formatLocal(d)}  ·  ${dir.emoji} ${dir.label}${amount}`;
 }
 
 function addFrom(source) {
@@ -333,7 +336,7 @@ function addFrom(source) {
   groupBanner.hidden = true;
   rebuild();
   closeDrawer();
-  srStatus.textContent = `${labelText || '카운트다운'} 추가됨`;
+  srStatus.textContent = `${labelText || '타임카드'} 추가됨`;
 }
 
 // ── 드로어(추가/설정 공용): FAB로 열고, 배경/✕/Esc로 닫기 ──
@@ -523,7 +526,7 @@ listEl.addEventListener('click', (e) => {
     list = remove(localStorage, id);
     removeItemFromGroups(localStorage, id); // 그룹 멤버에서도 제거(깨진 참조 방지)
     rebuild();
-    srStatus.textContent = '카운트다운 삭제됨';
+    srStatus.textContent = '타임카드 삭제됨';
   } else if (lapDel) {
     removeLap(id, +lapDel.dataset.index);
   } else if (e.target.closest('.card__lap')) {
@@ -889,7 +892,7 @@ listEl.addEventListener('keydown', (e) => {
   commitOrder();
   handle.focus(); // 재삽입으로 풀렸을 수 있는 포커스 복구
   const pos = nextIds.indexOf(id) + 1;
-  srStatus.textContent = `${itemById(id)?.label || '카운트다운'} ${pos}/${nextIds.length}번째로 이동`;
+  srStatus.textContent = `${itemById(id)?.label || '타임카드'} ${pos}/${nextIds.length}번째로 이동`;
 });
 
 // 초기 적용: 저장된 설정 → 화면, 컨트롤 동기화.

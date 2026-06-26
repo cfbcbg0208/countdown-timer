@@ -40,15 +40,6 @@ function toLocalISO(date) {
   );
 }
 
-// 제목을 비웠을 때 기준일시로 만드는 자동 제목("YYYY-MM-DD HH:MM").
-function autoTitle(date) {
-  const p = (n) => String(n).padStart(2, '0');
-  return (
-    `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())} ` +
-    `${p(date.getHours())}:${p(date.getMinutes())}`
-  );
-}
-
 let list = load(localStorage);
 let refsList = []; // 화면에 그려진 카드들의 참조 { card, timeEl, metaEl, item, dir }
 
@@ -208,8 +199,8 @@ function addFrom(source) {
     }
     return;
   }
-  // 제목을 비우면 기준일시 기반 자동 제목으로 생성(고유 식별 가능).
-  const labelText = labelInput.value.trim() || autoTitle(date);
+  // 제목을 비우면 기준일시와 같은 서식(formatLocal)으로 자동 제목 생성.
+  const labelText = labelInput.value.trim() || formatLocal(date);
   const item = add(localStorage, { label: labelText, targetISO: toLocalISO(date) });
   list = load(localStorage);
   // 추가 위치 설정: 기본 'top'이면 방금 추가한 항목을 맨 앞으로 재배치(영속).
@@ -421,7 +412,9 @@ settingsFab.addEventListener('click', () => openDrawer(settingsDrawer, settingsF
     if (e.target.closest('[data-close]')) closeDrawer();
   });
 });
-// 전역 단축키: Esc는 항상 닫기. '+'/'='로 추가 드로어, ','로 설정 드로어 열기.
+// 전역 단축키: Esc는 항상 닫기. A=추가 드로어, S=설정 드로어.
+// 물리 키(e.code)로 판정 → Shift 불필요 + 한글/기타 자판 배열에서도 동일하게 동작.
+// (e.key는 한글 IME에서 'ㅁ'/'Process' 등으로 바뀌어 안 먹힘.) 넘패드 +도 추가로 허용.
 // 단, 입력칸에 타이핑 중이거나 이미 드로어가 열려 있거나 수정자키와 함께면 무시(오작동 방지).
 function isTyping(el) {
   return (
@@ -435,10 +428,10 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if (openEl || isTyping(document.activeElement) || e.ctrlKey || e.metaKey || e.altKey) return;
-  if (e.key === '+' || e.key === '=') {
+  if (e.code === 'KeyA' || e.code === 'NumpadAdd') {
     e.preventDefault();
     openDrawer(drawer, fab, textInput);
-  } else if (e.key === ',') {
+  } else if (e.code === 'KeyS') {
     e.preventDefault();
     openDrawer(settingsDrawer, settingsFab);
   }

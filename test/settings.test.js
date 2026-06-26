@@ -65,6 +65,13 @@ test('theme: 기본 dark, light만 허용, 그 외 → dark', () => {
   assert.equal(update(st, { theme: 'solarized' }).theme, 'dark'); // 폴백
 });
 
+test('weekStart: 기본 mon, sun만 허용, 그 외 → mon', () => {
+  const st = fakeStorage();
+  assert.equal(load(st).weekStart, 'mon');
+  assert.equal(update(st, { weekStart: 'sun' }).weekStart, 'sun');
+  assert.equal(update(st, { weekStart: 'tue' }).weekStart, 'mon'); // 폴백
+});
+
 test('손상된 JSON → 기본값으로 안전 복구', () => {
   const st = fakeStorage();
   st.setItem('settings', '{not json');

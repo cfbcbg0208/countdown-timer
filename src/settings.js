@@ -11,6 +11,7 @@ export const DEFAULTS = {
   showCreated: false, // 카드에 등록일시 표시(기본 숨김)
   showUpdated: false, // 카드에 수정일시 표시(기본 숨김)
   theme: 'dark', // 화면 테마: 'dark' | 'light'
+  weekStart: 'mon', // 캘린더 시작 요일: 'mon' | 'sun'
 };
 
 const PROGRESS_STYLES = ['none', 'bar', 'pie', 'both'];
@@ -26,6 +27,7 @@ function coerce(s) {
     showCreated: !!o.showCreated,
     showUpdated: !!o.showUpdated,
     theme: o.theme === 'light' ? 'light' : 'dark', // 그 외/누락 → dark
+    weekStart: o.weekStart === 'sun' ? 'sun' : 'mon', // 그 외/누락 → mon
   };
 }
 

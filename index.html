@@ -183,12 +183,21 @@
             <button type="button" class="cal__navbtn" id="cal-next" aria-label="다음 달">▶</button>
           </div>
           <div class="cal__opts">
-            <label class="cal__basis-label" for="cal-basis">날짜 기준</label>
-            <select id="cal-basis" class="cal__basis">
-              <option value="target">기준일시</option>
-              <option value="created">등록일시</option>
-              <option value="updated">수정일시</option>
-            </select>
+            <div class="cal__opt">
+              <span class="cal__opt-label">날짜 기준</span>
+              <div class="segmented" id="cal-basis" role="group" aria-label="날짜 기준">
+                <button type="button" class="seg" data-value="target">기준</button>
+                <button type="button" class="seg" data-value="created">등록</button>
+                <button type="button" class="seg" data-value="updated">수정</button>
+              </div>
+            </div>
+            <div class="cal__opt">
+              <span class="cal__opt-label">시작 요일</span>
+              <div class="segmented" id="cal-weekstart" role="group" aria-label="주 시작 요일">
+                <button type="button" class="seg" data-value="mon">월</button>
+                <button type="button" class="seg" data-value="sun">일</button>
+              </div>
+            </div>
           </div>
           <div class="cal__grid" id="cal-grid"></div>
         </div>

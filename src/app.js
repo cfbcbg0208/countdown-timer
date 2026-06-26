@@ -50,6 +50,7 @@ const calGridEl = $('cal-grid');
 const calPrevBtn = $('cal-prev');
 const calNextBtn = $('cal-next');
 const calBasisSel = $('cal-basis');
+const calWeekstartSel = $('cal-weekstart');
 const groupsNewBtn = $('groups-new');
 const groupsListEl = $('groups-list');
 const groupsEmpty = $('groups-empty');
@@ -766,14 +767,17 @@ function renderCalendar() {
   }
   const now = new Date();
   const todayKey = `${now.getFullYear()}-${pad2c(now.getMonth() + 1)}-${pad2c(now.getDate())}`;
+  const ws = settings.weekStart === 'sun' ? 0 : 1; // 시작 요일
 
-  const cells = WD.map((w, i) => {
+  // 요일 헤더를 시작 요일에 맞춰 회전. 주말 색은 위치 아닌 실제 요일(일/토)로.
+  const cells = Array.from({ length: 7 }, (_, i) => {
+    const w = WD[(ws + i) % 7];
     const h = document.createElement('div');
-    h.className = 'cal__wd' + (i === 0 ? ' cal__wd--sun' : i === 6 ? ' cal__wd--sat' : '');
+    h.className = 'cal__wd' + (w === '일' ? ' cal__wd--sun' : w === '토' ? ' cal__wd--sat' : '');
     h.textContent = w;
     return h;
   });
-  for (const week of monthGrid(calYear, calMonth0)) {
+  for (const week of monthGrid(calYear, calMonth0, ws)) {
     for (const day of week) {
       const key = `${day.y}-${pad2c(day.m + 1)}-${pad2c(day.d)}`;
       const cell = document.createElement('div');
@@ -810,6 +814,8 @@ function renderCalendar() {
     }
   }
   calGridEl.replaceChildren(...cells);
+  syncSeg(calBasisSel, calBasis);
+  syncSeg(calWeekstartSel, settings.weekStart);
 }
 
 function shiftMonth(delta) {
@@ -903,8 +909,12 @@ calGridEl.addEventListener('click', (e) => {
   if (day) viewDate(day.dataset.date, calBasis);
 });
 
-calBasisSel.addEventListener('change', () => {
-  calBasis = calBasisSel.value;
+onSeg(calBasisSel, (v) => {
+  calBasis = v;
+  renderCalendar();
+});
+onSeg(calWeekstartSel, (v) => {
+  changeSetting({ weekStart: v });
   renderCalendar();
 });
 calPrevBtn.addEventListener('click', () => shiftMonth(-1));

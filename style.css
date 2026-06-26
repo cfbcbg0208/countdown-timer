@@ -13,6 +13,10 @@
   --err: #f87171;
   --track: #2a3a32;  /* 진행률 바/파이의 빈(미진행) 부분 */
   --glow: #1a2b22;   /* 상단 은은한 글로우(녹색-중립, 남색 아님) */
+  --fab2: #2b3036;   /* 보조 FAB: 무채색·불투명 */
+  --fab2-fg: #d7dde2;
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.28);
+  --elev: rgba(255, 255, 255, 0.06); /* hover 등 미세 밝힘 */
 }
 
 /* 라이트 테마: 녹색-중립 밝은 팔레트(미래/과거 의미색만 유지, 강조색은 사용자 인라인 우선) */
@@ -30,6 +34,10 @@
   --err: #dc4446;
   --track: #d8e3dc;
   --glow: #ffffff;
+  --fab2: #eceef2;
+  --fab2-fg: #3a414a;
+  --card-shadow: 0 1px 2px rgba(16, 26, 22, 0.08), 0 8px 24px rgba(16, 26, 22, 0.08);
+  --elev: rgba(16, 26, 22, 0.05);
 }
 
 * { box-sizing: border-box; }
@@ -153,16 +161,18 @@ kbd {
 /* ── 카운트다운 목록 ──────────────────────── */
 .list { display: flex; flex-direction: column; gap: var(--list-gap, 0.6rem); }
 
+/* 카드: 중립 얇은 테두리 + 부드러운 그림자(현대적). 방향색은 좌측 얇은 액센트 바로만. */
 .card {
   position: relative;
   background: var(--card);
-  border: 2px solid var(--line);
-  border-left-width: 6px;
-  border-radius: 0.75rem;
-  padding: 0.9rem 2.2rem 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line);
+  border-radius: 1rem;
+  padding: 0.95rem 2.2rem 0.95rem 1rem;
+  box-shadow: var(--card-shadow);
 }
-.card.display--future { border-color: var(--future); }
-.card.display--past { border-color: var(--past); }
+.card.display--future { border-left-color: var(--future); }
+.card.display--past { border-left-color: var(--past); }
 
 /* 제목: 클릭하면 바로 수정되는 버튼(평소엔 텍스트처럼). 우측에 [제목] 칩. 클릭 영역=글자 폭. */
 .card__label {
@@ -468,9 +478,10 @@ body.dragging-active { cursor: grabbing; user-select: none; }
   width: 3rem;
   height: 3rem;
   font-size: 1.35rem;
-  background: var(--card);
-  color: var(--fg);
-  border: 1px solid var(--line);
+  background: var(--fab2); /* 무채색·불투명 */
+  color: var(--fab2-fg);
+  border: none;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   right: calc(max(1rem, env(safe-area-inset-right)) + 0.25rem);
 }
 .fab--settings { bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 4.25rem); }
@@ -530,15 +541,9 @@ body.dragging-active { cursor: grabbing; user-select: none; }
   color: var(--fg);
 }
 .cal__more { font-size: 0.62rem; color: var(--muted); padding: 0 0.25rem; }
-.cal__opts { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
-.cal__basis-label { font-size: 0.85rem; color: var(--muted); }
-.cal__basis {
-  padding: 0.3rem 0.5rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--line);
-  background: var(--card-2);
-  color: var(--fg);
-}
+.cal__opts { display: flex; align-items: center; gap: 0.75rem 1.25rem; flex-wrap: wrap; margin-bottom: 0.7rem; }
+.cal__opt { display: flex; align-items: center; gap: 0.5rem; }
+.cal__opt-label { font-size: 0.82rem; color: var(--muted); }
 .cal__day--has { cursor: pointer; }
 .cal__day--has:hover { border-color: var(--accent); }
 .cal__item { cursor: pointer; }

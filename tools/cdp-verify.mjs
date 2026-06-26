@@ -221,11 +221,15 @@ async function main() {
   const p4a = await evalJS(
     browser,
     `(() => ({
-       basisOpts: document.querySelectorAll('#cal-basis option').length,
+       basisSegs: document.querySelectorAll('#cal-basis .seg').length,
+       weekSegs: document.querySelectorAll('#cal-weekstart .seg').length,
+       firstWd: document.querySelector('#cal-grid .cal__wd')?.textContent,
        calItems: document.querySelectorAll('#cal-grid .cal__item').length,
      }))()`,
   );
-  if (p4a.basisOpts !== 3) fails.push(`기준 옵션 3 기대, 실제 ${p4a.basisOpts}`);
+  if (p4a.basisSegs !== 3) fails.push(`기준 세그먼트 3 기대, 실제 ${p4a.basisSegs}`);
+  if (p4a.weekSegs !== 2) fails.push(`시작요일 세그먼트 2 기대, 실제 ${p4a.weekSegs}`);
+  if (p4a.firstWd !== '월') fails.push(`기본 시작요일 월(첫 헤더) 기대, 실제 ${p4a.firstWd}`);
   if (p4a.calItems < 1) fails.push('캘린더에 시드 항목이 안 보임(이번달 매핑 실패)');
   // 캘린더 항목 클릭 → 메뉴
   await evalJS(browser, "document.querySelector('#cal-grid .cal__item')?.click()");

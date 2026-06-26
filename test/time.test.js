@@ -121,6 +121,21 @@ test('monthGrid: 7일×주, 일요일 시작, 1일/말일 포함, inMonth 플래
   assert.equal(flat.filter((c) => c.inMonth).length, 30);
 });
 
+test('monthGrid: weekStart=1(월요일 시작) — 각 주 첫 칸이 월요일, 말일 포함', () => {
+  const weeks = monthGrid(2026, 5, 1); // 2026년 6월, 월요일 시작
+  for (const w of weeks) {
+    assert.equal(w.length, 7);
+    assert.equal(new Date(w[0].y, w[0].m, w[0].d).getDay(), 1); // 첫 칸 = 월요일
+    assert.equal(new Date(w[6].y, w[6].m, w[6].d).getDay(), 0); // 끝 칸 = 일요일
+  }
+  assert.equal(weeks.flat().filter((c) => c.inMonth).length, 30);
+});
+
+test('monthGrid: weekStart 기본(0)은 일요일 시작', () => {
+  const weeks = monthGrid(2026, 5);
+  assert.equal(new Date(weeks[0][0].y, weeks[0][0].m, weeks[0][0].d).getDay(), 0);
+});
+
 test('monthGrid: 연말(12월) 경계 — 다음달은 이듬해 1월', () => {
   const weeks = monthGrid(2026, 11); // 2026년 12월
   const flat = weeks.flat();

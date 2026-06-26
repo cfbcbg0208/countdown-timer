@@ -99,17 +99,18 @@ export function formatLocal(date) {
 }
 
 /**
- * 월 달력 그리드(일요일 시작). year/month0(0=1월)의 주[] 반환.
- * 각 주는 7일 {y, m(0-base), d, inMonth}. 앞뒤 달 날짜로 주를 꽉 채운다(4~6주).
+ * 월 달력 그리드. year/month0(0=1월)의 주[] 반환. 각 주는 7일 {y, m(0-base), d, inMonth}.
+ * weekStart: 한 주의 시작 요일(0=일, 1=월). 앞뒤 달 날짜로 주를 꽉 채운다(4~6주).
  */
-export function monthGrid(year, month0) {
-  const startDow = new Date(year, month0, 1).getDay(); // 1일의 요일(0=일)
+export function monthGrid(year, month0, weekStart = 0) {
+  const firstDow = new Date(year, month0, 1).getDay(); // 1일의 요일(0=일)
+  const offset = (firstDow - weekStart + 7) % 7; // 1일 앞에 채울 칸 수
   const daysInMonth = new Date(year, month0 + 1, 0).getDate();
-  const totalCells = Math.ceil((startDow + daysInMonth) / 7) * 7;
+  const totalCells = Math.ceil((offset + daysInMonth) / 7) * 7;
   const weeks = [];
   for (let i = 0; i < totalCells; i++) {
     if (i % 7 === 0) weeks.push([]);
-    const cur = new Date(year, month0, 1 - startDow + i);
+    const cur = new Date(year, month0, 1 - offset + i);
     weeks[weeks.length - 1].push({
       y: cur.getFullYear(),
       m: cur.getMonth(),

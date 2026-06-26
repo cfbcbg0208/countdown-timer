@@ -605,7 +605,7 @@ listEl.addEventListener('click', (e) => {
 
 // 드로어 열기/닫기 (추가 ＋ / 설정 ⚙️)
 fab.addEventListener('click', () => openDrawer(drawer, fab, textInput));
-settingsFab.addEventListener('click', () => openDrawer(settingsDrawer, settingsFab));
+settingsFab.addEventListener('click', () => openSettings());
 groupsFab.addEventListener('click', () => {
   renderGroups();
   openDrawer(groupsDrawer, groupsFab);
@@ -637,7 +637,7 @@ document.addEventListener('keydown', (e) => {
     openDrawer(drawer, fab, textInput);
   } else if (e.code === 'KeyS') {
     e.preventDefault();
-    openDrawer(settingsDrawer, settingsFab);
+    openSettings();
   } else if (e.code === 'KeyG') {
     e.preventDefault();
     renderGroups();
@@ -927,11 +927,11 @@ const setDensity = $('set-density');
 const setAddPosition = $('set-add-position');
 const setProgressStyle = $('set-progress-style');
 const setProgressBase = $('set-progress-base');
-const setShowTarget = $('set-show-target');
-const setShowCreated = $('set-show-created');
-const setShowUpdated = $('set-show-updated');
+const setDates = $('set-dates');
 const setTheme = $('set-theme');
 const accentBox = $('set-accent');
+const setCancel = $('set-cancel');
+const setOk = $('set-ok');
 const themeColorMeta = document.querySelector('meta[name="theme-color"]');
 const setReset = $('set-reset');
 
@@ -968,9 +968,7 @@ function syncSettingControls(s) {
   syncSeg(setAddPosition, s.addPosition);
   syncSeg(setProgressStyle, s.progressStyle);
   syncSeg(setProgressBase, s.progressBase);
-  setShowTarget.checked = s.showTarget;
-  setShowCreated.checked = s.showCreated;
-  setShowUpdated.checked = s.showUpdated;
+  for (const b of setDates.querySelectorAll('.seg')) b.setAttribute('aria-pressed', String(!!s[b.dataset.key]));
   syncSeg(setTheme, s.theme);
   for (const b of accentBox.children) {
     b.setAttribute('aria-pressed', String(b.dataset.accent === s.accent));
@@ -1009,17 +1007,11 @@ onSeg(setProgressBase, (v) => {
   changeSetting({ progressBase: v });
   tick();
 });
-// 기준/등록/수정 일시 표시 토글은 카드 구조(행 hidden)를 바꾸므로 rebuild로 반영.
-setShowTarget.addEventListener('change', () => {
-  changeSetting({ showTarget: setShowTarget.checked });
-  rebuild();
-});
-setShowCreated.addEventListener('change', () => {
-  changeSetting({ showCreated: setShowCreated.checked });
-  rebuild();
-});
-setShowUpdated.addEventListener('change', () => {
-  changeSetting({ showUpdated: setShowUpdated.checked });
+// 날짜 표시 토글(한 줄, 독립 다중): 각 칩 클릭 시 해당 키를 켜고 끔 → 카드 구조 바꾸므로 rebuild.
+setDates.addEventListener('click', (e) => {
+  const b = e.target.closest('.seg');
+  if (!b) return;
+  changeSetting({ [b.dataset.key]: !settings[b.dataset.key] });
   rebuild();
 });
 onSeg(setTheme, (v) => changeSetting({ theme: v }));
@@ -1031,6 +1023,24 @@ setReset.addEventListener('click', () => {
   settings = resetSettings(localStorage);
   applySettings(settings);
   syncSettingControls(settings);
+  rebuild();
+});
+
+// 설정 열 때 스냅샷 → '취소'로 되돌릴 수 있게(변경은 즉시 적용되지만 취소 시 복원).
+let settingsSnapshot = null;
+function openSettings() {
+  settingsSnapshot = { ...settings };
+  openDrawer(settingsDrawer, settingsFab);
+}
+setOk.addEventListener('click', closeDrawer); // 확인: 변경 유지하고 닫기
+setCancel.addEventListener('click', () => {
+  if (settingsSnapshot) {
+    settings = updateSettings(localStorage, settingsSnapshot); // 스냅샷으로 복원
+    applySettings(settings);
+    syncSettingControls(settings);
+    rebuild();
+  }
+  closeDrawer();
 });
 
 // ── 드래그&드롭 재배치 (Pointer Events: 마우스+터치 공용, 모바일 대응) ──

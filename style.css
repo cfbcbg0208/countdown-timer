@@ -773,6 +773,30 @@ select.set-row__ctrl {
 }
 .set-reset:hover { color: var(--fg); border-color: var(--muted); }
 
+/* 설정 패널 하단 확정 영역(✕ 대신 취소/확인) */
+.settings__footer {
+  position: sticky;
+  bottom: calc(-1rem - env(safe-area-inset-bottom));
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin: 0.8rem -1rem calc(-1rem - env(safe-area-inset-bottom));
+  padding: 0.7rem 1rem calc(0.9rem + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--line);
+  background: var(--bg);
+}
+.set-cancel,
+.set-ok {
+  padding: 0.5rem 1.2rem;
+  border-radius: 0.6rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+.set-cancel { background: var(--card-2); border: 1px solid var(--line); color: var(--muted); }
+.set-cancel:hover { color: var(--fg); border-color: var(--muted); }
+.set-ok { background: var(--accent); border: 1px solid transparent; color: #fff; font-weight: 700; }
+.set-ok:hover { filter: brightness(1.08); }
+
 /* ── 추가 패널 드로어(오버레이) ───────────────── */
 .drawer[hidden] { display: none; }
 .drawer {

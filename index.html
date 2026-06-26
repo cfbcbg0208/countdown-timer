@@ -94,7 +94,6 @@
         <div class="drawer__panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
           <header class="drawer__head">
             <h2 class="drawer__title" id="settings-title">⚙️ 디자인 설정 <kbd class="drawer__kbd" title="단축키">S</kbd></h2>
-            <button class="drawer__close" type="button" data-close aria-label="닫기">✕</button>
           </header>
           <div class="settings">
             <div class="set-row">
@@ -152,19 +151,19 @@
               </div>
             </div>
             <div class="set-row">
-              <label class="set-row__name" for="set-show-target">기준일시 표시</label>
-              <input type="checkbox" id="set-show-target" class="set-row__ctrl" />
-            </div>
-            <div class="set-row">
-              <label class="set-row__name" for="set-show-created">등록일시 표시</label>
-              <input type="checkbox" id="set-show-created" class="set-row__ctrl" />
-            </div>
-            <div class="set-row">
-              <label class="set-row__name" for="set-show-updated">수정일시 표시</label>
-              <input type="checkbox" id="set-show-updated" class="set-row__ctrl" />
+              <span class="set-row__name">날짜 표시</span>
+              <div class="segmented" id="set-dates" role="group" aria-label="카드에 표시할 날짜">
+                <button type="button" class="seg seg--toggle" data-key="showTarget">기준일시</button>
+                <button type="button" class="seg seg--toggle" data-key="showCreated">등록일시</button>
+                <button type="button" class="seg seg--toggle" data-key="showUpdated">수정일시</button>
+              </div>
             </div>
             <button type="button" class="set-reset" id="set-reset">기본값으로 되돌리기</button>
           </div>
+          <footer class="settings__footer">
+            <button type="button" class="set-cancel" id="set-cancel">취소</button>
+            <button type="button" class="set-ok" id="set-ok">확인</button>
+          </footer>
         </div>
       </div>
 

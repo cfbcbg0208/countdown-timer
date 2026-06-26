@@ -257,7 +257,16 @@ async function main() {
   await until(() => evalJS(browser, "!document.getElementById('settings-drawer').hidden"), {
     label: 'settings open',
   });
-  const segCount = await evalJS(browser, "document.querySelectorAll('.settings .segmented').length");
+  const s10 = await evalJS(
+    browser,
+    `(() => ({
+       segCount: document.querySelectorAll('.settings .segmented').length,
+       dateToggles: document.querySelectorAll('#set-dates .seg').length,
+       footerBtns: document.querySelectorAll('.settings__footer button').length,
+       headerClose: !!document.querySelector('#settings-drawer .drawer__close'),
+       accents: document.querySelectorAll('#set-accent .swatch').length,
+     }))()`,
+  );
   await evalJS(browser, `document.querySelector('#set-theme .seg[data-value="light"]')?.click()`);
   await until(() => evalJS(browser, "document.documentElement.dataset.theme === 'light'"), {
     label: 'theme light',
@@ -267,7 +276,11 @@ async function main() {
     browser,
     `document.querySelector('#set-theme .seg[data-value="light"]')?.getAttribute('aria-pressed')`,
   );
-  if (segCount !== 5) fails.push(`세그먼트 5개 기대, 실제 ${segCount}`);
+  if (s10.segCount !== 6) fails.push(`세그먼트 6개(셀렉트5+날짜1) 기대, 실제 ${s10.segCount}`);
+  if (s10.dateToggles !== 3) fails.push(`날짜 토글 3개 기대, 실제 ${s10.dateToggles}`);
+  if (s10.footerBtns !== 2) fails.push(`푸터 버튼 2개(취소/확인) 기대, 실제 ${s10.footerBtns}`);
+  if (s10.headerClose) fails.push('설정 헤더 ✕가 아직 있음(제거 기대)');
+  if (s10.accents !== 4) fails.push(`강조색 4개 기대, 실제 ${s10.accents}`);
   if (theme !== 'light') fails.push(`세그먼트로 라이트 전환 실패: ${theme}`);
   if (segPressed !== 'true') fails.push('세그먼트 선택 표시(aria-pressed) 실패');
   const lightShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
@@ -276,7 +289,7 @@ async function main() {
   console.log('카드 검증:', JSON.stringify(checks, null, 2));
   console.log('캘린더 검증:', JSON.stringify(cal, null, 2));
   console.log('P4 검증:', JSON.stringify({ ...p4a, menuBtns, ...p4b }, null, 2));
-  console.log('테마/세그먼트 검증:', JSON.stringify({ theme, segCount, segPressed }));
+  console.log('설정/세그먼트 검증:', JSON.stringify({ theme, segPressed, ...s10 }));
   console.log('스크린샷:', out, '+ verify-calendar.png + verify-light.png');
   if (fails.length) {
     console.error('❌ 실패:\n - ' + fails.join('\n - '));

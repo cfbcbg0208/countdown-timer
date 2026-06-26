@@ -9,8 +9,8 @@ import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const SERVE_PORT = 8129;
-const DEBUG_PORT = 9333;
+const SERVE_PORT = 8100 + Math.floor(Math.random() * 300);
+const DEBUG_PORT = 9200 + Math.floor(Math.random() * 600); // 랜덤 포트: 이전 잔존 인스턴스와 격리
 const BASE = `http://127.0.0.1:${SERVE_PORT}`;
 const ARTIFACTS = join(import.meta.dirname, '.artifacts');
 
@@ -159,6 +159,7 @@ async function main() {
        hasPie: !!document.querySelector('.card__pie'),
        drawerTitle: document.getElementById('drawer-title')?.textContent.trim(),
        dirChip: document.querySelector('.card__time .chip')?.textContent,
+       theme: document.documentElement.dataset.theme,
      }))()`,
   );
   const fails = [];
@@ -168,6 +169,7 @@ async function main() {
   if (!checks.hasPie) fails.push('진행률 파이 없음');
   if (!String(checks.drawerTitle).includes('타임카드 추가')) fails.push(`드로어 제목="${checks.drawerTitle}"`);
   if (checks.dirChip !== '남은시간') fails.push(`방향 칩="${checks.dirChip}" (남은시간 기대)`);
+  if (checks.theme !== 'dark') fails.push(`기본 테마 dark 기대, 실제 ${checks.theme}`);
 
   // 7) 카드 화면 스크린샷
   const shot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });

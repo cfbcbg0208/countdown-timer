@@ -278,7 +278,7 @@ function updateProgress(refs, item, target, direction) {
   refs.progressEl.hidden = false;
   refs.progressEl.dataset.style = style; // CSS로 바/파이/둘다 표시 제어
   refs.barFillEl.style.width = `${pct}%`;
-  refs.pieEl.style.background = `conic-gradient(var(--accent) ${pct}%, var(--track) 0)`;
+  refs.pieEl.style.background = `conic-gradient(var(--future) ${pct}%, var(--track) 0)`;
   refs.progressEl.setAttribute('aria-label', `진행률 ${Math.round(f * 100)}%`);
 }
 
@@ -940,7 +940,7 @@ let settings = loadSettings(localStorage);
 function applySettings(s) {
   const el = document.documentElement;
   el.dataset.theme = s.theme; // 라이트/다크 팔레트 전환
-  if (themeColorMeta) themeColorMeta.content = s.theme === 'light' ? '#eef1f8' : '#0f1220';
+  if (themeColorMeta) themeColorMeta.content = s.theme === 'light' ? '#eef4f0' : '#0e1512';
   const root = el.style;
   root.setProperty('--card-time-size', (1.9 * s.timerScale).toFixed(3) + 'rem');
   root.setProperty('--card-meta-size', (0.8 * s.metaScale).toFixed(3) + 'rem');

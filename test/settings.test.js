@@ -51,12 +51,12 @@ test('progressStyle: 기본 both, 허용값만, 그 외 → both', () => {
   assert.equal(update(st, { progressStyle: 'rainbow' }).progressStyle, 'both'); // 폴백
 });
 
-test('showTarget/showCreated/showUpdated: 기본 true, 불리언 강제', () => {
+test('표시 기본값: 기준일시 보임, 등록/수정 숨김 + 불리언 강제', () => {
   const st = fakeStorage();
-  assert.equal(load(st).showTarget, true);
-  assert.equal(load(st).showCreated, true);
-  assert.equal(load(st).showUpdated, true);
-  assert.equal(update(st, { showCreated: false }).showCreated, false); // 끄기
+  assert.equal(load(st).showTarget, true); // 기준일시 기본 보임
+  assert.equal(load(st).showCreated, false); // 등록일시 기본 숨김
+  assert.equal(load(st).showUpdated, false); // 수정일시 기본 숨김
+  assert.equal(update(st, { showCreated: 1 }).showCreated, true); // truthy → true
   assert.equal(update(st, { showTarget: 0 }).showTarget, false); // falsy → false
 });
 

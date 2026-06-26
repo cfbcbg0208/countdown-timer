@@ -4,12 +4,13 @@
 const KEY = 'settings';
 
 // 강조색 프리셋(키 → HEX). 남은=초록/지난=빨강 규칙과는 별개.
+// 강조색 프리셋(키 → HEX). 중립 UI 강조색(파랑=미래·빨강=과거와 구분되도록 녹색 기본).
 export const ACCENTS = {
+  green: '#16a34a',
   blue: '#5b8cff',
   violet: '#a78bfa',
   pink: '#f472b6',
   amber: '#fbbf24',
-  green: '#34d399',
   red: '#f87171',
 };
 
@@ -23,14 +24,14 @@ export const DEFAULTS = {
   timerScale: 1,
   metaScale: 1, // 기준일시 글자 크기 배수
   lapScale: 1, // 기록(랩) 글자 크기 배수
-  accent: 'blue',
+  accent: 'green',
   density: 'normal',
   addPosition: 'top', // 새 카드는 기본적으로 목록 맨 앞에 추가
   progressStyle: 'both', // 남은 시간 진행률 그래픽: 'none'|'bar'|'pie'|'both'
   progressBase: 'created', // 진행률 0% 기준: 'created'(등록일시) | 'updated'(수정일시)
-  showTarget: true, // 카드에 기준일시 표시
-  showCreated: true, // 카드에 등록일시 표시
-  showUpdated: true, // 카드에 수정일시 표시
+  showTarget: true, // 카드에 기준일시 표시(기본 보임)
+  showCreated: false, // 카드에 등록일시 표시(기본 숨김)
+  showUpdated: false, // 카드에 수정일시 표시(기본 숨김)
   theme: 'dark', // 화면 테마: 'dark' | 'light'
 };
 

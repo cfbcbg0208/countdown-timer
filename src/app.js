@@ -195,7 +195,7 @@ function makeCard(item) {
   groupsRow.className = 'card__groups';
   fillCardGroups(groupsRow, item.id);
 
-  // 기록 액션(기준일시 줄 우측). 태그와 시각적으로 구분: 녹색 점 = '지금 기록' 동작.
+  // 기록 액션(우측 열). 태그와 시각적으로 구분: 녹색 점 = '지금 기록' 동작.
   const lapEl = document.createElement('button');
   lapEl.className = 'card__lap';
   lapEl.type = 'button';
@@ -207,20 +207,24 @@ function makeCard(item) {
   actions.className = 'card__actions';
   actions.append(lapEl);
 
-  // 상단 줄: 제목(좌) — 큰 카운트다운(우, trailing). 우측 절반을 가장 큰 정보로 채움.
-  const top = document.createElement('div');
-  top.className = 'card__top';
-  top.append(labelEl, timeEl);
-
-  // 하단 줄: 기준일시(좌) — 액션(우).
-  const bottom = document.createElement('div');
-  bottom.className = 'card__bottom';
-  bottom.append(metaEl, actions);
-
   const lapsEl = document.createElement('ul');
   lapsEl.className = 'card__laps';
 
-  card.append(handle, del, top, progressEl, bottom, groupsRow, createdRow, updatedRow, lapsEl);
+  // 좌측 열: 제목(상단) → 기준/등록/수정일시 → 태그(줄바꿈·접기). 모두 좌측·자르기.
+  const left = document.createElement('div');
+  left.className = 'card__col card__col--left';
+  left.append(labelEl, metaEl, createdRow, updatedRow, groupsRow);
+
+  // 우측 열: 큰 시간(상단·우측·자동축소) → 기록(버튼 + 랩, 최근 외 접기).
+  const right = document.createElement('div');
+  right.className = 'card__col card__col--right';
+  right.append(timeEl, actions, lapsEl);
+
+  const cols = document.createElement('div');
+  cols.className = 'card__cols';
+  cols.append(left, right);
+
+  card.append(handle, del, cols, progressEl);
 
   const refs = { card, timeEl, progressEl, barFillEl, pieEl, metaEl, lapsEl, item, dir: null };
   renderLaps(refs);
@@ -234,31 +238,49 @@ function renderLaps(refs) {
   const target = new Date(refs.item.targetISO);
   const laps = Array.isArray(refs.item.laps) ? refs.item.laps : [];
   refs.lapsEl.hidden = laps.length === 0;
-  refs.lapsEl.replaceChildren(
-    ...laps.map((iso, i) => {
-      const at = new Date(iso);
-      const r = diff(target, at);
-      const d = DIRS[r.direction];
-      const li = document.createElement('li');
-      li.className = 'lap';
-      const val = document.createElement('span');
-      val.className = 'lap__val';
-      val.textContent = (d.sign || '') + formatDuration(r);
-      const when = document.createElement('span');
-      when.className = 'lap__when';
-      when.textContent = `기록 ${formatLocal(at)}`;
-      const del = document.createElement('button');
-      del.className = 'lap__del';
-      del.type = 'button';
-      del.dataset.id = refs.item.id;
-      del.dataset.index = String(i);
-      del.title = '기록 삭제';
-      del.setAttribute('aria-label', '기록 삭제');
-      del.textContent = '✕';
-      li.append(val, when, del);
-      return li;
-    }),
-  );
+  // 기록 2개 이상이면 가장 최근(laps[0])만 보이고 나머지는 접기/펼치기.
+  const expanded = refs.lapsEl.dataset.expanded === '1';
+  const shown = laps.length > 1 && !expanded ? laps.slice(0, 1) : laps;
+  const makeLi = (iso, i) => {
+    const at = new Date(iso);
+    const r = diff(target, at);
+    const d = DIRS[r.direction];
+    const li = document.createElement('li');
+    li.className = 'lap';
+    const val = document.createElement('span');
+    val.className = 'lap__val';
+    val.textContent = (d.sign || '') + formatDuration(r);
+    const when = document.createElement('span');
+    when.className = 'lap__when';
+    when.textContent = `기록 ${formatLocal(at)}`;
+    const del = document.createElement('button');
+    del.className = 'lap__del';
+    del.type = 'button';
+    del.dataset.id = refs.item.id;
+    del.dataset.index = String(i);
+    del.title = '기록 삭제';
+    del.setAttribute('aria-label', '기록 삭제');
+    del.textContent = '✕';
+    li.append(val, when, del);
+    return li;
+  };
+  const kids = shown.map(makeLi);
+  if (laps.length > 1) {
+    const li = document.createElement('li');
+    li.className = 'lap lap--more';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'lap__more';
+    btn.textContent = expanded ? '기록 접기' : `기록 ${laps.length - 1}개 더 보기`;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      refs.lapsEl.dataset.expanded = expanded ? '' : '1';
+      renderLaps(refs);
+    });
+    li.append(btn);
+    kids.push(li);
+  }
+  refs.lapsEl.replaceChildren(...kids);
 }
 
 // 카드의 시간/색/메타만 갱신(DOM 구조는 그대로). 항상 '현재' 기준(기준일시는 불변).
@@ -277,7 +299,24 @@ function updateCard(refs) {
   // 기준일시: 값(좌측) + [기준일시] 칩. (formatLocal 출력은 숫자·하이픈·요일뿐이라 innerHTML에 안전)
   refs.metaEl.innerHTML = `${formatLocal(target)} <span class="chip">기준일시</span>`;
   updateProgress(refs, item, target, r.direction);
+  fitTime(refs.timeEl); // 우측 열 폭에 맞게 폰트 자동 축소(오버플로우 방지)
   refs.dir = r.direction;
+}
+
+// 큰 시간이 우측 열을 넘치면(긴 기간 등) 폰트를 줄여 오버플로우를 없앤다.
+// 가용폭은 부모 열(.card__col--right)의 안쪽 너비 기준으로 측정.
+function fitTime(el) {
+  el.style.fontSize = '';
+  const avail = el.parentElement ? el.parentElement.clientWidth : 0;
+  if (!avail || el.scrollWidth <= avail) return; // 레이아웃 전(0)·여유 있으면 그대로
+  const base = parseFloat(getComputedStyle(el).fontSize);
+  let size = Math.max(11, base * (avail / el.scrollWidth) - 0.5); // 비율로 한 번에 근접
+  el.style.fontSize = `${size}px`;
+  let guard = 0;
+  while (el.scrollWidth > avail && size > 11 && guard++ < 10) {
+    size -= 0.5;
+    el.style.fontSize = `${size}px`;
+  }
 }
 
 // 진행률(미래 카드만): 설정 스타일/기준에 따라 바·파이 갱신. 과거/없음이면 숨김.
@@ -314,6 +353,7 @@ function rebuild() {
   emptyHint.hidden = shown.length > 0 || !!viewFilter;
   refsList = shown.map(makeCard);
   listEl.replaceChildren(...refsList.map((r) => r.card));
+  for (const r of refsList) fitTime(r.timeEl); // DOM 삽입 후 폭 확정 → 시간 자동 축소
   if (selectMode) {
     for (const r of refsList) r.card.classList.toggle('card--selected', selectedIds.has(r.item.id));
   }
@@ -549,10 +589,10 @@ function openFieldEditor(card, id, field) {
     refresh();
   }
 
-  // 클릭한 필드가 속한 줄(상단/하단/행) 바로 아래에 삽입(줄 내부에 넣으면 flex 레이아웃 깨짐).
+  // 편집기는 2열(.card__cols) 또는 진행률 아래 전체폭으로 삽입(열 내부에 넣으면 레이아웃 깨짐).
   const ANCHOR = { date: '.card__meta', start: '.card__progress', title: '.card__label' };
   const anchor = card.querySelector(ANCHOR[field]);
-  (anchor.closest('.card__top, .card__bottom, .card__row') || anchor).after(editor);
+  (anchor.closest('.card__cols, .card__row') || anchor).after(editor);
   input.focus();
   input.select?.();
 }
@@ -721,9 +761,12 @@ function viewGroup(id) {
 
 // ── 카드↔태그: 카드에 소속 태그 칩 표시 + '＋ 태그'로 추가/제거 ──
 // 카드의 .card__groups 칸을 (소속 태그 칩들 + ＋태그)으로 다시 채운다.
+const TAG_COLLAPSE = 3; // 이보다 많으면 나머지를 접고 '+N'으로 펼치기
 function fillCardGroups(container, id) {
   const groups = groupsForItem(loadGroups(localStorage), id);
-  const chips = groups.map((g) => {
+  const expanded = container.dataset.expanded === '1';
+  const shown = groups.length > TAG_COLLAPSE && !expanded ? groups.slice(0, TAG_COLLAPSE) : groups;
+  const kids = shown.map((g) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'card__group';
@@ -732,6 +775,19 @@ function fillCardGroups(container, id) {
     b.title = `태그 "${g.name || ''}" 보기`;
     return b;
   });
+  // 태그가 많으면 접기/펼치기 토글 칩(.card__tagmore: 리스트 위임의 .card__group과 구분).
+  if (groups.length > TAG_COLLAPSE) {
+    const more = document.createElement('button');
+    more.type = 'button';
+    more.className = 'card__tagmore';
+    more.textContent = expanded ? '접기' : `+${groups.length - TAG_COLLAPSE}`;
+    more.addEventListener('click', (e) => {
+      e.stopPropagation();
+      container.dataset.expanded = expanded ? '' : '1';
+      fillCardGroups(container, id);
+    });
+    kids.push(more);
+  }
   // 끝에 '＋ 태그' 추가 칩(기록 액션과 구분되는 태그 전용 진입점).
   const addBtn = document.createElement('button');
   addBtn.type = 'button';
@@ -740,7 +796,7 @@ function fillCardGroups(container, id) {
   addBtn.title = '이 카드에 태그 추가/제거';
   addBtn.setAttribute('aria-label', '태그 추가 또는 제거');
   addBtn.textContent = '＋ 태그';
-  container.replaceChildren(...chips, addBtn);
+  container.replaceChildren(...kids, addBtn);
 }
 // 리스트에서 그 id 카드의 조합 칩만 다시 그린다(전체 rebuild 없이 즉시 반영).
 function refreshCardGroups(id) {

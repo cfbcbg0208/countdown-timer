@@ -141,6 +141,7 @@ async function main() {
       targetISO,
       createdAt: '2026-06-20T00:00:00.000Z',
       updatedAt: '2026-06-25T00:00:00.000Z',
+      laps: ['2026-06-27T07:33:27.000Z', '2026-06-27T07:33:25.000Z', '2026-06-27T07:33:23.000Z'],
     },
   ]);
   await evalJS(browser, `localStorage.setItem('countdowns', ${JSON.stringify(seed)}); location.reload();`);
@@ -161,10 +162,14 @@ async function main() {
        dirChip: document.querySelector('.card__time .chip')?.textContent,
        theme: document.documentElement.dataset.theme,
        lapText: document.querySelector('.card__lap')?.textContent,
-       timeInTop: !!document.querySelector('.card__top .card__time'),
+       timeInRight: !!document.querySelector('.card__col--right .card__time'),
+       labelInLeft: !!document.querySelector('.card__col--left .card__label'),
+       lapsInRight: !!document.querySelector('.card__col--right .card__laps'),
        actionsHasLap: !!document.querySelector('.card__actions .card__lap'),
        tagAddInGroups: !!document.querySelector('.card__groups .card__groupbtn'),
        tagAddText: document.querySelector('.card__groups .card__groupbtn')?.textContent,
+       lapsShown: document.querySelectorAll('.card__laps .lap:not(.lap--more)').length,
+       lapMore: !!document.querySelector('.card__laps .lap__more'),
      }))()`,
   );
   const fails = [];
@@ -176,8 +181,12 @@ async function main() {
   if (checks.dirChip !== '남은시간') fails.push(`방향 칩="${checks.dirChip}" (남은시간 기대)`);
   if (checks.theme !== 'dark') fails.push(`기본 테마 dark 기대, 실제 ${checks.theme}`);
   if (checks.lapText !== '기록' || /📍/.test(checks.lapText)) fails.push(`기록 버튼 텍스트="${checks.lapText}" (빨간핀 제거·'기록' 기대)`);
-  if (!checks.timeInTop) fails.push('큰 카운트다운이 상단 줄(.card__top, trailing)에 없음');
-  if (!checks.actionsHasLap) fails.push('기록 버튼이 하단 액션(.card__actions)에 없음');
+  if (!checks.timeInRight) fails.push('큰 시간이 우측 열(.card__col--right)에 없음');
+  if (!checks.labelInLeft) fails.push('제목이 좌측 열(.card__col--left)에 없음');
+  if (!checks.lapsInRight) fails.push('기록(랩)이 우측 열에 없음');
+  if (!checks.actionsHasLap) fails.push('기록 버튼이 액션(.card__actions)에 없음');
+  if (checks.lapsShown !== 1) fails.push(`기록 접힘 시 최근 1개만 기대, 실제 ${checks.lapsShown}`);
+  if (!checks.lapMore) fails.push('기록 더보기 토글(.lap__more)이 없음');
   if (!checks.tagAddInGroups) fails.push('＋태그 칩이 태그 줄(.card__groups)에 없음');
   if (checks.tagAddText !== '＋ 태그') fails.push(`＋태그 칩 텍스트="${checks.tagAddText}" (＋ 태그 기대)`);
 

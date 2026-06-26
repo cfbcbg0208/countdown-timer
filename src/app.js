@@ -157,7 +157,10 @@ function makeCard(item) {
   labelEl.className = 'card__label' + (item.label ? '' : ' card__label--empty');
   labelEl.title = '클릭하여 제목 수정';
   labelEl.setAttribute('aria-label', `제목 수정: ${item.label || '없음'}`);
-  labelEl.textContent = item.label || '＋ 제목';
+  const labelText = document.createElement('span');
+  labelText.className = 'card__labeltext';
+  labelText.textContent = item.label || '＋ 제목';
+  labelEl.append(labelText);
   if (item.label) labelEl.append(chip('제목'));
 
   // 큰 시간 + 방향 칩(updateCard가 채움).
@@ -177,31 +180,23 @@ function makeCard(item) {
   barEl.append(barFillEl);
   progressEl.append(pieEl, barEl);
 
-  // 기준일시 행(클릭 편집, 토글). 값 + [기준일시] 칩은 updateCard가 갱신.
+  // 기준일시(클릭 편집). 값 + [기준일시] 칩은 updateCard가 갱신. showTarget로 표시 토글.
   const metaEl = document.createElement('button');
   metaEl.type = 'button';
   metaEl.className = 'card__meta';
   metaEl.title = '클릭하여 기준일시 수정';
-  const targetRow = document.createElement('div');
-  targetRow.className = 'card__row card__row--date';
-  targetRow.hidden = !settings.showTarget;
-  targetRow.append(metaEl);
+  metaEl.hidden = !settings.showTarget;
 
-  // 등록/수정 일시 행(설정 토글). 라벨은 모두 네 글자로 통일.
+  // 등록/수정 일시 행(설정 토글, 전체폭).
   const createdRow = dateRow('등록일시', item.createdAt, settings.showCreated);
   const updatedRow = dateRow('수정일시', item.updatedAt, settings.showUpdated);
 
-  // 소속 조합 칩(클릭→그 조합 보기). 추가 버튼은 우측 레일에.
+  // 소속 조합 칩(클릭→그 조합 보기). 추가는 하단 액션의 ＋조합.
   const groupsRow = document.createElement('div');
   groupsRow.className = 'card__groups';
   fillCardGroups(groupsRow, item.id);
 
-  // 본문(좌): 정보에 집중
-  const main = document.createElement('div');
-  main.className = 'card__main';
-  main.append(labelEl, timeEl, progressEl, targetRow, createdRow, updatedRow, groupsRow);
-
-  // 우측 액션 레일: 기록 + 조합 추가 (낭비되던 우측 공간 활용)
+  // 기록 + ＋조합 (기준일시 줄의 우측에 인라인 → 우측 공간 활용)
   const lapEl = document.createElement('button');
   lapEl.className = 'card__lap';
   lapEl.type = 'button';
@@ -216,18 +211,24 @@ function makeCard(item) {
   groupBtn.title = '이 카드를 조합에 추가/제거';
   groupBtn.setAttribute('aria-label', '조합에 추가 또는 제거');
   groupBtn.textContent = '＋ 조합';
-  const aside = document.createElement('div');
-  aside.className = 'card__aside';
-  aside.append(lapEl, groupBtn);
+  const actions = document.createElement('div');
+  actions.className = 'card__actions';
+  actions.append(lapEl, groupBtn);
 
-  const body = document.createElement('div');
-  body.className = 'card__body';
-  body.append(main, aside);
+  // 상단 줄: 제목(좌) — 큰 카운트다운(우, trailing). 우측 절반을 가장 큰 정보로 채움.
+  const top = document.createElement('div');
+  top.className = 'card__top';
+  top.append(labelEl, timeEl);
+
+  // 하단 줄: 기준일시(좌) — 액션(우).
+  const bottom = document.createElement('div');
+  bottom.className = 'card__bottom';
+  bottom.append(metaEl, actions);
 
   const lapsEl = document.createElement('ul');
   lapsEl.className = 'card__laps';
 
-  card.append(handle, del, body, lapsEl);
+  card.append(handle, del, top, progressEl, bottom, groupsRow, createdRow, updatedRow, lapsEl);
 
   const refs = { card, timeEl, progressEl, barFillEl, pieEl, metaEl, lapsEl, item, dir: null };
   renderLaps(refs);
@@ -555,10 +556,10 @@ function openFieldEditor(card, id, field) {
     refresh();
   }
 
-  // 클릭한 필드(또는 그 필드가 속한 행) 바로 아래에 삽입(행 내부에 넣으면 레이아웃 깨짐).
+  // 클릭한 필드가 속한 줄(상단/하단/행) 바로 아래에 삽입(줄 내부에 넣으면 flex 레이아웃 깨짐).
   const ANCHOR = { date: '.card__meta', start: '.card__progress', title: '.card__label' };
   const anchor = card.querySelector(ANCHOR[field]);
-  (anchor.closest('.card__row') || anchor).after(editor);
+  (anchor.closest('.card__top, .card__bottom, .card__row') || anchor).after(editor);
   input.focus();
   input.select?.();
 }

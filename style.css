@@ -171,27 +171,32 @@ kbd {
   padding: 0.55rem 0.7rem 0.6rem 2.3rem; /* 좌측=핸들 자리. 우측은 액션 레일이 채움 */
   box-shadow: var(--card-shadow);
 }
-/* 본문(좌, 정보) + 우측 액션 레일(기록·조합) — 낭비되던 우측 공간 활용 */
-.card__body { display: flex; align-items: flex-start; gap: 0.5rem; }
-.card__main { flex: 1; min-width: 0; }
-.card__aside {
-  flex: none;
+/* leading/trailing 2줄 구성으로 우측 공간을 콘텐츠로 채움(리스트-행 패턴). */
+.card__top {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.3rem;
-  padding-top: 1.25rem; /* 우상단 ✕ 자리 비우기 */
+  align-items: baseline;
+  gap: 0.6rem;
+  padding-right: 1.4rem; /* 우상단 ✕ 자리 비우기 */
 }
+.card__bottom {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.2rem;
+}
+.card__actions { display: flex; align-items: center; gap: 0.4rem; flex: none; margin-left: auto; }
 .card.display--future { border-left-color: var(--future); }
 .card.display--past { border-left-color: var(--past); }
 
 /* 제목: 클릭하면 바로 수정되는 버튼(평소엔 텍스트처럼). 우측에 [제목] 칩. 클릭 영역=글자 폭. */
 .card__label {
+  flex: 1 1 auto;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  max-width: 100%;
-  margin: 0 0 0.1rem -0.25rem;
+  overflow: hidden;
+  margin: 0 0 0 -0.25rem;
   padding: 0.1rem 0.25rem;
   border: none;
   background: none;
@@ -206,15 +211,18 @@ kbd {
 .card__label:hover { color: var(--fg); background: rgba(255, 255, 255, 0.06); }
 .card__label:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .card__label--empty { font-weight: 500; font-style: italic; opacity: 0.7; }
+.card__labeltext { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 
 .card__time {
+  flex: none;
+  text-align: right;
   font-size: var(--card-time-size, 1.6rem);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
   line-height: 1.15;
 }
-.card__num { white-space: nowrap; } /* 숫자 자체는 줄바꿈 금지(방향 칩은 좁으면 다음 줄로) */
+.card__num { white-space: nowrap; } /* 숫자 자체는 줄바꿈 금지 */
 .card.display--future .card__time { color: var(--future); }
 .card.display--past .card__time { color: var(--past); }
 
@@ -252,8 +260,12 @@ kbd {
   background: conic-gradient(var(--accent) 0%, var(--track) 0);
 }
 
-/* 기준일시: 값(좌측) + [기준일시] 칩. 클릭하면 바로 수정되는 버튼. 클릭 영역=글자 폭. */
+/* 기준일시: 값(좌측) + [기준일시] 칩. 클릭하면 바로 수정되는 버튼. 하단 줄 좌측, 좁으면 줄어듦. */
 .card__meta {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -614,19 +626,13 @@ body.dragging-active { cursor: grabbing; user-select: none; }
 }
 .card__groupbtn:hover { color: var(--accent); border-color: var(--accent); }
 
-/* 우측 액션 레일 안의 기록·조합 버튼: 같은 너비·중앙정렬·컴팩트(통일감) */
-.card__aside .card__lap,
-.card__aside .card__groupbtn {
-  width: 100%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35em;
-  white-space: nowrap;
+/* 하단 줄 우측의 기록·조합 버튼: 컴팩트 인라인(통일감) */
+.card__actions .card__lap,
+.card__actions .card__groupbtn {
   margin: 0;
-  padding: 0.34rem 0.5rem;
+  white-space: nowrap;
+  padding: 0.28rem 0.6rem;
   font-size: 0.74rem;
-  border-radius: 0.55rem;
 }
 
 /* 조합 선택기(카드 팝오버 + 추가 드로어 공용) */

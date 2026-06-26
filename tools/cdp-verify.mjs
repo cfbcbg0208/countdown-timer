@@ -161,8 +161,9 @@ async function main() {
        dirChip: document.querySelector('.card__time .chip')?.textContent,
        theme: document.documentElement.dataset.theme,
        lapText: document.querySelector('.card__lap')?.textContent,
-       asideHasLap: !!document.querySelector('.card__aside .card__lap'),
-       asideHasGroupBtn: !!document.querySelector('.card__aside .card__groupbtn'),
+       timeInTop: !!document.querySelector('.card__top .card__time'),
+       actionsHasLap: !!document.querySelector('.card__actions .card__lap'),
+       actionsHasGroupBtn: !!document.querySelector('.card__actions .card__groupbtn'),
      }))()`,
   );
   const fails = [];
@@ -174,8 +175,9 @@ async function main() {
   if (checks.dirChip !== '남은시간') fails.push(`방향 칩="${checks.dirChip}" (남은시간 기대)`);
   if (checks.theme !== 'dark') fails.push(`기본 테마 dark 기대, 실제 ${checks.theme}`);
   if (checks.lapText !== '기록' || /📍/.test(checks.lapText)) fails.push(`기록 버튼 텍스트="${checks.lapText}" (빨간핀 제거·'기록' 기대)`);
-  if (!checks.asideHasLap) fails.push('기록 버튼이 우측 액션 레일(.card__aside)에 없음');
-  if (!checks.asideHasGroupBtn) fails.push('＋조합 버튼이 우측 액션 레일에 없음');
+  if (!checks.timeInTop) fails.push('큰 카운트다운이 상단 줄(.card__top, trailing)에 없음');
+  if (!checks.actionsHasLap) fails.push('기록 버튼이 하단 액션(.card__actions)에 없음');
+  if (!checks.actionsHasGroupBtn) fails.push('＋조합 버튼이 하단 액션에 없음');
 
   // 6.6) 조합(재생목록식): 카드 ＋조합 → 팝오버 → 새 조합 생성·토글 → 칩 표시 + 영속
   if (!(await evalJS(browser, "!!document.querySelector('.card .card__groupbtn')")))

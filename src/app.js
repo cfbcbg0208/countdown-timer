@@ -90,7 +90,6 @@ function makeCard(item) {
   timeEl.className = 'card__time';
   const metaEl = document.createElement('div');
   metaEl.className = 'card__meta';
-  metaEl.title = '기준일시'; // 라벨 워딩은 숨기고 호버 시 의미 안내
   card.append(timeEl, metaEl);
 
   // 랩(스냅샷): 기준일시는 절대 불변. 지금 이 순간의 값을 '기록'으로 남긴다.
@@ -157,8 +156,9 @@ function updateCard(refs) {
   refs.card.classList.toggle('display--past', r.direction === 'past');
   refs.timeEl.innerHTML =
     (d.sign ? `<span class="display__sign">${d.sign}</span>` : '') + formatDuration(r);
-  // 기준일시는 우측에 옅게·괄호로 부차 표시(워딩 생략, 의미는 호버 title로). 방향은 부호·색.
-  refs.metaEl.textContent = `(${formatLocal(target)})`;
+  // 기준일시: 날짜·시각 값은 좌측 정렬 유지하고, '기준일시' 라벨만 값 뒤에 옅게 붙인다.
+  // (formatLocal 출력은 숫자·하이픈·요일뿐이라 innerHTML에 안전)
+  refs.metaEl.innerHTML = `${formatLocal(target)} <span class="card__meta-label">(기준일시)</span>`;
   refs.dir = r.direction;
 }
 

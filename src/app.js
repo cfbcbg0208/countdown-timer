@@ -55,9 +55,9 @@ const selectedIds = new Set();
 
 // 부호는 D-Day 관례: 남은=− (D-7), 지난=+ (D+3). 색은 부호와 별개(남은=초록/지난=빨강).
 const DIRS = {
-  future: { label: '남은 시간', emoji: '⏳', sign: '−', cls: 'display--future' },
-  past: { label: '지난 시간', emoji: '⌛', sign: '+', cls: 'display--past' },
-  now: { label: '바로 지금!', emoji: '🎯', sign: '', cls: '' },
+  future: { label: '남은 시간', chip: '남은시간', emoji: '⏳', sign: '−', cls: 'display--future' },
+  past: { label: '지난 시간', chip: '지난시간', emoji: '⌛', sign: '+', cls: 'display--past' },
+  now: { label: '바로 지금!', chip: '지금', emoji: '🎯', sign: '', cls: '' },
 };
 
 // 로컬 시각을 보존하는 ISO 문자열(오프셋 없이 → new Date()가 로컬로 되읽음).
@@ -81,6 +81,28 @@ function compactNow(now = new Date()) {
 
 let list = load(localStorage);
 let refsList = []; // 화면에 그려진 카드들의 참조 { card, timeEl, metaEl, item, dir }
+
+// 작은 칩(라벨 pill) 생성.
+function chip(text, cls = '') {
+  const s = document.createElement('span');
+  s.className = 'chip' + (cls ? ' ' + cls : '');
+  s.textContent = text;
+  return s;
+}
+
+// 등록/수정 일시 행(설정으로 표시·숨김). 값 + [라벨] 칩. 비편집.
+function dateRow(label, iso, show) {
+  const row = document.createElement('div');
+  row.className = 'card__row card__row--date';
+  row.hidden = !show || !iso;
+  if (iso) {
+    const val = document.createElement('span');
+    val.className = 'card__datemeta';
+    val.textContent = formatLocal(new Date(iso));
+    row.append(val, chip(label));
+  }
+  return row;
+}
 
 // 카드 1장 DOM 생성(텍스트는 textContent로 넣어 자동 이스케이프).
 function makeCard(item) {
@@ -108,38 +130,37 @@ function makeCard(item) {
   del.textContent = '✕';
   card.append(del);
 
-  // 제목: 클릭하면 그 자리에서 바로 수정. 비어 있으면 '＋ 제목' 안내로 추가 유도.
+  // 제목: 클릭하면 그 자리에서 바로 수정. 비어 있으면 '＋ 제목' 안내. 제목 있으면 [제목] 칩.
   const labelEl = document.createElement('button');
   labelEl.type = 'button';
   labelEl.className = 'card__label' + (item.label ? '' : ' card__label--empty');
   labelEl.title = '클릭하여 제목 수정';
   labelEl.setAttribute('aria-label', `제목 수정: ${item.label || '없음'}`);
   labelEl.textContent = item.label || '＋ 제목';
+  if (item.label) labelEl.append(chip('제목'));
   card.append(labelEl);
 
+  // 시간 + 방향 칩(남은시간/지난시간): updateCard가 매초 갱신.
   const timeEl = document.createElement('div');
   timeEl.className = 'card__time';
 
-  // 남은 시간 진행률(미래 카드만): 바/파이. 표시 여부·스타일은 설정에 따름.
+  // 진행률(미래 카드만): '둘 다'면 파이 → 바 순서.
   const progressEl = document.createElement('div');
   progressEl.className = 'card__progress';
+  const pieEl = document.createElement('div');
+  pieEl.className = 'card__pie';
   const barEl = document.createElement('div');
   barEl.className = 'card__bar';
   const barFillEl = document.createElement('div');
   barFillEl.className = 'card__bar-fill';
   barEl.append(barFillEl);
-  const pieEl = document.createElement('div');
-  pieEl.className = 'card__pie';
-  progressEl.append(barEl, pieEl);
+  progressEl.append(pieEl, barEl);
 
-  // 기준일시: 클릭하면 그 자리에서 바로 수정(datetime-local).
+  // 기준일시 행: [값 + 기준일시 칩](클릭 편집)  …  [📍 기록](우측, 한 줄 공유로 공간 절약).
   const metaEl = document.createElement('button');
   metaEl.type = 'button';
   metaEl.className = 'card__meta';
   metaEl.title = '클릭하여 기준일시 수정';
-  card.append(timeEl, progressEl, metaEl);
-
-  // 랩(스냅샷): 기준일시는 절대 불변. 지금 이 순간의 값을 '기록'으로 남긴다.
   const lapEl = document.createElement('button');
   lapEl.className = 'card__lap';
   lapEl.type = 'button';
@@ -147,7 +168,15 @@ function makeCard(item) {
   lapEl.title = '지금 이 순간의 값을 기록(랩)';
   lapEl.setAttribute('aria-label', `${item.label || '카운트다운'} 현재 값 기록`);
   lapEl.textContent = '📍 기록';
-  card.append(lapEl);
+  const metaRow = document.createElement('div');
+  metaRow.className = 'card__row card__row--meta';
+  metaRow.append(metaEl, lapEl);
+
+  // 등록/수정 일시 행(설정 토글).
+  const createdRow = dateRow('등록', item.createdAt, settings.showCreated);
+  const updatedRow = dateRow('수정', item.updatedAt, settings.showUpdated);
+
+  card.append(timeEl, progressEl, metaRow, createdRow, updatedRow);
 
   const lapsEl = document.createElement('ul');
   lapsEl.className = 'card__laps';
@@ -201,11 +230,13 @@ function updateCard(refs) {
   // className 통째로 덮어쓰면 드래그 중(card--dragging) 클래스가 지워지므로 toggle 사용.
   refs.card.classList.toggle('display--future', r.direction === 'future');
   refs.card.classList.toggle('display--past', r.direction === 'past');
+  // 시간 + 방향 칩(남은시간/지난시간). 칩 색은 방향 따라(미래=초록/과거=빨강).
   refs.timeEl.innerHTML =
-    (d.sign ? `<span class="display__sign">${d.sign}</span>` : '') + formatDuration(r);
-  // 기준일시: 날짜·시각 값은 좌측 정렬 유지하고, '기준일시' 라벨만 값 뒤에 옅게 붙인다.
-  // (formatLocal 출력은 숫자·하이픈·요일뿐이라 innerHTML에 안전)
-  refs.metaEl.innerHTML = `${formatLocal(target)} <span class="card__meta-label">(기준일시)</span>`;
+    (d.sign ? `<span class="display__sign">${d.sign}</span>` : '') +
+    formatDuration(r) +
+    ` <span class="chip chip--${r.direction}">${d.chip}</span>`;
+  // 기준일시: 값(좌측) + [기준일시] 칩. (formatLocal 출력은 숫자·하이픈·요일뿐이라 innerHTML에 안전)
+  refs.metaEl.innerHTML = `${formatLocal(target)} <span class="chip">기준일시</span>`;
   updateProgress(refs, item, target, r.direction);
   refs.dir = r.direction;
 }
@@ -449,9 +480,9 @@ function openFieldEditor(card, id, field) {
     refresh();
   }
 
-  // 클릭한 필드 바로 아래에 삽입
+  // 클릭한 필드(또는 그 필드가 속한 행) 바로 아래에 삽입(행 내부에 넣으면 레이아웃 깨짐).
   const anchor = field === 'date' ? card.querySelector('.card__meta') : card.querySelector('.card__label');
-  anchor.after(editor);
+  (anchor.closest('.card__row') || anchor).after(editor);
   input.focus();
   input.select?.();
 }
@@ -666,6 +697,8 @@ const setDensity = $('set-density');
 const setAddPosition = $('set-add-position');
 const setProgressStyle = $('set-progress-style');
 const setProgressBase = $('set-progress-base');
+const setShowCreated = $('set-show-created');
+const setShowUpdated = $('set-show-updated');
 const accentBox = $('set-accent');
 const setReset = $('set-reset');
 
@@ -688,6 +721,8 @@ function syncSettingControls(s) {
   setAddPosition.value = s.addPosition;
   setProgressStyle.value = s.progressStyle;
   setProgressBase.value = s.progressBase;
+  setShowCreated.checked = s.showCreated;
+  setShowUpdated.checked = s.showUpdated;
   for (const b of accentBox.children) {
     b.setAttribute('aria-pressed', String(b.dataset.accent === s.accent));
   }
@@ -724,6 +759,15 @@ setProgressStyle.addEventListener('change', () => {
 setProgressBase.addEventListener('change', () => {
   changeSetting({ progressBase: setProgressBase.value });
   tick();
+});
+// 등록/수정 일시 표시 토글은 카드 구조(행 hidden)를 바꾸므로 rebuild로 반영.
+setShowCreated.addEventListener('change', () => {
+  changeSetting({ showCreated: setShowCreated.checked });
+  rebuild();
+});
+setShowUpdated.addEventListener('change', () => {
+  changeSetting({ showUpdated: setShowUpdated.checked });
+  rebuild();
 });
 accentBox.addEventListener('click', (e) => {
   const b = e.target.closest('.swatch');

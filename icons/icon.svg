@@ -1,14 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="카운트다운 타이머">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="타임카드">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#18203d" />
-      <stop offset="1" stop-color="#0f1220" />
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3a4048" />
+      <stop offset="1" stop-color="#22272d" />
     </linearGradient>
   </defs>
-  <rect width="512" height="512" fill="url(#bg)" />
-  <g fill="#34d399">
-    <rect x="148" y="110" width="216" height="23" rx="4" />
-    <rect x="148" y="379" width="216" height="23" rx="4" />
-    <path d="M148 133 L364 133 L256 256 L364 379 L148 379 L256 256 Z" />
+  <!-- iOS 스타일 무채색 스퀴클(둥근 사각) -->
+  <rect width="512" height="512" rx="114" fill="url(#g)" />
+  <!-- Filled 모래시계 글리프(흰색·단색) -->
+  <g fill="#ffffff">
+    <rect x="160" y="132" width="192" height="26" rx="8" />
+    <rect x="160" y="354" width="192" height="26" rx="8" />
+    <path d="M182 158 H330 L256 256 L330 354 H182 L256 256 Z" />
   </g>
 </svg>

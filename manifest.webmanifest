@@ -1,13 +1,13 @@
 {
-  "name": "카운트다운 타이머",
-  "short_name": "카운트다운",
-  "description": "특정 시각까지 남은/지난 시간을 보여주는 카운트다운 타이머",
+  "name": "타임카드",
+  "short_name": "타임카드",
+  "description": "중요한 순간까지 남은·지난 시간을 카드로 모아 보는 타임카드",
   "lang": "ko",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0f1220",
-  "theme_color": "#0f1220",
+  "background_color": "#0e1512",
+  "theme_color": "#0e1512",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },

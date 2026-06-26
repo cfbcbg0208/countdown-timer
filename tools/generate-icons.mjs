@@ -55,9 +55,22 @@ function draw(W, H = W) {
   };
   const lerp = (a, b, t) => Math.round(a + (b - a) * t);
 
+  // 정사각 아이콘은 iOS 스퀴클처럼 모서리 둥글림(투명), OG 배너는 사각 유지.
+  const square = W === H;
+  const rad = square ? W * 0.22 : 0;
+  const inRounded = (x, y) => {
+    if (!square) return true;
+    const ax = Math.min(Math.max(x, rad), W - rad);
+    const ay = Math.min(Math.max(y, rad), H - rad);
+    const dx = x - ax, dy = y - ay;
+    return dx * dx + dy * dy <= rad * rad;
+  };
   for (let y = 0; y < H; y++) {
     const t = y / H;
-    for (let x = 0; x < W; x++) set(x, y, lerp(0x18, 0x0f, t), lerp(0x20, 0x12, t), lerp(0x3d, 0x20, t));
+    for (let x = 0; x < W; x++) {
+      if (!inRounded(x, y)) continue; // 모서리는 투명하게 남김
+      set(x, y, lerp(0x3a, 0x22, t), lerp(0x40, 0x27, t), lerp(0x48, 0x2d, t)); // 무채색 차콜 그라데이션
+    }
   }
 
   const cx = W / 2;
@@ -68,7 +81,7 @@ function draw(W, H = W) {
     if (y <= ymid) { const t = (y - y0) / (ymid - y0); return (wTop / 2) * (1 - t) + (neck / 2) * t; }
     const t = (y - ymid) / (y1 - ymid); return (neck / 2) * (1 - t) + (wTop / 2) * t;
   };
-  const [r, g, b] = [0x34, 0xd3, 0x99];
+  const [r, g, b] = [0xff, 0xff, 0xff]; // 흰색 단색 글리프
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const hw = halfAt(y);

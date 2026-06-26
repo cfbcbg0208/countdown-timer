@@ -7,8 +7,8 @@
   --muted: #8ea59a;
   --line: #2a3a32;
   --accent: #16a34a; /* 중립 강조 = 녹색(기본) */
-  --future: #4ea1ff; /* 남은(미래) = 청색 */
-  --past: #f87171;   /* 지난(과거) = 적색 */
+  --future: #6cb0ff; /* 남은(미래)=청색. 다크 카드(#17211c)/배경 대비 약 7.5:1(WCAG AAA) */
+  --past: #ff8d82;   /* 지난(과거)=적색. 다크 대비 약 7:1(WCAG AAA) */
   --ok: #16a34a;
   --err: #f87171;
   --track: #2a3a32;  /* 진행률 바/파이의 빈(미진행) 부분 */
@@ -28,8 +28,8 @@
   --muted: #56685e;
   --line: #d2ded6;
   --accent: #16a34a;
-  --future: #1f74d6; /* 미래=청색(밝은 배경용으로 진하게) */
-  --past: #dc4446;   /* 과거=적색 */
+  --future: #0a57cc; /* 미래=청색. 흰 카드/밝은 배경 대비 약 6.8:1(WCAG AA+) */
+  --past: #b3171d;   /* 과거=적색. 흰 카드 대비 약 6.9:1(WCAG AA+) */
   --ok: #16a34a;
   --err: #dc4446;
   --track: #d8e3dc;
@@ -455,6 +455,10 @@ body.dragging-active { cursor: grabbing; user-select: none; }
 .fab:hover { filter: brightness(1.08); }
 .fab:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 
+/* FAB 아이콘(인라인 SVG): currentColor 상속 → 보조는 무채색(--fab2-fg), 대표(추가)는 흰색 */
+.fab__icon { width: 1.5rem; height: 1.5rem; display: block; }
+.fab__icon--add { width: 1.7rem; height: 1.7rem; }
+
 /* FAB 우상단 단축키 키캡(항상 보이게 표기) */
 .fab__key {
   position: absolute;
@@ -516,7 +520,7 @@ body.dragging-active { cursor: grabbing; user-select: none; }
 .cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
 .cal__wd { text-align: center; font-size: 0.75rem; color: var(--muted); font-weight: 700; padding: 0.3rem 0; }
 .cal__wd--sun { color: var(--past); }
-.cal__wd--sat { color: #5b8cff; }
+.cal__wd--sat { color: var(--future); }
 .cal__day {
   min-height: 4.4rem;
   border: 1px solid var(--line);

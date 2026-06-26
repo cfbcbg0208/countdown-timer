@@ -8,6 +8,8 @@ import {
   setGroupItems,
   removeItemFromGroups,
   groupsForItem,
+  toggleItemInGroup,
+  setItemGroups,
 } from '../src/store.js';
 
 function fakeStorage() {
@@ -81,6 +83,29 @@ test('groupsForItem(순수): 그 항목이 속한 그룹만', () => {
   ];
   assert.deepEqual(groupsForItem(groups, 'y').map((g) => g.id), ['1', '3']);
   assert.deepEqual(groupsForItem(groups, 'none'), []);
+});
+
+test('toggleItemInGroup: 없으면 추가, 있으면 제거(해당 그룹만)', () => {
+  const s = fakeStorage();
+  const a = addGroup(s, { name: 'a', itemIds: [] });
+  const b = addGroup(s, { name: 'b', itemIds: ['x'] });
+  toggleItemInGroup(s, a.id, 'x'); // 추가
+  assert.deepEqual(loadGroups(s).find((g) => g.id === a.id).itemIds, ['x']);
+  assert.deepEqual(loadGroups(s).find((g) => g.id === b.id).itemIds, ['x']); // 다른 그룹 불변
+  toggleItemInGroup(s, a.id, 'x'); // 제거
+  assert.deepEqual(loadGroups(s).find((g) => g.id === a.id).itemIds, []);
+});
+
+test('setItemGroups: itemId가 지정한 그룹에만 속하도록 일괄 설정', () => {
+  const s = fakeStorage();
+  const a = addGroup(s, { name: 'a', itemIds: ['x', 'other'] });
+  const b = addGroup(s, { name: 'b', itemIds: [] });
+  const c = addGroup(s, { name: 'c', itemIds: ['x'] });
+  setItemGroups(s, 'x', [a.id, b.id]); // x를 a,b에만
+  const g = (id) => loadGroups(s).find((x) => x.id === id).itemIds;
+  assert.deepEqual(g(a.id), ['other', 'x']); // 다른 멤버 보존, x 유지
+  assert.deepEqual(g(b.id), ['x']); // 추가
+  assert.deepEqual(g(c.id), []); // 제거
 });
 
 test('손상된 JSON → 그룹 []로 안전 복구', () => {

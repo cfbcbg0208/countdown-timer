@@ -578,6 +578,91 @@ body.dragging-active { cursor: grabbing; user-select: none; }
 }
 .item-menu__btn:hover { background: var(--card-2); color: var(--accent); }
 
+/* ── 카드↔조합 칩 + 재생목록식 선택기 ───────────── */
+.card__groups { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-top: 0.5rem; }
+.card__group {
+  display: inline-flex; align-items: center; gap: 0.3em;
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+  color: var(--muted);
+  font-size: 0.72rem; font-weight: 600;
+  cursor: pointer;
+}
+.card__group::before { content: ''; width: 0.4em; height: 0.4em; border-radius: 50%; background: var(--accent); }
+.card__group:hover { color: var(--fg); border-color: var(--accent); }
+.card__groupbtn {
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  border: 1px dashed var(--line);
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.72rem; font-weight: 600;
+  cursor: pointer;
+}
+.card__groupbtn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* 조합 선택기(카드 팝오버 + 추가 드로어 공용) */
+.combo-pop {
+  position: fixed; z-index: 70;
+  width: 240px; max-height: 60vh; overflow: auto;
+  padding: 0.5rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+.combo-chooser { margin-top: 0.5rem; }
+.combo__list { display: flex; flex-direction: column; gap: 0.25rem; }
+.combo__empty { margin: 0.2rem 0 0.4rem; font-size: 0.78rem; color: var(--muted); }
+.combo__opt {
+  display: flex; align-items: center; gap: 0.5rem;
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid transparent;
+  background: var(--card-2);
+  color: var(--fg);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.combo__opt:hover { border-color: var(--line); }
+.combo__check {
+  width: 1.1rem; height: 1.1rem; flex: none;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 0.3rem;
+  border: 1.5px solid var(--line);
+  color: transparent;
+  font-size: 0.7rem; font-weight: 800;
+}
+.combo__opt[aria-pressed='true'] .combo__check { background: var(--accent); border-color: var(--accent); color: #fff; }
+.combo__optname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.combo__new { display: flex; gap: 0.35rem; margin-top: 0.5rem; }
+.combo__newname {
+  flex: 1; min-width: 0;
+  padding: 0.4rem 0.55rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+  color: var(--fg);
+  font-size: 0.85rem;
+}
+.combo__newname:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.combo__add {
+  flex: none;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+  color: var(--fg);
+  font-size: 0.82rem; font-weight: 600;
+  cursor: pointer;
+}
+.combo__add:hover { color: var(--accent); border-color: var(--accent); }
+.add__groups-wrap { font-size: 0.85rem; color: var(--muted); }
+.add__groups-wrap summary { cursor: pointer; padding: 0.2rem 0; }
+
 /* ── 조합(그룹) 패널 ─────────────────────────── */
 .groups { display: flex; flex-direction: column; gap: 0.6rem; }
 .groups__new {
@@ -843,6 +928,8 @@ select.set-row__ctrl {
   margin-bottom: 0.6rem;
 }
 .drawer__title { margin: 0; font-size: 1.05rem; font-weight: 700; }
+/* 드로어 제목 아이콘: FAB와 동일한 무채색 Filled SVG, 텍스트 높이에 맞춰 인라인 */
+.drawer__title-icon { width: 1.15em; height: 1.15em; vertical-align: -0.2em; color: var(--muted); }
 .drawer__close {
   background: transparent;
   border: none;

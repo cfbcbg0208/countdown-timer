@@ -173,6 +173,41 @@ async function main() {
   if (checks.theme !== 'dark') fails.push(`기본 테마 dark 기대, 실제 ${checks.theme}`);
   if (checks.lapText !== '기록' || /📍/.test(checks.lapText)) fails.push(`기록 버튼 텍스트="${checks.lapText}" (빨간핀 제거·'기록' 기대)`);
 
+  // 6.6) 조합(재생목록식): 카드 ＋조합 → 팝오버 → 새 조합 생성·토글 → 칩 표시 + 영속
+  if (!(await evalJS(browser, "!!document.querySelector('.card .card__groupbtn')")))
+    fails.push('카드에 ＋조합 버튼 없음');
+  await evalJS(browser, "document.querySelector('.card .card__groupbtn')?.click()");
+  await until(() => evalJS(browser, "!!document.querySelector('.combo-pop')"), { label: 'combo popover' });
+  await evalJS(
+    browser,
+    `(() => { const i = document.querySelector('.combo-pop .combo__newname');
+       i.value = '시험공부'; i.dispatchEvent(new Event('input', { bubbles: true }));
+       document.querySelector('.combo-pop .combo__add')?.click(); })()`,
+  );
+  await until(
+    () => evalJS(browser, "(JSON.parse(localStorage.getItem('groups')||'[]')[0]?.itemIds||[]).includes('verify-1')"),
+    { label: 'combo membership saved' },
+  );
+  const combo = await evalJS(
+    browser,
+    `(() => ({
+       groups: JSON.parse(localStorage.getItem('groups')||'[]').length,
+       memberOf: (JSON.parse(localStorage.getItem('groups')||'[]')[0]?.itemIds||[]).includes('verify-1'),
+       chipText: document.querySelector('.card .card__group')?.textContent,
+       pressed: document.querySelector('.combo-pop .combo__opt')?.getAttribute('aria-pressed'),
+       popExists: !!document.querySelector('.combo-pop'),
+       optCount: document.querySelectorAll('.combo-pop .combo__opt').length,
+     }))()`,
+  );
+  if (combo.groups !== 1) fails.push(`조합 1개 기대, 실제 ${combo.groups}`);
+  if (!combo.memberOf) fails.push('새 조합에 카드가 안 들어감');
+  if (combo.chipText !== '시험공부') fails.push(`카드 조합 칩="${combo.chipText}" (시험공부 기대)`);
+  if (combo.pressed !== 'true') fails.push('조합 토글 aria-pressed=true 아님');
+  if (!combo.popExists) fails.push('토글 후 팝오버가 닫힘(내부 클릭 전파 차단 회귀)');
+  const comboShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  await writeFile(join(ARTIFACTS, 'verify-combo.png'), Buffer.from(comboShot.data, 'base64'));
+  await evalJS(browser, "document.body.click()"); // 팝오버 닫기(다음 단계 간섭 방지)
+
   // 7) 카드 화면 스크린샷
   const shot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   const out = join(ARTIFACTS, 'verify.png');
@@ -293,6 +328,7 @@ async function main() {
   await writeFile(join(ARTIFACTS, 'verify-light.png'), Buffer.from(lightShot.data, 'base64'));
 
   console.log('카드 검증:', JSON.stringify(checks, null, 2));
+  console.log('조합 검증:', JSON.stringify(combo));
   console.log('캘린더 검증:', JSON.stringify(cal, null, 2));
   console.log('P4 검증:', JSON.stringify({ ...p4a, menuBtns, ...p4b }, null, 2));
   console.log('설정/세그먼트 검증:', JSON.stringify({ theme, segPressed, ...s10 }));

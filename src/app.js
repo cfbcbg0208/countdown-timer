@@ -22,6 +22,8 @@ import {
   removeGroup,
   removeItemFromGroups,
   groupsForItem,
+  toggleItemInGroup,
+  setItemGroups,
 } from './store.js';
 import {
   load as loadSettings,
@@ -62,6 +64,10 @@ const selectCountEl = $('select-count');
 const groupNameInput = $('group-name');
 const selectSaveBtn = $('select-save');
 const selectCancelBtn = $('select-cancel');
+const addGroupsEl = $('add-groups');
+
+// 추가 드로어에서 새 카드가 들어갈 조합 id들(생성 시 적용).
+let pendingGroupIds = new Set();
 
 // 보기 필터: null=전체 | {kind:'group',id} | {kind:'date',key,basis} | {kind:'item',id}.
 // (조합 보기·캘린더 날짜 보기·항목 단독 보기를 하나의 필터로 통합)
@@ -198,7 +204,11 @@ function makeCard(item) {
   const createdRow = dateRow('등록일시', item.createdAt, settings.showCreated);
   const updatedRow = dateRow('수정일시', item.updatedAt, settings.showUpdated);
 
-  card.append(timeRow, progressEl, targetRow, createdRow, updatedRow);
+  // 조합(그룹) 칩 줄: 이 카드가 속한 조합 + '＋ 조합' 버튼(생성/편집에서 직접 추가).
+  const groupsRow = document.createElement('div');
+  groupsRow.className = 'card__groups';
+  card.append(timeRow, progressEl, targetRow, createdRow, updatedRow, groupsRow);
+  fillCardGroups(groupsRow, item.id);
 
   const lapsEl = document.createElement('ul');
   lapsEl.className = 'card__laps';
@@ -357,6 +367,7 @@ function addFrom(source) {
   // 제목을 비우면 기준일시와 같은 서식(formatLocal)으로 자동 제목 생성.
   const labelText = labelInput.value.trim() || formatLocal(date);
   const item = add(localStorage, { label: labelText, targetISO: toLocalISO(date) });
+  if (pendingGroupIds.size) setItemGroups(localStorage, item.id, [...pendingGroupIds]); // 생성 시 조합 지정
   list = load(localStorage);
   // 추가 위치 설정: 기본 'top'이면 방금 추가한 항목을 맨 앞으로 재배치(영속).
   if (settings.addPosition === 'top') {
@@ -599,11 +610,26 @@ listEl.addEventListener('click', (e) => {
     openFieldEditor(card, id, 'date');
   } else if (e.target.closest('.card__progress')) {
     openFieldEditor(card, id, 'start'); // 진행률 바/파이 클릭 → 진행 시작 일시 지정
+  } else if (e.target.closest('.card__group')) {
+    viewGroup(e.target.closest('.card__group').dataset.gid); // 소속 조합 칩 → 그 조합 보기
+  } else if (e.target.closest('.card__groupbtn')) {
+    openComboPopover(e.target.closest('.card__groupbtn'), id); // ＋조합 → 토글 팝오버
   }
 });
 
+// 추가 드로어 열기: 조합 선택 초기화 + 조합 선택기 렌더 후 연다.
+function openAddDrawer() {
+  pendingGroupIds = new Set();
+  renderComboChooser(addGroupsEl, {
+    isOn: (gid) => pendingGroupIds.has(gid),
+    toggle: (gid) => (pendingGroupIds.has(gid) ? pendingGroupIds.delete(gid) : pendingGroupIds.add(gid)),
+    onCreate: (name) => pendingGroupIds.add(addGroup(localStorage, { name, itemIds: [] }).id),
+  });
+  openDrawer(drawer, fab, textInput);
+}
+
 // 드로어 열기/닫기 (추가 ＋ / 설정 ⚙️)
-fab.addEventListener('click', () => openDrawer(drawer, fab, textInput));
+fab.addEventListener('click', openAddDrawer);
 settingsFab.addEventListener('click', () => openSettings());
 groupsFab.addEventListener('click', () => {
   renderGroups();
@@ -633,7 +659,7 @@ document.addEventListener('keydown', (e) => {
   if (openEl || selectMode || isTyping(document.activeElement) || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.code === 'KeyA' || e.code === 'NumpadAdd') {
     e.preventDefault();
-    openDrawer(drawer, fab, textInput);
+    openAddDrawer();
   } else if (e.code === 'KeyS') {
     e.preventDefault();
     openSettings();
@@ -683,6 +709,126 @@ function viewGroup(id) {
   const g = loadGroups(localStorage).find((x) => x.id === id);
   if (!g) return;
   applyFilter({ kind: 'group', id }, `🗂️ ${g.name || '조합'} · ${(g.itemIds || []).length}개`);
+}
+
+// ── 카드↔조합: 카드에 소속 조합 칩 표시 + '＋ 조합'으로 재생목록식 추가/제거 ──
+// 카드의 .card__groups 칸을 (소속 조합 칩들 + ＋버튼)으로 다시 채운다.
+function fillCardGroups(container, id) {
+  const groups = groupsForItem(loadGroups(localStorage), id);
+  const chips = groups.map((g) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'card__group';
+    b.dataset.gid = g.id;
+    b.textContent = g.name || '조합';
+    b.title = `조합 "${g.name || ''}" 보기`;
+    return b;
+  });
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'card__groupbtn';
+  addBtn.dataset.id = id;
+  addBtn.title = '이 카드를 조합에 추가/제거';
+  addBtn.setAttribute('aria-label', '조합에 추가 또는 제거');
+  addBtn.textContent = groups.length ? '＋' : '＋ 조합';
+  container.replaceChildren(...chips, addBtn);
+}
+// 리스트에서 그 id 카드의 조합 칩만 다시 그린다(전체 rebuild 없이 즉시 반영).
+function refreshCardGroups(id) {
+  const row = listEl.querySelector(`.card[data-id="${id}"] .card__groups`);
+  if (row) fillCardGroups(row, id);
+}
+
+// 조합 선택기(재사용): 컨테이너에 (기존 조합 토글 목록 + 새 조합 만들기)를 그린다.
+// model = { isOn(gid), toggle(gid), onCreate(name), afterChange?() }
+function renderComboChooser(container, model) {
+  const groups = loadGroups(localStorage);
+  const listBox = document.createElement('div');
+  listBox.className = 'combo__list';
+  if (groups.length === 0) {
+    const p = document.createElement('p');
+    p.className = 'combo__empty';
+    p.textContent = '저장된 조합이 없습니다. 아래에서 새로 만들어 보세요.';
+    listBox.append(p);
+  } else {
+    for (const g of groups) {
+      const opt = document.createElement('button');
+      opt.type = 'button';
+      opt.className = 'combo__opt';
+      opt.setAttribute('aria-pressed', String(model.isOn(g.id)));
+      const check = document.createElement('span');
+      check.className = 'combo__check';
+      check.textContent = '✓';
+      check.setAttribute('aria-hidden', 'true');
+      const nm = document.createElement('span');
+      nm.className = 'combo__optname';
+      nm.textContent = g.name || '조합';
+      opt.append(check, nm);
+      opt.addEventListener('click', () => {
+        model.toggle(g.id);
+        model.afterChange?.();
+        renderComboChooser(container, model);
+      });
+      listBox.append(opt);
+    }
+  }
+  const newWrap = document.createElement('div');
+  newWrap.className = 'combo__new';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'combo__newname';
+  input.placeholder = '새 조합 이름';
+  input.autocomplete = 'off';
+  const addB = document.createElement('button');
+  addB.type = 'button';
+  addB.className = 'combo__add';
+  addB.textContent = '＋ 만들기';
+  const create = () => {
+    const name = input.value.trim();
+    if (!name) return;
+    model.onCreate(name);
+    model.afterChange?.();
+    renderComboChooser(container, model);
+  };
+  addB.addEventListener('click', create);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      create();
+    }
+  });
+  newWrap.append(input, addB);
+  container.replaceChildren(listBox, newWrap);
+}
+
+// 카드의 '＋ 조합' 버튼 옆에 뜨는 작은 팝오버(재생목록식 토글).
+let comboPopEl = null;
+function closeComboPopover() {
+  comboPopEl?.remove();
+  comboPopEl = null;
+}
+function openComboPopover(anchorEl, itemId) {
+  closeComboPopover();
+  closeItemMenu();
+  const pop = document.createElement('div');
+  pop.className = 'combo-pop';
+  pop.setAttribute('role', 'dialog');
+  pop.setAttribute('aria-label', '조합에 추가/제거');
+  // 내부 클릭은 바깥-클릭 닫기로 전파하지 않음(토글 시 재렌더로 타깃이 분리돼 오닫힘 방지).
+  pop.addEventListener('click', (e) => e.stopPropagation());
+  renderComboChooser(pop, {
+    isOn: (gid) => groupsForItem(loadGroups(localStorage), itemId).some((g) => g.id === gid),
+    toggle: (gid) => toggleItemInGroup(localStorage, gid, itemId),
+    onCreate: (name) => addGroup(localStorage, { name, itemIds: [itemId] }),
+    afterChange: () => refreshCardGroups(itemId),
+  });
+  document.body.append(pop);
+  const r = anchorEl.getBoundingClientRect();
+  const w = 240;
+  pop.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - w - 8))}px`;
+  pop.style.top = `${Math.min(r.bottom + 6, window.innerHeight - 16)}px`;
+  comboPopEl = pop;
+  pop.querySelector('.combo__newname')?.focus();
 }
 
 function enterSelectMode() {
@@ -736,6 +882,7 @@ groupsListEl.addEventListener('click', (e) => {
     removeGroup(localStorage, del.dataset.id);
     if (viewFilter?.kind === 'group' && viewFilter.id === del.dataset.id) clearViewFilter();
     renderGroups();
+    rebuild(); // 카드의 소속 조합 칩 갱신
     srStatus.textContent = '조합 삭제됨';
   }
 });
@@ -889,12 +1036,16 @@ function viewRelatedGroups(id) {
     openDrawer(groupsDrawer, groupsFab);
   }
 }
-// 메뉴 밖 클릭/Esc로 닫기
+// 메뉴/팝오버 밖 클릭·Esc로 닫기
 document.addEventListener('click', (e) => {
   if (itemMenuEl && !e.target.closest('.item-menu')) closeItemMenu();
+  if (comboPopEl && !e.target.closest('.combo-pop') && !e.target.closest('.card__groupbtn')) closeComboPopover();
 });
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') closeItemMenu();
+  if (e.key === 'Escape') {
+    closeItemMenu();
+    closeComboPopover();
+  }
 });
 
 // 캘린더 그리드 클릭: 항목(미니 제목)→메뉴, 빈 날짜(항목 있는 칸)→날짜별 보기.

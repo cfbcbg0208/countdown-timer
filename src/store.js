@@ -164,3 +164,26 @@ export function removeItemFromGroups(storage, itemId) {
 export function groupsForItem(groups, itemId) {
   return groups.filter((g) => Array.isArray(g.itemIds) && g.itemIds.includes(itemId));
 }
+
+/** id 그룹에서 itemId를 토글(있으면 빼고, 없으면 더함) 후 그룹 목록 반환. */
+export function toggleItemInGroup(storage, groupId, itemId) {
+  const groups = loadGroups(storage).map((g) => {
+    if (g.id !== groupId) return g;
+    const ids = g.itemIds || [];
+    return { ...g, itemIds: ids.includes(itemId) ? ids.filter((x) => x !== itemId) : [...ids, itemId] };
+  });
+  saveGroups(storage, groups);
+  return groups;
+}
+
+/** itemId가 groupIds에 든 그룹에만 속하도록 모든 그룹의 멤버십을 일괄 설정(카드 생성 시 사용). */
+export function setItemGroups(storage, itemId, groupIds) {
+  const want = new Set(groupIds);
+  const groups = loadGroups(storage).map((g) => {
+    const ids = (g.itemIds || []).filter((x) => x !== itemId);
+    if (want.has(g.id)) ids.push(itemId);
+    return { ...g, itemIds: ids };
+  });
+  saveGroups(storage, groups);
+  return groups;
+}

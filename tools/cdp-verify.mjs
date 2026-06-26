@@ -163,7 +163,8 @@ async function main() {
        lapText: document.querySelector('.card__lap')?.textContent,
        timeInTop: !!document.querySelector('.card__top .card__time'),
        actionsHasLap: !!document.querySelector('.card__actions .card__lap'),
-       actionsHasGroupBtn: !!document.querySelector('.card__actions .card__groupbtn'),
+       tagAddInGroups: !!document.querySelector('.card__groups .card__groupbtn'),
+       tagAddText: document.querySelector('.card__groups .card__groupbtn')?.textContent,
      }))()`,
   );
   const fails = [];
@@ -177,7 +178,8 @@ async function main() {
   if (checks.lapText !== '기록' || /📍/.test(checks.lapText)) fails.push(`기록 버튼 텍스트="${checks.lapText}" (빨간핀 제거·'기록' 기대)`);
   if (!checks.timeInTop) fails.push('큰 카운트다운이 상단 줄(.card__top, trailing)에 없음');
   if (!checks.actionsHasLap) fails.push('기록 버튼이 하단 액션(.card__actions)에 없음');
-  if (!checks.actionsHasGroupBtn) fails.push('＋조합 버튼이 하단 액션에 없음');
+  if (!checks.tagAddInGroups) fails.push('＋태그 칩이 태그 줄(.card__groups)에 없음');
+  if (checks.tagAddText !== '＋ 태그') fails.push(`＋태그 칩 텍스트="${checks.tagAddText}" (＋ 태그 기대)`);
 
   // 6.6) 조합(재생목록식): 카드 ＋조합 → 팝오버 → 새 조합 생성·토글 → 칩 표시 + 영속
   if (!(await evalJS(browser, "!!document.querySelector('.card .card__groupbtn')")))

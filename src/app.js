@@ -161,7 +161,6 @@ function makeCard(item) {
   labelText.className = 'card__labeltext';
   labelText.textContent = item.label || '＋ 제목';
   labelEl.append(labelText);
-  if (item.label) labelEl.append(chip('제목'));
 
   // 큰 시간 + 방향 칩(updateCard가 채움).
   const timeEl = document.createElement('div');
@@ -191,29 +190,22 @@ function makeCard(item) {
   const createdRow = dateRow('등록일시', item.createdAt, settings.showCreated);
   const updatedRow = dateRow('수정일시', item.updatedAt, settings.showUpdated);
 
-  // 소속 조합 칩(클릭→그 조합 보기). 추가는 하단 액션의 ＋조합.
+  // 태그(구 조합) 칩 줄: 소속 태그 + '＋ 태그' 추가 칩(클릭→팝오버). fillCardGroups가 채움.
   const groupsRow = document.createElement('div');
   groupsRow.className = 'card__groups';
   fillCardGroups(groupsRow, item.id);
 
-  // 기록 + ＋조합 (기준일시 줄의 우측에 인라인 → 우측 공간 활용)
+  // 기록 액션(기준일시 줄 우측). 태그와 시각적으로 구분: 녹색 점 = '지금 기록' 동작.
   const lapEl = document.createElement('button');
   lapEl.className = 'card__lap';
   lapEl.type = 'button';
   lapEl.dataset.id = item.id;
   lapEl.title = '지금 이 순간의 값을 기록(랩)';
   lapEl.setAttribute('aria-label', `${item.label || '타임카드'} 현재 값 기록`);
-  lapEl.textContent = '기록'; // 빨간 핀(📍) 제거 → CSS로 녹색 점
-  const groupBtn = document.createElement('button');
-  groupBtn.className = 'card__groupbtn';
-  groupBtn.type = 'button';
-  groupBtn.dataset.id = item.id;
-  groupBtn.title = '이 카드를 조합에 추가/제거';
-  groupBtn.setAttribute('aria-label', '조합에 추가 또는 제거');
-  groupBtn.textContent = '＋ 조합';
+  lapEl.textContent = '기록';
   const actions = document.createElement('div');
   actions.className = 'card__actions';
-  actions.append(lapEl, groupBtn);
+  actions.append(lapEl);
 
   // 상단 줄: 제목(좌) — 큰 카운트다운(우, trailing). 우측 절반을 가장 큰 정보로 채움.
   const top = document.createElement('div');
@@ -380,9 +372,10 @@ function addFrom(source) {
     return;
   }
   // 제목을 비우면 기준일시와 같은 서식(formatLocal)으로 자동 제목 생성.
-  const labelText = labelInput.value.trim() || formatLocal(date);
+  // 제목을 비우면 자동 생성하지 않고 빈 채로 둠(기준일시는 메타에 따로 표시 → 중복 제거).
+  const labelText = labelInput.value.trim();
   const item = add(localStorage, { label: labelText, targetISO: toLocalISO(date) });
-  if (pendingGroupIds.size) setItemGroups(localStorage, item.id, [...pendingGroupIds]); // 생성 시 조합 지정
+  if (pendingGroupIds.size) setItemGroups(localStorage, item.id, [...pendingGroupIds]); // 생성 시 태그 지정
   list = load(localStorage);
   // 추가 위치 설정: 기본 'top'이면 방금 추가한 항목을 맨 앞으로 재배치(영속).
   if (settings.addPosition === 'top') {
@@ -678,7 +671,7 @@ document.addEventListener('keydown', (e) => {
   } else if (e.code === 'KeyS') {
     e.preventDefault();
     openSettings();
-  } else if (e.code === 'KeyG') {
+  } else if (e.code === 'KeyT') {
     e.preventDefault();
     renderGroups();
     openDrawer(groupsDrawer, groupsFab);
@@ -711,8 +704,8 @@ function renderGroups() {
       del.type = 'button';
       del.className = 'group__del';
       del.dataset.id = g.id;
-      del.title = '조합 삭제';
-      del.setAttribute('aria-label', `${g.name || '조합'} 삭제`);
+      del.title = '태그 삭제';
+      del.setAttribute('aria-label', `${g.name || '태그'} 삭제`);
       del.textContent = '✕';
       li.append(name, count, view, del);
       return li;
@@ -723,24 +716,31 @@ function renderGroups() {
 function viewGroup(id) {
   const g = loadGroups(localStorage).find((x) => x.id === id);
   if (!g) return;
-  applyFilter({ kind: 'group', id }, `🗂️ ${g.name || '조합'} · ${(g.itemIds || []).length}개`);
+  applyFilter({ kind: 'group', id }, `🏷 ${g.name || '태그'} · ${(g.itemIds || []).length}개`);
 }
 
-// ── 카드↔조합: 카드에 소속 조합 칩 표시 + '＋ 조합'으로 재생목록식 추가/제거 ──
-// 카드의 .card__groups 칸을 (소속 조합 칩들 + ＋버튼)으로 다시 채운다.
+// ── 카드↔태그: 카드에 소속 태그 칩 표시 + '＋ 태그'로 추가/제거 ──
+// 카드의 .card__groups 칸을 (소속 태그 칩들 + ＋태그)으로 다시 채운다.
 function fillCardGroups(container, id) {
   const groups = groupsForItem(loadGroups(localStorage), id);
-  container.replaceChildren(
-    ...groups.map((g) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'card__group';
-      b.dataset.gid = g.id;
-      b.textContent = g.name || '조합';
-      b.title = `조합 "${g.name || ''}" 보기`;
-      return b;
-    }),
-  );
+  const chips = groups.map((g) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'card__group';
+    b.dataset.gid = g.id;
+    b.textContent = g.name || '태그';
+    b.title = `태그 "${g.name || ''}" 보기`;
+    return b;
+  });
+  // 끝에 '＋ 태그' 추가 칩(기록 액션과 구분되는 태그 전용 진입점).
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'card__groupbtn';
+  addBtn.dataset.id = id;
+  addBtn.title = '이 카드에 태그 추가/제거';
+  addBtn.setAttribute('aria-label', '태그 추가 또는 제거');
+  addBtn.textContent = '＋ 태그';
+  container.replaceChildren(...chips, addBtn);
 }
 // 리스트에서 그 id 카드의 조합 칩만 다시 그린다(전체 rebuild 없이 즉시 반영).
 function refreshCardGroups(id) {
@@ -757,7 +757,7 @@ function renderComboChooser(container, model) {
   if (groups.length === 0) {
     const p = document.createElement('p');
     p.className = 'combo__empty';
-    p.textContent = '저장된 조합이 없습니다. 아래에서 새로 만들어 보세요.';
+    p.textContent = '저장된 태그가 없습니다. 아래에서 새로 만들어 보세요.';
     listBox.append(p);
   } else {
     for (const g of groups) {
@@ -771,7 +771,7 @@ function renderComboChooser(container, model) {
       check.setAttribute('aria-hidden', 'true');
       const nm = document.createElement('span');
       nm.className = 'combo__optname';
-      nm.textContent = g.name || '조합';
+      nm.textContent = g.name || '태그';
       opt.append(check, nm);
       opt.addEventListener('click', () => {
         model.toggle(g.id);
@@ -786,7 +786,7 @@ function renderComboChooser(container, model) {
   const input = document.createElement('input');
   input.type = 'text';
   input.className = 'combo__newname';
-  input.placeholder = '새 조합 이름';
+  input.placeholder = '새 태그 이름';
   input.autocomplete = 'off';
   const addB = document.createElement('button');
   addB.type = 'button';
@@ -810,7 +810,7 @@ function renderComboChooser(container, model) {
   container.replaceChildren(listBox, newWrap);
 }
 
-// 카드의 '＋ 조합' 버튼 옆에 뜨는 작은 팝오버(재생목록식 토글).
+// 카드의 '＋ 태그' 칩 옆에 뜨는 작은 팝오버(태그 토글/생성).
 let comboPopEl = null;
 function closeComboPopover() {
   comboPopEl?.remove();
@@ -822,7 +822,7 @@ function openComboPopover(anchorEl, itemId) {
   const pop = document.createElement('div');
   pop.className = 'combo-pop';
   pop.setAttribute('role', 'dialog');
-  pop.setAttribute('aria-label', '조합에 추가/제거');
+  pop.setAttribute('aria-label', '태그에 추가/제거');
   // 내부 클릭은 바깥-클릭 닫기로 전파하지 않음(토글 시 재렌더로 타깃이 분리돼 오닫힘 방지).
   pop.addEventListener('click', (e) => e.stopPropagation());
   renderComboChooser(pop, {
@@ -876,9 +876,9 @@ function updateSelectCount() {
 
 function saveGroup() {
   if (selectedIds.size === 0) return;
-  const name = groupNameInput.value.trim() || `조합 (${selectedIds.size}개)`;
+  const name = groupNameInput.value.trim() || `태그 (${selectedIds.size}개)`;
   addGroup(localStorage, { name, itemIds: [...selectedIds] });
-  srStatus.textContent = `조합 "${name}" 저장됨`;
+  srStatus.textContent = `태그 "${name}" 저장됨`;
   exitSelectMode();
 }
 
@@ -891,8 +891,8 @@ groupsListEl.addEventListener('click', (e) => {
     removeGroup(localStorage, del.dataset.id);
     if (viewFilter?.kind === 'group' && viewFilter.id === del.dataset.id) clearViewFilter();
     renderGroups();
-    rebuild(); // 카드의 소속 조합 칩 갱신
-    srStatus.textContent = '조합 삭제됨';
+    rebuild(); // 카드의 소속 태그 칩 갱신
+    srStatus.textContent = '태그 삭제됨';
   }
 });
 selectSaveBtn.addEventListener('click', saveGroup);
@@ -1023,7 +1023,7 @@ function showItemMenu(id, x, y) {
   };
   menu.append(
     mk('🔎 단독 보기', () => viewItemAlone(id)),
-    mk('🗂️ 관련 조합', () => viewRelatedGroups(id)),
+    mk('🏷 관련 태그', () => viewRelatedGroups(id)),
     mk('🗓️ 날짜 보기', () => viewDate(dateKeyOf(it, calBasis), calBasis)),
   );
   document.body.append(menu);
@@ -1036,8 +1036,8 @@ function showItemMenu(id, x, y) {
 function viewRelatedGroups(id) {
   const groups = groupsForItem(loadGroups(localStorage), id);
   if (groups.length === 0) {
-    srStatus.textContent = '관련 조합 없음';
-    alert('이 타임카드가 속한 조합이 없습니다.');
+    srStatus.textContent = '관련 태그 없음';
+    alert('이 타임카드에 지정된 태그가 없습니다.');
   } else if (groups.length === 1) {
     viewGroup(groups[0].id);
   } else {

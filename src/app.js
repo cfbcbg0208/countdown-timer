@@ -40,6 +40,16 @@ function toLocalISO(date) {
   );
 }
 
+// 현재 시각을 컴팩트 표기("YYMMDD요일HHMMSS", 예 260626금195225)로. parseFlexible가 되읽을 수 있음.
+function compactNow(now = new Date()) {
+  const p = (n) => String(n).padStart(2, '0');
+  const w = '일월화수목금토'[now.getDay()];
+  return (
+    `${String(now.getFullYear()).slice(-2)}${p(now.getMonth() + 1)}${p(now.getDate())}${w}` +
+    `${p(now.getHours())}${p(now.getMinutes())}${p(now.getSeconds())}`
+  );
+}
+
 let list = load(localStorage);
 let refsList = []; // 화면에 그려진 카드들의 참조 { card, timeEl, metaEl, item, dir }
 
@@ -225,7 +235,33 @@ function openDrawer(el, trigger, focusEl) {
   el.hidden = false;
   openEl = el;
   if (trigger) trigger.setAttribute('aria-expanded', 'true');
-  (focusEl || el.querySelector('input, select, button:not([data-close])'))?.focus();
+  const target = focusEl || el.querySelector('input, select, button:not([data-close])');
+  if (!target) return;
+  const focusTarget = () => {
+    if (openEl !== el) return; // 그 사이 닫혔으면 무시
+    target.focus();
+    try {
+      const end = (target.value ?? '').length;
+      target.setSelectionRange?.(end, end);
+    } catch {} // range/checkbox 등 텍스트 아닌 입력은 무시
+  };
+  // 드로어가 slide(transform) 애니메이션 '중'에 동기 focus 하면, 변형 때문에 캐럿의 화면
+  // 좌표가 흔들려 외부 텍스트확장기(Beeftext/Textspend)의 확장 단축키가 안 먹혔다
+  // (사용자가 ←→로 커서를 흔들면 좌표 재계산돼 동작). → 애니메이션이 끝난 뒤 포커스한다.
+  const panel = el.querySelector('.drawer__panel');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (panel && !reduce) {
+    let done = false;
+    const run = () => {
+      if (done) return;
+      done = true;
+      focusTarget();
+    };
+    panel.addEventListener('animationend', run, { once: true });
+    setTimeout(run, 280); // 애니메이션 미발생/누락 대비 폴백
+  } else {
+    focusTarget();
+  }
 }
 function closeDrawer() {
   if (!openEl) return;
@@ -241,11 +277,19 @@ function closeDrawer() {
 // ② 기준일시→Enter→제목 입력→Enter: 그 제목으로 생성.
 textInput.addEventListener('input', updatePreview);
 textInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    if (parseFlexible(textInput.value.trim())) labelInput.focus(); // 유효하면 제목으로 이동
-    else updatePreview(); // 형식 오류 표시(이동 안 함)
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  // 비어 있으면 1번째 Enter: 현재 시각(컴팩트)으로 채우고 커서는 기준일시 끝에 유지.
+  if (textInput.value.trim() === '') {
+    textInput.value = compactNow();
+    updatePreview();
+    const end = textInput.value.length;
+    textInput.setSelectionRange(end, end);
+    return;
   }
+  // 채워져 있고 유효하면 다음 Enter: 제목으로 이동. 무효면 오류 표시(이동 안 함).
+  if (parseFlexible(textInput.value.trim())) labelInput.focus();
+  else updatePreview();
 });
 labelInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {

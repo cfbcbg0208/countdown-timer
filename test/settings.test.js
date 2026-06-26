@@ -51,12 +51,13 @@ test('progressStyle: 기본 both, 허용값만, 그 외 → both', () => {
   assert.equal(update(st, { progressStyle: 'rainbow' }).progressStyle, 'both'); // 폴백
 });
 
-test('showCreated/showUpdated: 기본 false, 불리언 강제', () => {
+test('showTarget/showCreated/showUpdated: 기본 true, 불리언 강제', () => {
   const st = fakeStorage();
-  assert.equal(load(st).showCreated, false);
-  assert.equal(load(st).showUpdated, false);
-  assert.equal(update(st, { showCreated: 1 }).showCreated, true); // truthy → true
-  assert.equal(update(st, { showUpdated: 0 }).showUpdated, false); // falsy → false
+  assert.equal(load(st).showTarget, true);
+  assert.equal(load(st).showCreated, true);
+  assert.equal(load(st).showUpdated, true);
+  assert.equal(update(st, { showCreated: false }).showCreated, false); // 끄기
+  assert.equal(update(st, { showTarget: 0 }).showTarget, false); // falsy → false
 });
 
 test('progressBase: 기본 created, updated만 허용, 그 외 → created', () => {

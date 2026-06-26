@@ -231,9 +231,9 @@ kbd {
 .card__meta:hover { color: var(--fg); background: rgba(255, 255, 255, 0.06); }
 .card__meta:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-/* 카드 내 행(요소 + 칩, 또는 메타 + 기록 인라인) */
+/* 카드 내 행(요소 + 칩, 또는 시간 + 기록 인라인) */
 .card__row { display: flex; align-items: center; gap: 0.5rem; }
-.card__row--meta { justify-content: space-between; margin-top: 0.4rem; }
+.card__row--time { justify-content: space-between; gap: 0.75rem; }
 .card__row--date { gap: 0.4rem; margin-top: 0.25rem; }
 .card__row--date[hidden] { display: none; }
 .card__datemeta { font-size: var(--card-meta-size, 0.8rem); color: var(--muted); font-variant-numeric: tabular-nums; }

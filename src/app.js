@@ -140,9 +140,19 @@ function makeCard(item) {
   if (item.label) labelEl.append(chip('제목'));
   card.append(labelEl);
 
-  // 시간 + 방향 칩(남은시간/지난시간): updateCard가 매초 갱신.
+  // 시간 행: [시간 + 방향 칩](좌측)  …  [📍 기록](우측, 큰 숫자 줄의 빈 공간 활용).
   const timeEl = document.createElement('div');
   timeEl.className = 'card__time';
+  const lapEl = document.createElement('button');
+  lapEl.className = 'card__lap';
+  lapEl.type = 'button';
+  lapEl.dataset.id = item.id;
+  lapEl.title = '지금 이 순간의 값을 기록(랩)';
+  lapEl.setAttribute('aria-label', `${item.label || '카운트다운'} 현재 값 기록`);
+  lapEl.textContent = '📍 기록';
+  const timeRow = document.createElement('div');
+  timeRow.className = 'card__row card__row--time';
+  timeRow.append(timeEl, lapEl);
 
   // 진행률(미래 카드만): '둘 다'면 파이 → 바 순서.
   const progressEl = document.createElement('div');
@@ -156,27 +166,21 @@ function makeCard(item) {
   barEl.append(barFillEl);
   progressEl.append(pieEl, barEl);
 
-  // 기준일시 행: [값 + 기준일시 칩](클릭 편집)  …  [📍 기록](우측, 한 줄 공유로 공간 절약).
+  // 기준일시 행(클릭 편집, 토글). 값 + [기준일시] 칩은 updateCard가 갱신.
   const metaEl = document.createElement('button');
   metaEl.type = 'button';
   metaEl.className = 'card__meta';
   metaEl.title = '클릭하여 기준일시 수정';
-  const lapEl = document.createElement('button');
-  lapEl.className = 'card__lap';
-  lapEl.type = 'button';
-  lapEl.dataset.id = item.id;
-  lapEl.title = '지금 이 순간의 값을 기록(랩)';
-  lapEl.setAttribute('aria-label', `${item.label || '카운트다운'} 현재 값 기록`);
-  lapEl.textContent = '📍 기록';
-  const metaRow = document.createElement('div');
-  metaRow.className = 'card__row card__row--meta';
-  metaRow.append(metaEl, lapEl);
+  const targetRow = document.createElement('div');
+  targetRow.className = 'card__row card__row--date';
+  targetRow.hidden = !settings.showTarget;
+  targetRow.append(metaEl);
 
-  // 등록/수정 일시 행(설정 토글).
-  const createdRow = dateRow('등록', item.createdAt, settings.showCreated);
-  const updatedRow = dateRow('수정', item.updatedAt, settings.showUpdated);
+  // 등록/수정 일시 행(설정 토글). 라벨은 모두 네 글자로 통일.
+  const createdRow = dateRow('등록일시', item.createdAt, settings.showCreated);
+  const updatedRow = dateRow('수정일시', item.updatedAt, settings.showUpdated);
 
-  card.append(timeEl, progressEl, metaRow, createdRow, updatedRow);
+  card.append(timeRow, progressEl, targetRow, createdRow, updatedRow);
 
   const lapsEl = document.createElement('ul');
   lapsEl.className = 'card__laps';
@@ -697,6 +701,7 @@ const setDensity = $('set-density');
 const setAddPosition = $('set-add-position');
 const setProgressStyle = $('set-progress-style');
 const setProgressBase = $('set-progress-base');
+const setShowTarget = $('set-show-target');
 const setShowCreated = $('set-show-created');
 const setShowUpdated = $('set-show-updated');
 const accentBox = $('set-accent');
@@ -721,6 +726,7 @@ function syncSettingControls(s) {
   setAddPosition.value = s.addPosition;
   setProgressStyle.value = s.progressStyle;
   setProgressBase.value = s.progressBase;
+  setShowTarget.checked = s.showTarget;
   setShowCreated.checked = s.showCreated;
   setShowUpdated.checked = s.showUpdated;
   for (const b of accentBox.children) {
@@ -760,7 +766,11 @@ setProgressBase.addEventListener('change', () => {
   changeSetting({ progressBase: setProgressBase.value });
   tick();
 });
-// 등록/수정 일시 표시 토글은 카드 구조(행 hidden)를 바꾸므로 rebuild로 반영.
+// 기준/등록/수정 일시 표시 토글은 카드 구조(행 hidden)를 바꾸므로 rebuild로 반영.
+setShowTarget.addEventListener('change', () => {
+  changeSetting({ showTarget: setShowTarget.checked });
+  rebuild();
+});
 setShowCreated.addEventListener('change', () => {
   changeSetting({ showCreated: setShowCreated.checked });
   rebuild();

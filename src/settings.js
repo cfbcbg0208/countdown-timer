@@ -28,8 +28,9 @@ export const DEFAULTS = {
   addPosition: 'top', // 새 카드는 기본적으로 목록 맨 앞에 추가
   progressStyle: 'both', // 남은 시간 진행률 그래픽: 'none'|'bar'|'pie'|'both'
   progressBase: 'created', // 진행률 0% 기준: 'created'(등록일시) | 'updated'(수정일시)
-  showCreated: false, // 카드에 등록일시 표시
-  showUpdated: false, // 카드에 수정일시 표시
+  showTarget: true, // 카드에 기준일시 표시
+  showCreated: true, // 카드에 등록일시 표시
+  showUpdated: true, // 카드에 수정일시 표시
 };
 
 const PROGRESS_STYLES = ['none', 'bar', 'pie', 'both'];
@@ -51,6 +52,7 @@ function coerce(s) {
     addPosition: o.addPosition === 'bottom' ? 'bottom' : 'top', // 그 외/누락 → top
     progressStyle: PROGRESS_STYLES.includes(o.progressStyle) ? o.progressStyle : DEFAULTS.progressStyle,
     progressBase: o.progressBase === 'updated' ? 'updated' : 'created', // 그 외/누락 → created
+    showTarget: !!o.showTarget,
     showCreated: !!o.showCreated,
     showUpdated: !!o.showUpdated,
   };

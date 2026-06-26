@@ -237,7 +237,7 @@ body {
 .lap__del:hover { color: var(--past); }
 .lap__del:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-/* 끝시간 인라인 에디터 */
+/* 제목/기준일시 인라인 에디터 */
 .card__editor {
   display: flex;
   flex-wrap: wrap;
@@ -253,6 +253,10 @@ body {
   color: var(--fg);
   font-size: 0.9rem;
 }
+/* 기준일시 자유입력 해석 결과 라이브 미리보기(에디터 줄바꿈 위치) */
+.card__editpreview { flex-basis: 100%; margin: 0; font-size: 0.78rem; color: var(--muted); }
+.card__editpreview[data-ok='yes'] { color: var(--future); }
+.card__editpreview[data-ok='no'] { color: var(--past); }
 .card__editinput[aria-invalid='true'] { border-color: var(--err); }
 .card__save,
 .card__cancel {

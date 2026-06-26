@@ -275,9 +275,14 @@ function removeLap(id, index) {
 }
 
 // ── 인라인 필드 편집: 제목/기준일시를 클릭하면 그 자리(필드 바로 아래)에 입력창이 열린다 ──
-// field: 'title'(텍스트) | 'date'(datetime-local). 한 카드에 하나만 연다.
+// field: 'title'(텍스트) | 'date'(자유 텍스트→해석). 한 카드에 하나만. 같은 필드 재클릭 시 닫힘(토글).
 function openFieldEditor(card, id, field) {
-  card.querySelector('.card__editor')?.remove(); // 기존 편집창 닫고 새로
+  const existing = card.querySelector('.card__editor');
+  if (existing) {
+    const sameField = existing.dataset.field === field;
+    existing.remove(); // 다른 필드면 닫고 새로, 같은 필드면 토글로 닫기만
+    if (sameField) return;
+  }
   const item = itemById(id);
   if (!item) return;
   const editor = document.createElement('div');
@@ -285,13 +290,15 @@ function openFieldEditor(card, id, field) {
   editor.dataset.field = field;
 
   const input = document.createElement('input');
+  input.type = 'text';
   input.className = 'card__editinput';
+  input.autocomplete = 'off';
   if (field === 'date') {
-    input.type = 'datetime-local';
-    input.step = '1';
-    input.value = toLocalISO(new Date(item.targetISO));
+    // 기준일시도 추가영역처럼 '자유 텍스트 → 해석' 방식. 현재값을 파싱 가능한 형태로 채운다.
+    input.value = toLocalISO(new Date(item.targetISO)).replace('T', ' ');
+    input.placeholder = '예: 260626금1800 · 2026-06-26 18:00 · 오후 6시';
+    input.spellcheck = false;
   } else {
-    input.type = 'text';
     input.value = item.label || '';
     input.placeholder = '제목 (비우면 제목 없음)';
     input.maxLength = 100;
@@ -316,6 +323,33 @@ function openFieldEditor(card, id, field) {
   cancel.className = 'card__cancel';
   cancel.textContent = '취소';
   editor.append(input, save, cancel);
+
+  // 기준일시: 입력하는 동안 해석 결과를 라이브 미리보기로 보여준다(추가영역과 동일 컨셉).
+  if (field === 'date') {
+    const preview = document.createElement('p');
+    preview.className = 'card__editpreview';
+    editor.append(preview);
+    const refresh = () => {
+      input.removeAttribute('aria-invalid');
+      const raw = input.value.trim();
+      if (!raw) {
+        preview.textContent = '';
+        delete preview.dataset.ok;
+        return;
+      }
+      const d = parseFlexible(raw);
+      if (!d) {
+        preview.textContent = '❌ 인식할 수 없는 형식';
+        preview.dataset.ok = 'no';
+        return;
+      }
+      const dir = DIRS[diff(d).direction];
+      preview.textContent = `✅ ${formatLocal(d)} · ${dir.emoji} ${dir.label}`;
+      preview.dataset.ok = 'yes';
+    };
+    input.addEventListener('input', refresh);
+    refresh();
+  }
 
   // 클릭한 필드 바로 아래에 삽입
   const anchor = field === 'date' ? card.querySelector('.card__meta') : card.querySelector('.card__label');

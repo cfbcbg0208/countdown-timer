@@ -144,7 +144,15 @@ body {
 
 .display__sign { font-weight: 800; margin-right: 0.12em; }
 
-.card__meta { margin-top: 0.35rem; font-size: 0.8rem; color: var(--muted); }
+/* 기준일시: 우측에 옅게(괄호) 부차 표시. 크기는 설정(--card-meta-size). */
+.card__meta {
+  margin-top: 0.35rem;
+  font-size: var(--card-meta-size, 0.8rem);
+  color: var(--muted);
+  opacity: 0.7;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 
 .card__del {
   position: absolute;
@@ -198,7 +206,7 @@ body {
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
-  font-size: 0.8rem;
+  font-size: var(--card-lap-size, 0.8rem);
   color: var(--muted);
   border-left: 2px solid var(--line);
   padding: 0.1rem 0 0.1rem 0.5rem;
@@ -210,7 +218,7 @@ body {
   border: none;
   color: var(--muted);
   cursor: pointer;
-  font-size: 0.85rem;
+  font-size: 1em;
   line-height: 1;
   padding: 0 0.2rem;
 }

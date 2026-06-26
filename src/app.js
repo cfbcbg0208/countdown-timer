@@ -90,6 +90,7 @@ function makeCard(item) {
   timeEl.className = 'card__time';
   const metaEl = document.createElement('div');
   metaEl.className = 'card__meta';
+  metaEl.title = '기준일시'; // 라벨 워딩은 숨기고 호버 시 의미 안내
   card.append(timeEl, metaEl);
 
   // 랩(스냅샷): 기준일시는 절대 불변. 지금 이 순간의 값을 '기록'으로 남긴다.
@@ -156,8 +157,8 @@ function updateCard(refs) {
   refs.card.classList.toggle('display--past', r.direction === 'past');
   refs.timeEl.innerHTML =
     (d.sign ? `<span class="display__sign">${d.sign}</span>` : '') + formatDuration(r);
-  // '남은 시간/지난 시간' 라벨은 제거(부호·색이 방향을 이미 표현). 이모지+기준일시만.
-  refs.metaEl.textContent = `${d.emoji} 기준일시 ${formatLocal(target)}`;
+  // 기준일시는 우측에 옅게·괄호로 부차 표시(워딩 생략, 의미는 호버 title로). 방향은 부호·색.
+  refs.metaEl.textContent = `(${formatLocal(target)})`;
   refs.dir = r.direction;
 }
 
@@ -204,8 +205,12 @@ function addFrom(source) {
     return;
   }
   const labelText = labelInput.value.trim();
-  add(localStorage, { label: labelText, targetISO: toLocalISO(date) });
+  const item = add(localStorage, { label: labelText, targetISO: toLocalISO(date) });
   list = load(localStorage);
+  // 추가 위치 설정: 기본 'top'이면 방금 추가한 항목을 맨 앞으로 재배치(영속).
+  if (settings.addPosition === 'top') {
+    list = reorder(localStorage, [item.id, ...list.filter((t) => t.id !== item.id).map((t) => t.id)]);
+  }
   labelInput.value = '';
   if (source === 'text') {
     textInput.value = '';
@@ -383,7 +388,10 @@ document.addEventListener('keydown', (e) => {
 const setTitleShown = $('set-title-shown');
 const setTitleScale = $('set-title-scale');
 const setTimerScale = $('set-timer-scale');
+const setMetaScale = $('set-meta-scale');
+const setLapScale = $('set-lap-scale');
 const setDensity = $('set-density');
+const setAddPosition = $('set-add-position');
 const accentBox = $('set-accent');
 const setReset = $('set-reset');
 
@@ -394,6 +402,8 @@ function applySettings(s) {
   appTitle.hidden = !s.titleShown;
   root.setProperty('--title-size', (1.35 * s.titleScale).toFixed(3) + 'rem');
   root.setProperty('--card-time-size', (1.9 * s.timerScale).toFixed(3) + 'rem');
+  root.setProperty('--card-meta-size', (0.8 * s.metaScale).toFixed(3) + 'rem');
+  root.setProperty('--card-lap-size', (0.8 * s.lapScale).toFixed(3) + 'rem');
   root.setProperty('--accent', ACCENTS[s.accent]);
   root.setProperty('--list-gap', DENSITY[s.density]);
 }
@@ -402,7 +412,10 @@ function syncSettingControls(s) {
   setTitleShown.checked = s.titleShown;
   setTitleScale.value = s.titleScale;
   setTimerScale.value = s.timerScale;
+  setMetaScale.value = s.metaScale;
+  setLapScale.value = s.lapScale;
   setDensity.value = s.density;
+  setAddPosition.value = s.addPosition;
   for (const b of accentBox.children) {
     b.setAttribute('aria-pressed', String(b.dataset.accent === s.accent));
   }
@@ -429,7 +442,10 @@ function changeSetting(patch) {
 setTitleShown.addEventListener('change', () => changeSetting({ titleShown: setTitleShown.checked }));
 setTitleScale.addEventListener('input', () => changeSetting({ titleScale: +setTitleScale.value }));
 setTimerScale.addEventListener('input', () => changeSetting({ timerScale: +setTimerScale.value }));
+setMetaScale.addEventListener('input', () => changeSetting({ metaScale: +setMetaScale.value }));
+setLapScale.addEventListener('input', () => changeSetting({ lapScale: +setLapScale.value }));
 setDensity.addEventListener('change', () => changeSetting({ density: setDensity.value }));
+setAddPosition.addEventListener('change', () => changeSetting({ addPosition: setAddPosition.value }));
 accentBox.addEventListener('click', (e) => {
   const b = e.target.closest('.swatch');
   if (b) changeSetting({ accent: b.dataset.accent });

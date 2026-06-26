@@ -1,5 +1,6 @@
 // 디자인 설정 저장소(로컬 전용). storage(localStorage 호환)를 주입받아 테스트 가능하게 한다.
-// 값: titleShown(bool) · titleScale/timerScale(배수) · accent(키) · density(키)
+// 값: titleShown(bool) · titleScale/timerScale/metaScale/lapScale(배수) · accent(키) · density(키)
+//     · addPosition('top'|'bottom': 새 카드 추가 위치)
 const KEY = 'settings';
 
 // 강조색 프리셋(키 → HEX). 남은=초록/지난=빨강 규칙과는 별개.
@@ -22,8 +23,11 @@ export const DEFAULTS = {
   titleShown: false, // 요청: '카운트다운 타이머' 제목 기본 숨김
   titleScale: 1,
   timerScale: 1,
+  metaScale: 1, // 기준일시 글자 크기 배수
+  lapScale: 1, // 기록(랩) 글자 크기 배수
   accent: 'blue',
   density: 'normal',
+  addPosition: 'top', // 새 카드는 기본적으로 목록 맨 앞에 추가
 };
 
 const clampScale = (n) => {
@@ -38,8 +42,11 @@ function coerce(s) {
     titleShown: !!o.titleShown,
     titleScale: clampScale(o.titleScale),
     timerScale: clampScale(o.timerScale),
+    metaScale: clampScale(o.metaScale),
+    lapScale: clampScale(o.lapScale),
     accent: ACCENTS[o.accent] ? o.accent : DEFAULTS.accent,
     density: DENSITY[o.density] ? o.density : DEFAULTS.density,
+    addPosition: o.addPosition === 'bottom' ? 'bottom' : 'top', // 그 외/누락 → top
   };
 }
 

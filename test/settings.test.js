@@ -27,11 +27,20 @@ test('update: 일부 키만 갱신 + 병합 영속', () => {
   assert.equal(s.density, DEFAULTS.density); // 건드리지 않은 값 보존
 });
 
-test('범위 밖 scale → 클램프', () => {
+test('범위 밖 scale → 클램프(meta/lap 포함)', () => {
   const st = fakeStorage();
   assert.equal(update(st, { titleScale: 99 }).titleScale, SCALE_MAX);
   assert.equal(update(st, { timerScale: 0 }).timerScale, SCALE_MIN);
   assert.equal(update(st, { titleScale: 'x' }).titleScale, 1); // 숫자 아님 → 1
+  assert.equal(update(st, { metaScale: 99 }).metaScale, SCALE_MAX);
+  assert.equal(update(st, { lapScale: 0 }).lapScale, SCALE_MIN);
+});
+
+test('addPosition: 기본 top, bottom만 허용, 그 외 → top', () => {
+  const st = fakeStorage();
+  assert.equal(load(st).addPosition, 'top'); // 기본값
+  assert.equal(update(st, { addPosition: 'bottom' }).addPosition, 'bottom');
+  assert.equal(update(st, { addPosition: 'sideways' }).addPosition, 'top'); // 잘못된 값 폴백
 });
 
 test('잘못된 accent/density → 기본값 폴백', () => {

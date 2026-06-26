@@ -109,6 +109,14 @@
               <input type="range" id="set-timer-scale" class="set-row__ctrl" min="0.8" max="1.8" step="0.1" />
             </div>
             <div class="set-row">
+              <label class="set-row__name" for="set-meta-scale">기준일시 크기</label>
+              <input type="range" id="set-meta-scale" class="set-row__ctrl" min="0.8" max="1.8" step="0.1" />
+            </div>
+            <div class="set-row">
+              <label class="set-row__name" for="set-lap-scale">기록 글자 크기</label>
+              <input type="range" id="set-lap-scale" class="set-row__ctrl" min="0.8" max="1.8" step="0.1" />
+            </div>
+            <div class="set-row">
               <span class="set-row__name" id="set-accent-label">강조색</span>
               <div class="swatches" id="set-accent" role="group" aria-labelledby="set-accent-label"></div>
             </div>
@@ -118,6 +126,13 @@
                 <option value="compact">좁게</option>
                 <option value="normal">보통</option>
                 <option value="comfortable">넓게</option>
+              </select>
+            </div>
+            <div class="set-row">
+              <label class="set-row__name" for="set-add-position">새 카드 추가 위치</label>
+              <select id="set-add-position" class="set-row__ctrl">
+                <option value="top">맨 앞(위)</option>
+                <option value="bottom">맨 뒤(아래)</option>
               </select>
             </div>
             <button type="button" class="set-reset" id="set-reset">기본값으로 되돌리기</button>

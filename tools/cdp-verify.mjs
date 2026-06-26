@@ -130,14 +130,17 @@ async function main() {
   await browser.send('Page.navigate', { url: BASE + '/' });
   await until(() => evalJS(browser, 'document.readyState === "complete"'), { label: 'load' });
 
-  // 5) 샘플 타임카드 시드 후 리로드(미래 1개 → 진행률 바/칩 검증)
+  // 5) 샘플 타임카드 시드 후 리로드(오늘 +3h = 미래·이번달 → 진행률/칩 + 캘린더 검증 둘 다)
+  const t = new Date(Date.now() + 3 * 3600 * 1000);
+  const p = (n) => String(n).padStart(2, '0');
+  const targetISO = `${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}T${p(t.getHours())}:${p(t.getMinutes())}:00`;
   const seed = JSON.stringify([
     {
       id: 'verify-1',
       label: '검증카드',
-      targetISO: '2030-01-01T12:00:00',
-      createdAt: '2026-06-27T00:00:00.000Z',
-      updatedAt: '2026-06-27T00:00:00.000Z',
+      targetISO,
+      createdAt: '2026-06-20T00:00:00.000Z',
+      updatedAt: '2026-06-25T00:00:00.000Z',
     },
   ]);
   await evalJS(browser, `localStorage.setItem('countdowns', ${JSON.stringify(seed)}); location.reload();`);
@@ -192,8 +195,46 @@ async function main() {
   const calShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-calendar.png'), Buffer.from(calShot.data, 'base64'));
 
+  // 9) P4: 기준 셀렉트 + 항목 클릭 메뉴 + 날짜/단독 필터
+  const p4a = await evalJS(
+    browser,
+    `(() => ({
+       basisOpts: document.querySelectorAll('#cal-basis option').length,
+       calItems: document.querySelectorAll('#cal-grid .cal__item').length,
+     }))()`,
+  );
+  if (p4a.basisOpts !== 3) fails.push(`기준 옵션 3 기대, 실제 ${p4a.basisOpts}`);
+  if (p4a.calItems < 1) fails.push('캘린더에 시드 항목이 안 보임(이번달 매핑 실패)');
+  // 캘린더 항목 클릭 → 메뉴
+  await evalJS(browser, "document.querySelector('#cal-grid .cal__item')?.click()");
+  await until(() => evalJS(browser, "document.querySelectorAll('.item-menu__btn').length"), {
+    label: 'item menu',
+  });
+  const menuBtns = await evalJS(browser, "document.querySelectorAll('.item-menu__btn').length");
+  if (menuBtns !== 3) fails.push(`항목 메뉴 버튼 3 기대, 실제 ${menuBtns}`);
+  // '단독 보기' 클릭 → 목록 필터 + 캘린더 닫힘 + 배너
+  await evalJS(
+    browser,
+    "[...document.querySelectorAll('.item-menu__btn')].find(b=>b.textContent.includes('단독'))?.click()",
+  );
+  await until(() => evalJS(browser, "document.getElementById('group-banner').hidden === false"), {
+    label: 'filter banner',
+  });
+  const p4b = await evalJS(
+    browser,
+    `(() => ({
+       banner: !document.getElementById('group-banner').hidden,
+       cards: document.querySelectorAll('#list .card').length,
+       calClosed: document.getElementById('calendar-drawer').hidden,
+     }))()`,
+  );
+  if (!p4b.banner) fails.push('단독 보기 배너 없음');
+  if (p4b.cards !== 1) fails.push(`단독 보기 카드 1 기대, 실제 ${p4b.cards}`);
+  if (!p4b.calClosed) fails.push('단독 보기 후 캘린더 안 닫힘');
+
   console.log('카드 검증:', JSON.stringify(checks, null, 2));
   console.log('캘린더 검증:', JSON.stringify(cal, null, 2));
+  console.log('P4 검증:', JSON.stringify({ ...p4a, menuBtns, ...p4b }, null, 2));
   console.log('스크린샷:', out, '+ verify-calendar.png');
   if (fails.length) {
     console.error('❌ 실패:\n - ' + fails.join('\n - '));

@@ -21,6 +21,7 @@ import {
   addGroup,
   removeGroup,
   removeItemFromGroups,
+  groupsForItem,
 } from './store.js';
 import {
   load as loadSettings,
@@ -50,6 +51,7 @@ const calMonthEl = $('cal-month');
 const calGridEl = $('cal-grid');
 const calPrevBtn = $('cal-prev');
 const calNextBtn = $('cal-next');
+const calBasisSel = $('cal-basis');
 const groupsNewBtn = $('groups-new');
 const groupsListEl = $('groups-list');
 const groupsEmpty = $('groups-empty');
@@ -62,10 +64,12 @@ const groupNameInput = $('group-name');
 const selectSaveBtn = $('select-save');
 const selectCancelBtn = $('select-cancel');
 
-// 조합(그룹) 상태: 필터 보기 중인 그룹 id, 다중 선택 모드 + 선택된 카드 id 집합.
-let activeGroupId = null;
+// 보기 필터: null=전체 | {kind:'group',id} | {kind:'date',key,basis} | {kind:'item',id}.
+// (조합 보기·캘린더 날짜 보기·항목 단독 보기를 하나의 필터로 통합)
+let viewFilter = null;
 let selectMode = false;
 const selectedIds = new Set();
+const BASIS_LABEL = { target: '기준일시', created: '등록일시', updated: '수정일시' };
 
 // 부호는 D-Day 관례: 남은=− (D-7), 지난=+ (D+3). 색은 부호와 별개(남은=초록/지난=빨강).
 const DIRS = {
@@ -278,20 +282,38 @@ function updateProgress(refs, item, target, direction) {
 }
 
 // 데이터 변경 시: 저장된(수동) 순서 그대로 목록 DOM 재구성.
-// 조합 필터(activeGroupId)가 있으면 그 그룹 멤버만 보여준다.
+// viewFilter가 있으면 그에 맞는 항목만 보여준다(조합/날짜/항목).
 function rebuild() {
   let shown = list;
-  if (activeGroupId) {
-    const g = loadGroups(localStorage).find((x) => x.id === activeGroupId);
+  if (viewFilter?.kind === 'group') {
+    const g = loadGroups(localStorage).find((x) => x.id === viewFilter.id);
     if (g) shown = list.filter((t) => g.itemIds.includes(t.id));
-    else activeGroupId = null; // 그룹이 사라졌으면 필터 해제
+    else viewFilter = null; // 그룹이 사라졌으면 필터 해제
+  } else if (viewFilter?.kind === 'date') {
+    shown = list.filter((t) => dateKeyOf(t, viewFilter.basis) === viewFilter.key);
+  } else if (viewFilter?.kind === 'item') {
+    shown = list.filter((t) => t.id === viewFilter.id);
   }
-  emptyHint.hidden = shown.length > 0 || !!activeGroupId;
+  emptyHint.hidden = shown.length > 0 || !!viewFilter;
   refsList = shown.map(makeCard);
   listEl.replaceChildren(...refsList.map((r) => r.card));
   if (selectMode) {
     for (const r of refsList) r.card.classList.toggle('card--selected', selectedIds.has(r.item.id));
   }
+}
+
+// 보기 필터를 적용/해제하고 배너·드로어·목록을 갱신.
+function applyFilter(filter, bannerText) {
+  viewFilter = filter;
+  groupBanner.hidden = !filter;
+  if (filter) groupBannerName.textContent = bannerText;
+  closeDrawer(); // 캘린더/조합 드로어가 열려 있으면 닫고 목록으로
+  rebuild();
+}
+function clearViewFilter() {
+  viewFilter = null;
+  groupBanner.hidden = true;
+  rebuild();
 }
 
 // 매초: 각 카드 시간/색만 갱신. 수동 순서이므로 경계 넘어도 재정렬하지 않음.
@@ -345,8 +367,8 @@ function addFrom(source) {
     textInput.value = '';
     updatePreview();
   }
-  // 조합 필터 보기 중이었다면 해제해 새 카드가 보이게.
-  activeGroupId = null;
+  // 보기 필터 중이었다면 해제해 새 카드가 보이게.
+  viewFilter = null;
   groupBanner.hidden = true;
   rebuild();
   closeDrawer();
@@ -637,23 +659,13 @@ function renderGroups() {
 function viewGroup(id) {
   const g = loadGroups(localStorage).find((x) => x.id === id);
   if (!g) return;
-  activeGroupId = id;
-  groupBanner.hidden = false;
-  groupBannerName.textContent = `🗂️ ${g.name || '조합'} · ${(g.itemIds || []).length}개`;
-  closeDrawer();
-  rebuild();
-}
-
-function clearGroupView() {
-  activeGroupId = null;
-  groupBanner.hidden = true;
-  rebuild();
+  applyFilter({ kind: 'group', id }, `🗂️ ${g.name || '조합'} · ${(g.itemIds || []).length}개`);
 }
 
 function enterSelectMode() {
   selectMode = true;
   selectedIds.clear();
-  activeGroupId = null; // 전체 카드에서 선택하도록 필터 해제
+  viewFilter = null; // 전체 카드에서 선택하도록 필터 해제
   groupBanner.hidden = true;
   document.body.classList.add('select-mode');
   selectBar.hidden = false;
@@ -699,7 +711,7 @@ groupsListEl.addEventListener('click', (e) => {
   if (view) viewGroup(view.dataset.id);
   else if (del) {
     removeGroup(localStorage, del.dataset.id);
-    if (activeGroupId === del.dataset.id) clearGroupView();
+    if (viewFilter?.kind === 'group' && viewFilter.id === del.dataset.id) clearViewFilter();
     renderGroups();
     srStatus.textContent = '조합 삭제됨';
   }
@@ -712,19 +724,20 @@ groupNameInput.addEventListener('keydown', (e) => {
     saveGroup();
   }
 });
-groupBannerClear.addEventListener('click', clearGroupView);
+groupBannerClear.addEventListener('click', clearViewFilter);
 
-// ── 캘린더(P3): 기준일시 기준 월 그리드. 각 날에 제목 미니목록 + "+N" ──
+// ── 캘린더(P3/P4): 선택 기준(기준/등록/수정)별 월 그리드. 각 날 제목 미니목록 + "+N" ──
 let calYear = new Date().getFullYear();
 let calMonth0 = new Date().getMonth();
+let calBasis = 'target'; // 'target'|'created'|'updated'
 const WD = ['일', '월', '화', '수', '목', '금', '토'];
 const pad2c = (n) => String(n).padStart(2, '0');
 
 function renderCalendar() {
   calMonthEl.textContent = `${calYear}년 ${calMonth0 + 1}월`;
-  const byDate = new Map(); // 기준일시 기준 날짜키 → 항목들
+  const byDate = new Map(); // 선택 기준(calBasis) 날짜키 → 항목들
   for (const it of list) {
-    const k = dateKeyOf(it, 'target');
+    const k = dateKeyOf(it, calBasis);
     if (!k) continue;
     if (!byDate.has(k)) byDate.set(k, []);
     byDate.get(k).push(it);
@@ -751,12 +764,14 @@ function renderCalendar() {
       cell.append(num);
       const items = byDate.get(key) || [];
       if (items.length) {
+        cell.classList.add('cal__day--has');
         const ul = document.createElement('ul');
         ul.className = 'cal__items';
         const MAX = 3;
         for (const it of items.slice(0, MAX)) {
           const li = document.createElement('li');
           li.className = 'cal__item';
+          li.dataset.id = it.id;
           li.textContent = it.label || '(제목 없음)';
           li.title = it.label || '';
           ul.append(li);
@@ -787,6 +802,86 @@ function shiftMonth(delta) {
   renderCalendar();
 }
 
+// 날짜별 보기 / 항목 단독·날짜 보기 적용(필터 + 캘린더 닫고 목록으로).
+function viewDate(key, basis) {
+  applyFilter({ kind: 'date', key, basis }, `🗓️ ${key} · ${BASIS_LABEL[basis]} 기준`);
+}
+function viewItemAlone(id) {
+  const it = itemById(id);
+  applyFilter({ kind: 'item', id }, `🔎 ${it?.label || '(제목 없음)'} · 단독`);
+}
+
+// 항목 클릭 메뉴: 단독 / 관련 조합 / 날짜 보기.
+let itemMenuEl = null;
+function closeItemMenu() {
+  itemMenuEl?.remove();
+  itemMenuEl = null;
+}
+function showItemMenu(id, x, y) {
+  closeItemMenu();
+  const it = itemById(id);
+  if (!it) return;
+  const menu = document.createElement('div');
+  menu.className = 'item-menu';
+  const mk = (label, fn) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'item-menu__btn';
+    b.textContent = label;
+    b.addEventListener('click', () => {
+      closeItemMenu();
+      fn();
+    });
+    return b;
+  };
+  menu.append(
+    mk('🔎 단독 보기', () => viewItemAlone(id)),
+    mk('🗂️ 관련 조합', () => viewRelatedGroups(id)),
+    mk('🗓️ 날짜 보기', () => viewDate(dateKeyOf(it, calBasis), calBasis)),
+  );
+  document.body.append(menu);
+  // 화면 밖으로 넘치지 않게 위치 보정
+  const w = 180;
+  menu.style.left = `${Math.min(x, window.innerWidth - w - 8)}px`;
+  menu.style.top = `${y}px`;
+  itemMenuEl = menu;
+}
+function viewRelatedGroups(id) {
+  const groups = groupsForItem(loadGroups(localStorage), id);
+  if (groups.length === 0) {
+    srStatus.textContent = '관련 조합 없음';
+    alert('이 타임카드가 속한 조합이 없습니다.');
+  } else if (groups.length === 1) {
+    viewGroup(groups[0].id);
+  } else {
+    renderGroups(); // 여러 개면 조합 패널에서 선택
+    openDrawer(groupsDrawer, groupsFab);
+  }
+}
+// 메뉴 밖 클릭/Esc로 닫기
+document.addEventListener('click', (e) => {
+  if (itemMenuEl && !e.target.closest('.item-menu')) closeItemMenu();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeItemMenu();
+});
+
+// 캘린더 그리드 클릭: 항목(미니 제목)→메뉴, 빈 날짜(항목 있는 칸)→날짜별 보기.
+calGridEl.addEventListener('click', (e) => {
+  const item = e.target.closest('.cal__item');
+  if (item) {
+    e.stopPropagation(); // 메뉴 즉시 닫힘 방지
+    showItemMenu(item.dataset.id, e.clientX, e.clientY);
+    return;
+  }
+  const day = e.target.closest('.cal__day--has');
+  if (day) viewDate(day.dataset.date, calBasis);
+});
+
+calBasisSel.addEventListener('change', () => {
+  calBasis = calBasisSel.value;
+  renderCalendar();
+});
 calPrevBtn.addEventListener('click', () => shiftMonth(-1));
 calNextBtn.addEventListener('click', () => shiftMonth(1));
 function openCalendar() {
@@ -962,7 +1057,7 @@ function commitOrder() {
 listEl.addEventListener('pointerdown', (e) => {
   const handle = e.target.closest('.card__handle');
   if (!handle) return;
-  if (selectMode || activeGroupId) return; // 선택 모드·조합 필터 보기에선 재배치 비활성
+  if (selectMode || viewFilter) return; // 선택 모드·필터 보기에선 재배치 비활성
   const card = handle.closest('.card');
   if (!card) return;
   e.preventDefault();
@@ -982,7 +1077,7 @@ const KEY_DELTA = { ArrowUp: -1, ArrowDown: 1, Home: -Infinity, End: Infinity };
 listEl.addEventListener('keydown', (e) => {
   const handle = e.target.closest('.card__handle');
   if (!handle || !(e.key in KEY_DELTA)) return;
-  if (selectMode || activeGroupId) return; // 선택 모드·조합 필터 보기에선 재배치 비활성
+  if (selectMode || viewFilter) return; // 선택 모드·필터 보기에선 재배치 비활성
   e.preventDefault();
   const id = handle.closest('.card').dataset.id;
   const ids = [...listEl.querySelectorAll('.card')].map((c) => c.dataset.id);

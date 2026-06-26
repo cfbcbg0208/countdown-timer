@@ -45,9 +45,6 @@ body {
   gap: 1.1rem;
 }
 
-.app__title { margin: 0; font-size: var(--title-size, 1.35rem); font-weight: 700; text-align: center; }
-.app__title[hidden] { display: none; }
-
 /* ── 추가 영역 ───────────────────────────── */
 .add { display: flex; flex-direction: column; gap: 0.7rem; }
 
@@ -130,7 +127,26 @@ body {
 .card.display--future { border-color: var(--future); }
 .card.display--past { border-color: var(--past); }
 
-.card__label { display: block; font-size: 0.85rem; color: var(--muted); font-weight: 600; margin-bottom: 0.25rem; }
+/* 제목: 클릭하면 바로 수정되는 버튼(평소엔 텍스트처럼). 클릭 영역=글자 폭. */
+.card__label {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 0 0.25rem -0.25rem;
+  padding: 0.1rem 0.25rem;
+  border: none;
+  background: none;
+  border-radius: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+}
+.card__label:hover { color: var(--fg); background: rgba(255, 255, 255, 0.06); }
+.card__label:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.card__label--empty { font-weight: 500; font-style: italic; opacity: 0.7; }
 
 .card__time {
   font-size: var(--card-time-size, 1.9rem);
@@ -145,12 +161,25 @@ body {
 .display__sign { font-weight: 800; margin-right: 0.12em; }
 
 /* 기준일시: 값은 좌측 정렬 유지, '기준일시' 라벨만 값 뒤에 옅게. 크기는 설정(--card-meta-size). */
+/* 기준일시: 값은 좌측 정렬 유지. 클릭하면 바로 수정되는 버튼. 클릭 영역=글자 폭. */
 .card__meta {
-  margin-top: 0.35rem;
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0.35rem 0 0 -0.25rem;
+  padding: 0.1rem 0.25rem;
+  border: none;
+  background: none;
+  border-radius: 0.35rem;
   font-size: var(--card-meta-size, 0.8rem);
+  font-family: inherit;
   color: var(--muted);
+  text-align: left;
   font-variant-numeric: tabular-nums;
+  cursor: pointer;
 }
+.card__meta:hover { color: var(--fg); background: rgba(255, 255, 255, 0.06); }
+.card__meta:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .card__meta-label { opacity: 0.6; font-size: 0.9em; }
 
 .card__del {
@@ -167,22 +196,6 @@ body {
   cursor: pointer;
 }
 .card__del:hover { color: var(--past); background: rgba(248, 113, 113, 0.14); }
-
-/* 끝시간 수정 버튼: 삭제(✕) 왼쪽 */
-.card__edit {
-  position: absolute;
-  top: 0.45rem;
-  right: 2rem;
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  font-size: 1rem;
-  line-height: 1;
-  padding: 0.25rem 0.4rem;
-  border-radius: 0.4rem;
-  cursor: pointer;
-}
-.card__edit:hover { color: var(--accent); background: rgba(91, 140, 255, 0.14); }
 
 /* 랩(기록) 알약 버튼(메타 아래) */
 .card__lap {
@@ -255,7 +268,7 @@ body {
 .hint { margin: 0; text-align: center; color: var(--muted); font-size: 0.85rem; }
 
 /* ── 드래그 핸들 / 드래그 중 카드 ─────────────── */
-.card { padding-left: 2.9rem; padding-right: 3.7rem; } /* 좌측 핸들·우측 버튼(✎ ✕) 자리 */
+.card { padding-left: 2.9rem; padding-right: 2.4rem; } /* 좌측 핸들·우측 삭제(✕) 자리 */
 
 /* 카드 왼쪽 전체 높이를 잡는 그립 → 터치 타깃 충분(≈46px 폭 × 카드 높이) */
 .card__handle {

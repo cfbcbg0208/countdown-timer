@@ -11,27 +11,26 @@ function fakeStorage() {
   };
 }
 
-test('빈 저장소 → 기본값(제목 숨김)', () => {
+test('빈 저장소 → 기본값', () => {
   const s = load(fakeStorage());
   assert.deepEqual(s, DEFAULTS);
-  assert.equal(s.titleShown, false);
 });
 
 test('update: 일부 키만 갱신 + 병합 영속', () => {
   const st = fakeStorage();
-  update(st, { titleShown: true });
+  update(st, { timerScale: 1.5 });
   update(st, { accent: 'pink' });
   const s = load(st);
-  assert.equal(s.titleShown, true);
+  assert.equal(s.timerScale, 1.5);
   assert.equal(s.accent, 'pink');
   assert.equal(s.density, DEFAULTS.density); // 건드리지 않은 값 보존
 });
 
-test('범위 밖 scale → 클램프(meta/lap 포함)', () => {
+test('범위 밖 scale → 클램프(timer/meta/lap)', () => {
   const st = fakeStorage();
-  assert.equal(update(st, { titleScale: 99 }).titleScale, SCALE_MAX);
+  assert.equal(update(st, { timerScale: 99 }).timerScale, SCALE_MAX);
   assert.equal(update(st, { timerScale: 0 }).timerScale, SCALE_MIN);
-  assert.equal(update(st, { titleScale: 'x' }).titleScale, 1); // 숫자 아님 → 1
+  assert.equal(update(st, { metaScale: 'x' }).metaScale, 1); // 숫자 아님 → 1
   assert.equal(update(st, { metaScale: 99 }).metaScale, SCALE_MAX);
   assert.equal(update(st, { lapScale: 0 }).lapScale, SCALE_MIN);
 });
@@ -58,7 +57,7 @@ test('손상된 JSON → 기본값으로 안전 복구', () => {
 
 test('reset: 기본값으로 되돌림', () => {
   const st = fakeStorage();
-  update(st, { titleShown: true, timerScale: 1.5, accent: 'green' });
+  update(st, { metaScale: 1.4, timerScale: 1.5, accent: 'green' });
   assert.deepEqual(reset(st), DEFAULTS);
   assert.deepEqual(load(st), DEFAULTS);
 });

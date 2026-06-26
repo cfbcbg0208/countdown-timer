@@ -29,8 +29,6 @@
   </head>
   <body>
     <main class="app">
-      <h1 class="app__title" id="app-title" hidden>⏳ 카운트다운 타이머</h1>
-
       <!-- 추가 영역: 평소 숨김, 우하단 ＋ 버튼(FAB)으로 열리는 드로어 -->
       <div class="drawer" id="drawer" hidden>
         <div class="drawer__backdrop" data-close></div>
@@ -96,14 +94,6 @@
             <button class="drawer__close" type="button" data-close aria-label="닫기">✕</button>
           </header>
           <div class="settings">
-            <div class="set-row">
-              <label class="set-row__name" for="set-title-shown">제목 표시</label>
-              <input type="checkbox" id="set-title-shown" class="set-row__ctrl" />
-            </div>
-            <div class="set-row">
-              <label class="set-row__name" for="set-title-scale">제목 크기</label>
-              <input type="range" id="set-title-scale" class="set-row__ctrl" min="0.8" max="1.8" step="0.1" />
-            </div>
             <div class="set-row">
               <label class="set-row__name" for="set-timer-scale">타이머 숫자 크기</label>
               <input type="range" id="set-timer-scale" class="set-row__ctrl" min="0.8" max="1.8" step="0.1" />

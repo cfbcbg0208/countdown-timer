@@ -19,7 +19,6 @@ const pickerInput = $('picker-input');
 const listEl = $('list');
 const emptyHint = $('empty-hint');
 const srStatus = $('sr-status');
-const appTitle = $('app-title');
 const fab = $('fab');
 const drawer = $('drawer');
 const settingsFab = $('settings-fab');
@@ -61,15 +60,6 @@ function makeCard(item) {
   handle.textContent = '≡';
   card.append(handle);
 
-  const edit = document.createElement('button');
-  edit.className = 'card__edit';
-  edit.type = 'button';
-  edit.dataset.id = item.id;
-  edit.title = '끝시간 수정';
-  edit.setAttribute('aria-label', `${item.label || '카운트다운'} 끝시간 수정`);
-  edit.textContent = '✎';
-  card.append(edit);
-
   const del = document.createElement('button');
   del.className = 'card__del';
   del.type = 'button';
@@ -79,17 +69,22 @@ function makeCard(item) {
   del.textContent = '✕';
   card.append(del);
 
-  if (item.label) {
-    const labelEl = document.createElement('span');
-    labelEl.className = 'card__label';
-    labelEl.textContent = item.label;
-    card.append(labelEl);
-  }
+  // 제목: 클릭하면 그 자리에서 바로 수정. 비어 있으면 '＋ 제목' 안내로 추가 유도.
+  const labelEl = document.createElement('button');
+  labelEl.type = 'button';
+  labelEl.className = 'card__label' + (item.label ? '' : ' card__label--empty');
+  labelEl.title = '클릭하여 제목 수정';
+  labelEl.setAttribute('aria-label', `제목 수정: ${item.label || '없음'}`);
+  labelEl.textContent = item.label || '＋ 제목';
+  card.append(labelEl);
 
   const timeEl = document.createElement('div');
   timeEl.className = 'card__time';
-  const metaEl = document.createElement('div');
+  // 기준일시: 클릭하면 그 자리에서 바로 수정(datetime-local).
+  const metaEl = document.createElement('button');
+  metaEl.type = 'button';
   metaEl.className = 'card__meta';
+  metaEl.title = '클릭하여 기준일시 수정';
   card.append(timeEl, metaEl);
 
   // 랩(스냅샷): 기준일시는 절대 불변. 지금 이 순간의 값을 '기록'으로 남긴다.
@@ -279,28 +274,39 @@ function removeLap(id, index) {
   srStatus.textContent = '기록 삭제됨';
 }
 
-// 끝시간 인라인 에디터 열기/닫기/저장.
-function openEditor(card, id) {
-  if (card.querySelector('.card__editor')) return;
+// ── 인라인 필드 편집: 제목/기준일시를 클릭하면 그 자리(필드 바로 아래)에 입력창이 열린다 ──
+// field: 'title'(텍스트) | 'date'(datetime-local). 한 카드에 하나만 연다.
+function openFieldEditor(card, id, field) {
+  card.querySelector('.card__editor')?.remove(); // 기존 편집창 닫고 새로
   const item = itemById(id);
   if (!item) return;
   const editor = document.createElement('div');
   editor.className = 'card__editor';
+  editor.dataset.field = field;
+
   const input = document.createElement('input');
-  input.type = 'datetime-local';
-  input.step = '1';
   input.className = 'card__editinput';
-  input.value = toLocalISO(new Date(item.targetISO));
+  if (field === 'date') {
+    input.type = 'datetime-local';
+    input.step = '1';
+    input.value = toLocalISO(new Date(item.targetISO));
+  } else {
+    input.type = 'text';
+    input.value = item.label || '';
+    input.placeholder = '제목 (비우면 제목 없음)';
+    input.maxLength = 100;
+  }
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      commitEdit(card, id);
+      commitField(card, id, field);
     } else if (e.key === 'Escape') {
       e.preventDefault();
       e.stopPropagation();
-      closeEditor(card);
+      editor.remove();
     }
   });
+
   const save = document.createElement('button');
   save.type = 'button';
   save.className = 'card__save';
@@ -310,25 +316,30 @@ function openEditor(card, id) {
   cancel.className = 'card__cancel';
   cancel.textContent = '취소';
   editor.append(input, save, cancel);
-  card.append(editor);
+
+  // 클릭한 필드 바로 아래에 삽입
+  const anchor = field === 'date' ? card.querySelector('.card__meta') : card.querySelector('.card__label');
+  anchor.after(editor);
   input.focus();
+  input.select?.();
 }
 
-function closeEditor(card) {
-  card.querySelector('.card__editor')?.remove();
-}
-
-function commitEdit(card, id) {
-  const input = card.querySelector('.card__editinput');
+function commitField(card, id, field) {
+  const input = card.querySelector('.card__editor .card__editinput');
   if (!input) return;
-  const date = parseFlexible(input.value);
-  if (!date) {
-    input.setAttribute('aria-invalid', 'true');
-    return;
+  if (field === 'date') {
+    const date = parseFlexible(input.value);
+    if (!date) {
+      input.setAttribute('aria-invalid', 'true');
+      return;
+    }
+    list = updateItem(localStorage, id, { targetISO: toLocalISO(date) });
+    srStatus.textContent = '기준일시 변경됨';
+  } else {
+    list = updateItem(localStorage, id, { label: input.value.trim() });
+    srStatus.textContent = '제목 변경됨';
   }
-  list = updateItem(localStorage, id, { targetISO: toLocalISO(date) });
   rebuild();
-  srStatus.textContent = '끝시간 변경됨';
 }
 
 listEl.addEventListener('click', (e) => {
@@ -344,12 +355,14 @@ listEl.addEventListener('click', (e) => {
     removeLap(id, +lapDel.dataset.index);
   } else if (e.target.closest('.card__lap')) {
     addLap(id);
-  } else if (e.target.closest('.card__edit')) {
-    openEditor(card, id);
   } else if (e.target.closest('.card__save')) {
-    commitEdit(card, id);
+    commitField(card, id, card.querySelector('.card__editor')?.dataset.field);
   } else if (e.target.closest('.card__cancel')) {
-    closeEditor(card);
+    card.querySelector('.card__editor')?.remove();
+  } else if (e.target.closest('.card__label')) {
+    openFieldEditor(card, id, 'title');
+  } else if (e.target.closest('.card__meta')) {
+    openFieldEditor(card, id, 'date');
   }
 });
 
@@ -385,8 +398,6 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ── 디자인 설정: 저장 → CSS 변수/제목 표시에 즉시 반영 ──
-const setTitleShown = $('set-title-shown');
-const setTitleScale = $('set-title-scale');
 const setTimerScale = $('set-timer-scale');
 const setMetaScale = $('set-meta-scale');
 const setLapScale = $('set-lap-scale');
@@ -399,8 +410,6 @@ let settings = loadSettings(localStorage);
 
 function applySettings(s) {
   const root = document.documentElement.style;
-  appTitle.hidden = !s.titleShown;
-  root.setProperty('--title-size', (1.35 * s.titleScale).toFixed(3) + 'rem');
   root.setProperty('--card-time-size', (1.9 * s.timerScale).toFixed(3) + 'rem');
   root.setProperty('--card-meta-size', (0.8 * s.metaScale).toFixed(3) + 'rem');
   root.setProperty('--card-lap-size', (0.8 * s.lapScale).toFixed(3) + 'rem');
@@ -409,8 +418,6 @@ function applySettings(s) {
 }
 
 function syncSettingControls(s) {
-  setTitleShown.checked = s.titleShown;
-  setTitleScale.value = s.titleScale;
   setTimerScale.value = s.timerScale;
   setMetaScale.value = s.metaScale;
   setLapScale.value = s.lapScale;
@@ -439,8 +446,6 @@ function changeSetting(patch) {
   syncSettingControls(settings);
 }
 
-setTitleShown.addEventListener('change', () => changeSetting({ titleShown: setTitleShown.checked }));
-setTitleScale.addEventListener('input', () => changeSetting({ titleScale: +setTitleScale.value }));
 setTimerScale.addEventListener('input', () => changeSetting({ timerScale: +setTimerScale.value }));
 setMetaScale.addEventListener('input', () => changeSetting({ metaScale: +setMetaScale.value }));
 setLapScale.addEventListener('input', () => changeSetting({ lapScale: +setLapScale.value }));

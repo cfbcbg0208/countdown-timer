@@ -10,6 +10,7 @@
   --past: #f87171;   /* 지난(과거) = 빨강 */
   --ok: #34d399;
   --err: #f87171;
+  --track: #2c3358;  /* 진행률 바/파이의 빈(미진행) 부분 */
 }
 
 * { box-sizing: border-box; }
@@ -176,6 +177,37 @@ kbd {
 .card.display--past .card__time { color: var(--past); }
 
 .display__sign { font-weight: 800; margin-right: 0.12em; }
+
+/* 남은 시간 진행률(미래 카드만): 바·파이. data-style로 표시 제어 */
+.card__progress {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.45rem;
+}
+.card__progress[hidden] { display: none; }
+.card__progress[data-style='bar'] .card__pie { display: none; }
+.card__progress[data-style='pie'] .card__bar { display: none; }
+.card__bar {
+  flex: 1;
+  height: 6px;
+  background: var(--track);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.card__bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+  transition: width 0.25s linear;
+}
+.card__pie {
+  flex: none;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent) 0%, var(--track) 0);
+}
 
 /* 기준일시: 값은 좌측 정렬 유지, '기준일시' 라벨만 값 뒤에 옅게. 크기는 설정(--card-meta-size). */
 /* 기준일시: 값은 좌측 정렬 유지. 클릭하면 바로 수정되는 버튼. 클릭 영역=글자 폭. */

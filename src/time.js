@@ -76,6 +76,20 @@ export function formatDuration({ days, hours, minutes, seconds }) {
   return days > 0 ? `${days}일 ${hms}` : hms;
 }
 
+/**
+ * start→target 구간에서 now가 얼마나 진행됐는지 0~1로 반환(진행률 바/파이용).
+ * 범위를 벗어나면 0 또는 1로 클램프. 구간이 0 이하(target<=start)면 now가 target 이상일 때 1, 아니면 0.
+ * 인자는 Date·ISO문자열·ms 무엇이든 허용(new Date로 해석).
+ */
+export function elapsedFraction(start, target, now = Date.now()) {
+  const s = new Date(start).getTime();
+  const t = new Date(target).getTime();
+  const n = new Date(now).getTime();
+  if (Number.isNaN(s) || Number.isNaN(t) || Number.isNaN(n)) return 0;
+  if (t <= s) return n >= t ? 1 : 0;
+  return Math.min(1, Math.max(0, (n - s) / (t - s)));
+}
+
 /** Date → "YYYY-MM-DD 요일 HH:MM:SS" (미리보기·확인용). */
 export function formatLocal(date) {
   return (

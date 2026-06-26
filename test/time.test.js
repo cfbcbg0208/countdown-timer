@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseTarget, diff, formatDuration } from '../src/time.js';
+import { parseTarget, diff, formatDuration, elapsedFraction } from '../src/time.js';
 
 test('parseTarget: 로컬 datetime 문자열을 기기 로컬 시각으로 해석', () => {
   const d = parseTarget('2026-12-31T09:00');
@@ -72,4 +72,34 @@ test('formatDuration: 일이 0이면 HH:MM:SS', () => {
 
 test('formatDuration: 일이 있으면 "D일 HH:MM:SS"', () => {
   assert.equal(formatDuration({ days: 12, hours: 3, minutes: 4, seconds: 5 }), '12일 03:04:05');
+});
+
+test('elapsedFraction: 중간 지점은 0.5', () => {
+  const s = new Date(2026, 0, 1, 0, 0, 0);
+  const t = new Date(2026, 0, 11, 0, 0, 0); // 10일 구간
+  const mid = new Date(2026, 0, 6, 0, 0, 0); // 5일 경과
+  assert.equal(elapsedFraction(s, t, mid), 0.5);
+});
+
+test('elapsedFraction: 시작 전·도달 후는 0·1로 클램프', () => {
+  const s = new Date(2026, 0, 1).getTime();
+  const t = new Date(2026, 0, 11).getTime();
+  assert.equal(elapsedFraction(s, t, new Date(2025, 11, 20)), 0); // 시작 전
+  assert.equal(elapsedFraction(s, t, new Date(2026, 1, 1)), 1); // 한참 지남
+  assert.equal(elapsedFraction(s, t, s), 0); // 정확히 시작
+  assert.equal(elapsedFraction(s, t, t), 1); // 정확히 도달
+});
+
+test('elapsedFraction: 구간 0 이하/잘못된 입력 안전 처리', () => {
+  const s = new Date(2026, 0, 10).getTime();
+  assert.equal(elapsedFraction(s, s, s), 1); // target<=start, now>=target
+  assert.equal(elapsedFraction(s, s, s - 1000), 0); // target<=start, now<target
+  assert.equal(elapsedFraction('bad', '2026-01-01', Date.now()), 0); // NaN → 0
+});
+
+test('elapsedFraction: ISO 문자열도 허용', () => {
+  assert.equal(
+    elapsedFraction('2026-01-01T00:00:00', '2026-01-03T00:00:00', '2026-01-02T00:00:00'),
+    0.5,
+  );
 });

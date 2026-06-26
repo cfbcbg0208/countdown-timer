@@ -1,7 +1,7 @@
 // 여러 카운트다운을 목록으로 관리(추가·삭제·영속·드래그 수동정렬·동시 틱).
 // 렌더 전략: 데이터 변경 시에만 DOM을 (재)구성하고, 매초엔 각 카드의 시간/색만 갱신한다.
 // 추가 영역은 우하단 FAB로 열리는 드로어(오버레이)에 들어 있다.
-import { parseFlexible, diff, formatDuration, formatLocal } from './time.js';
+import { parseFlexible, diff, formatDuration, formatLocal, elapsedFraction } from './time.js';
 import { load, add, remove, reorder, updateItem, moveId } from './store.js';
 import {
   load as loadSettings,
@@ -90,12 +90,25 @@ function makeCard(item) {
 
   const timeEl = document.createElement('div');
   timeEl.className = 'card__time';
+
+  // 남은 시간 진행률(미래 카드만): 바/파이. 표시 여부·스타일은 설정에 따름.
+  const progressEl = document.createElement('div');
+  progressEl.className = 'card__progress';
+  const barEl = document.createElement('div');
+  barEl.className = 'card__bar';
+  const barFillEl = document.createElement('div');
+  barFillEl.className = 'card__bar-fill';
+  barEl.append(barFillEl);
+  const pieEl = document.createElement('div');
+  pieEl.className = 'card__pie';
+  progressEl.append(barEl, pieEl);
+
   // 기준일시: 클릭하면 그 자리에서 바로 수정(datetime-local).
   const metaEl = document.createElement('button');
   metaEl.type = 'button';
   metaEl.className = 'card__meta';
   metaEl.title = '클릭하여 기준일시 수정';
-  card.append(timeEl, metaEl);
+  card.append(timeEl, progressEl, metaEl);
 
   // 랩(스냅샷): 기준일시는 절대 불변. 지금 이 순간의 값을 '기록'으로 남긴다.
   const lapEl = document.createElement('button');
@@ -111,7 +124,7 @@ function makeCard(item) {
   lapsEl.className = 'card__laps';
   card.append(lapsEl);
 
-  const refs = { card, timeEl, metaEl, lapsEl, item, dir: null };
+  const refs = { card, timeEl, progressEl, barFillEl, pieEl, metaEl, lapsEl, item, dir: null };
   renderLaps(refs);
   updateCard(refs);
   return refs;
@@ -164,7 +177,26 @@ function updateCard(refs) {
   // 기준일시: 날짜·시각 값은 좌측 정렬 유지하고, '기준일시' 라벨만 값 뒤에 옅게 붙인다.
   // (formatLocal 출력은 숫자·하이픈·요일뿐이라 innerHTML에 안전)
   refs.metaEl.innerHTML = `${formatLocal(target)} <span class="card__meta-label">(기준일시)</span>`;
+  updateProgress(refs, item, target, r.direction);
   refs.dir = r.direction;
+}
+
+// 진행률(미래 카드만): 설정 스타일/기준에 따라 바·파이 갱신. 과거/없음이면 숨김.
+function updateProgress(refs, item, target, direction) {
+  const style = settings.progressStyle;
+  if (direction !== 'future' || style === 'none') {
+    refs.progressEl.hidden = true;
+    return;
+  }
+  const start =
+    item.startISO || (settings.progressBase === 'updated' ? item.updatedAt : item.createdAt) || item.createdAt;
+  const f = elapsedFraction(start, target);
+  const pct = (f * 100).toFixed(1);
+  refs.progressEl.hidden = false;
+  refs.progressEl.dataset.style = style; // CSS로 바/파이/둘다 표시 제어
+  refs.barFillEl.style.width = `${pct}%`;
+  refs.pieEl.style.background = `conic-gradient(var(--accent) ${pct}%, var(--track) 0)`;
+  refs.progressEl.setAttribute('aria-label', `진행률 ${Math.round(f * 100)}%`);
 }
 
 // 데이터 변경 시: 저장된(수동) 순서 그대로 목록 DOM 재구성.
@@ -462,6 +494,8 @@ const setMetaScale = $('set-meta-scale');
 const setLapScale = $('set-lap-scale');
 const setDensity = $('set-density');
 const setAddPosition = $('set-add-position');
+const setProgressStyle = $('set-progress-style');
+const setProgressBase = $('set-progress-base');
 const accentBox = $('set-accent');
 const setReset = $('set-reset');
 
@@ -482,6 +516,8 @@ function syncSettingControls(s) {
   setLapScale.value = s.lapScale;
   setDensity.value = s.density;
   setAddPosition.value = s.addPosition;
+  setProgressStyle.value = s.progressStyle;
+  setProgressBase.value = s.progressBase;
   for (const b of accentBox.children) {
     b.setAttribute('aria-pressed', String(b.dataset.accent === s.accent));
   }
@@ -510,6 +546,15 @@ setMetaScale.addEventListener('input', () => changeSetting({ metaScale: +setMeta
 setLapScale.addEventListener('input', () => changeSetting({ lapScale: +setLapScale.value }));
 setDensity.addEventListener('change', () => changeSetting({ density: setDensity.value }));
 setAddPosition.addEventListener('change', () => changeSetting({ addPosition: setAddPosition.value }));
+// 진행률 설정은 렌더 로직(updateCard)이 읽으므로, 변경 즉시 tick으로 카드에 반영.
+setProgressStyle.addEventListener('change', () => {
+  changeSetting({ progressStyle: setProgressStyle.value });
+  tick();
+});
+setProgressBase.addEventListener('change', () => {
+  changeSetting({ progressBase: setProgressBase.value });
+  tick();
+});
 accentBox.addEventListener('click', (e) => {
   const b = e.target.closest('.swatch');
   if (b) changeSetting({ accent: b.dataset.accent });

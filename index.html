@@ -127,6 +127,22 @@
                 <option value="bottom">맨 뒤(아래)</option>
               </select>
             </div>
+            <div class="set-row">
+              <label class="set-row__name" for="set-progress-style">남은 시간 진행률</label>
+              <select id="set-progress-style" class="set-row__ctrl">
+                <option value="none">없음</option>
+                <option value="bar">바</option>
+                <option value="pie">파이</option>
+                <option value="both">둘 다</option>
+              </select>
+            </div>
+            <div class="set-row">
+              <label class="set-row__name" for="set-progress-base">진행률 0% 기준</label>
+              <select id="set-progress-base" class="set-row__ctrl">
+                <option value="created">등록일시</option>
+                <option value="updated">수정일시</option>
+              </select>
+            </div>
             <button type="button" class="set-reset" id="set-reset">기본값으로 되돌리기</button>
           </div>
         </div>

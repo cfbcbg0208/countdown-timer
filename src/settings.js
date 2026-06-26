@@ -26,7 +26,11 @@ export const DEFAULTS = {
   accent: 'blue',
   density: 'normal',
   addPosition: 'top', // 새 카드는 기본적으로 목록 맨 앞에 추가
+  progressStyle: 'bar', // 남은 시간 진행률 그래픽: 'none'|'bar'|'pie'|'both'
+  progressBase: 'created', // 진행률 0% 기준: 'created'(등록일시) | 'updated'(수정일시)
 };
+
+const PROGRESS_STYLES = ['none', 'bar', 'pie', 'both'];
 
 const clampScale = (n) => {
   const v = Number(n);
@@ -43,6 +47,8 @@ function coerce(s) {
     accent: ACCENTS[o.accent] ? o.accent : DEFAULTS.accent,
     density: DENSITY[o.density] ? o.density : DEFAULTS.density,
     addPosition: o.addPosition === 'bottom' ? 'bottom' : 'top', // 그 외/누락 → top
+    progressStyle: PROGRESS_STYLES.includes(o.progressStyle) ? o.progressStyle : DEFAULTS.progressStyle,
+    progressBase: o.progressBase === 'updated' ? 'updated' : 'created', // 그 외/누락 → created
   };
 }
 

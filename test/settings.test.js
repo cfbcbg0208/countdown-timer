@@ -42,6 +42,22 @@ test('addPosition: 기본 top, bottom만 허용, 그 외 → top', () => {
   assert.equal(update(st, { addPosition: 'sideways' }).addPosition, 'top'); // 잘못된 값 폴백
 });
 
+test('progressStyle: 기본 bar, 허용값만, 그 외 → bar', () => {
+  const st = fakeStorage();
+  assert.equal(load(st).progressStyle, 'bar'); // 기본값
+  for (const v of ['none', 'bar', 'pie', 'both']) {
+    assert.equal(update(st, { progressStyle: v }).progressStyle, v);
+  }
+  assert.equal(update(st, { progressStyle: 'rainbow' }).progressStyle, 'bar'); // 폴백
+});
+
+test('progressBase: 기본 created, updated만 허용, 그 외 → created', () => {
+  const st = fakeStorage();
+  assert.equal(load(st).progressBase, 'created'); // 기본값
+  assert.equal(update(st, { progressBase: 'updated' }).progressBase, 'updated');
+  assert.equal(update(st, { progressBase: 'foo' }).progressBase, 'created'); // 폴백
+});
+
 test('잘못된 accent/density → 기본값 폴백', () => {
   const st = fakeStorage();
   const s = update(st, { accent: 'rainbow', density: 'huge' });

@@ -200,6 +200,7 @@ kbd {
   align-items: center;
   gap: 0.5rem;
   margin-top: 0.45rem;
+  cursor: pointer;
 }
 .card__progress[hidden] { display: none; }
 .card__progress[data-style='bar'] .card__pie { display: none; }
@@ -677,6 +678,7 @@ body.select-mode .card__lap,
 body.select-mode .card__handle,
 body.select-mode .card__label,
 body.select-mode .card__meta,
+body.select-mode .card__progress,
 body.select-mode .card__laps { pointer-events: none; }
 body.select-mode .card::after {
   content: '';
@@ -799,4 +801,12 @@ select.set-row__ctrl {
 
 @media (prefers-reduced-motion: reduce) {
   .drawer__panel { animation: none; }
+}
+
+/* 좁은 화면: 캘린더 셀·글자 축소, 드로어 패딩 축소 */
+@media (max-width: 560px) {
+  .cal__day { min-height: 3.1rem; padding: 0.15rem; }
+  .cal__item { font-size: 0.6rem; }
+  .cal__daynum { font-size: 0.66rem; }
+  .drawer__panel { padding: 0.7rem 0.7rem calc(0.8rem + env(safe-area-inset-bottom)); }
 }

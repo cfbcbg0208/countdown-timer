@@ -174,6 +174,24 @@ async function main() {
   const out = join(ARTIFACTS, 'verify.png');
   await writeFile(out, Buffer.from(shot.data, 'base64'));
 
+  // 7.5) 커스텀 진행 시작(startISO): 진행률 클릭 → 편집기 → 값 저장 → localStorage 반영
+  await evalJS(browser, "document.querySelector('.card__progress')?.click()");
+  await until(() => evalJS(browser, `!!document.querySelector('.card__editor[data-field="start"]')`), {
+    label: 'start editor',
+  });
+  await evalJS(
+    browser,
+    `(() => { const i = document.querySelector('.card__editor .card__editinput');
+       i.value = '2026-06-26 00:00:00'; i.dispatchEvent(new Event('input', { bubbles: true })); })()`,
+  );
+  await evalJS(browser, "document.querySelector('.card__editor .card__save')?.click()");
+  await until(
+    () => evalJS(browser, "(JSON.parse(localStorage.getItem('countdowns'))[0].startISO || '').length > 0"),
+    { label: 'startISO saved' },
+  );
+  const startISO = await evalJS(browser, "JSON.parse(localStorage.getItem('countdowns'))[0].startISO");
+  if (!startISO) fails.push('커스텀 진행 시작(startISO) 저장 실패');
+
   // 8) 캘린더 열고 그리드 렌더 확인
   await evalJS(browser, "document.getElementById('calendar-fab').click()");
   await until(() => evalJS(browser, "document.querySelectorAll('#cal-grid .cal__day').length"), {

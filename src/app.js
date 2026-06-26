@@ -172,9 +172,10 @@ function makeCard(item) {
   timeRow.className = 'card__row card__row--time';
   timeRow.append(timeEl, lapEl);
 
-  // 진행률(미래 카드만): '둘 다'면 파이 → 바 순서.
+  // 진행률(미래 카드만): '둘 다'면 파이 → 바 순서. 클릭하면 진행 시작 일시 지정.
   const progressEl = document.createElement('div');
   progressEl.className = 'card__progress';
+  progressEl.title = '클릭하여 진행 시작 일시 지정';
   const pieEl = document.createElement('div');
   pieEl.className = 'card__pie';
   const barEl = document.createElement('div');
@@ -471,6 +472,11 @@ function openFieldEditor(card, id, field) {
     input.value = toLocalISO(new Date(item.targetISO)).replace('T', ' ');
     input.placeholder = '예: 260626금1800 · 2026-06-26 18:00 · 오후 6시';
     input.spellcheck = false;
+  } else if (field === 'start') {
+    // 진행률 0% 기준을 이 카드만 따로 지정(비우면 설정 기본=등록/수정일시).
+    input.value = item.startISO ? toLocalISO(new Date(item.startISO)).replace('T', ' ') : '';
+    input.placeholder = '진행 시작 일시 · 비우면 기본(등록/수정일시)';
+    input.spellcheck = false;
   } else {
     input.value = item.label || '';
     input.placeholder = '제목 (비우면 제목 없음)';
@@ -497,8 +503,8 @@ function openFieldEditor(card, id, field) {
   cancel.textContent = '취소';
   editor.append(input, save, cancel);
 
-  // 기준일시: 입력하는 동안 해석 결과를 라이브 미리보기로 보여준다(추가영역과 동일 컨셉).
-  if (field === 'date') {
+  // 기준일시/시작: 입력하는 동안 해석 결과를 라이브 미리보기로 보여준다.
+  if (field === 'date' || field === 'start') {
     const preview = document.createElement('p');
     preview.className = 'card__editpreview';
     editor.append(preview);
@@ -506,7 +512,7 @@ function openFieldEditor(card, id, field) {
       input.removeAttribute('aria-invalid');
       const raw = input.value.trim();
       if (!raw) {
-        preview.textContent = '';
+        preview.textContent = field === 'start' ? '기본값(등록/수정일시) 사용' : '';
         delete preview.dataset.ok;
         return;
       }
@@ -517,7 +523,8 @@ function openFieldEditor(card, id, field) {
         return;
       }
       const dir = DIRS[diff(d).direction];
-      preview.textContent = `✅ ${formatLocal(d)} · ${dir.emoji} ${dir.label}`;
+      preview.textContent =
+        field === 'start' ? `✅ ${formatLocal(d)}` : `✅ ${formatLocal(d)} · ${dir.emoji} ${dir.label}`;
       preview.dataset.ok = 'yes';
     };
     input.addEventListener('input', refresh);
@@ -525,7 +532,8 @@ function openFieldEditor(card, id, field) {
   }
 
   // 클릭한 필드(또는 그 필드가 속한 행) 바로 아래에 삽입(행 내부에 넣으면 레이아웃 깨짐).
-  const anchor = field === 'date' ? card.querySelector('.card__meta') : card.querySelector('.card__label');
+  const ANCHOR = { date: '.card__meta', start: '.card__progress', title: '.card__label' };
+  const anchor = card.querySelector(ANCHOR[field]);
   (anchor.closest('.card__row') || anchor).after(editor);
   input.focus();
   input.select?.();
@@ -542,6 +550,20 @@ function commitField(card, id, field) {
     }
     list = updateItem(localStorage, id, { targetISO: toLocalISO(date) });
     srStatus.textContent = '기준일시 변경됨';
+  } else if (field === 'start') {
+    const raw = input.value.trim();
+    if (raw === '') {
+      list = updateItem(localStorage, id, { startISO: null }); // 비우면 기본값으로
+      srStatus.textContent = '진행 시작 기본값으로';
+    } else {
+      const date = parseFlexible(raw);
+      if (!date) {
+        input.setAttribute('aria-invalid', 'true');
+        return;
+      }
+      list = updateItem(localStorage, id, { startISO: toLocalISO(date) });
+      srStatus.textContent = '진행 시작 변경됨';
+    }
   } else {
     list = updateItem(localStorage, id, { label: input.value.trim() });
     srStatus.textContent = '제목 변경됨';
@@ -576,6 +598,8 @@ listEl.addEventListener('click', (e) => {
     openFieldEditor(card, id, 'title');
   } else if (e.target.closest('.card__meta')) {
     openFieldEditor(card, id, 'date');
+  } else if (e.target.closest('.card__progress')) {
+    openFieldEditor(card, id, 'start'); // 진행률 바/파이 클릭 → 진행 시작 일시 지정
   }
 });
 
@@ -823,10 +847,13 @@ function showItemMenu(id, x, y) {
   if (!it) return;
   const menu = document.createElement('div');
   menu.className = 'item-menu';
+  menu.setAttribute('role', 'menu');
+  menu.setAttribute('aria-label', `${it.label || '타임카드'} 메뉴`);
   const mk = (label, fn) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'item-menu__btn';
+    b.setAttribute('role', 'menuitem');
     b.textContent = label;
     b.addEventListener('click', () => {
       closeItemMenu();

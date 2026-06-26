@@ -1197,15 +1197,26 @@ function onDragMove(e) {
   // 떠 있는 클론을 포인터에 붙여 이동
   drag.clone.style.left = `${e.clientX - drag.offsetX}px`;
   drag.clone.style.top = `${e.clientY - drag.offsetY}px`;
-  // 빈 자리(원본 카드)를 포인터 세로 위치에 맞춰 형제들 사이로 이동
-  const y = e.clientY;
+  // 빈 자리(원본 카드)를 포인터에 가장 가까운 카드 앞/뒤로 이동(다열 그리드 2D 대응).
+  // 같은 행이면 좌우(x), 다른 행이면 상하(y)로 앞/뒤를 정한다.
+  const x = e.clientX, y = e.clientY;
   const others = [...listEl.querySelectorAll('.card:not(.card--placeholder)')];
-  const next = others.find((c) => {
+  let best = null, bestDist = Infinity;
+  for (const c of others) {
     const r = c.getBoundingClientRect();
-    return y < r.top + r.height / 2;
-  });
-  if (next) listEl.insertBefore(drag.card, next);
-  else listEl.appendChild(drag.card);
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const d = (x - cx) ** 2 + (y - cy) ** 2;
+    if (d < bestDist) { bestDist = d; best = c; }
+  }
+  if (best) {
+    const r = best.getBoundingClientRect();
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const after = Math.abs(y - cy) <= r.height / 2 ? x > cx : y > cy;
+    if (after) best.after(drag.card);
+    else best.before(drag.card);
+  } else {
+    listEl.appendChild(drag.card);
+  }
 }
 
 function onDragEnd() {

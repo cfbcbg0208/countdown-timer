@@ -403,8 +403,9 @@ body.dragging-active { cursor: grabbing; user-select: none; }
   box-shadow: none;
 }
 
-/* 보조(설정) FAB: 추가 ＋ 버튼 바로 위, 살짝 작고 차분한 색 */
-.fab--settings {
+/* 보조 FAB(설정·조합): 추가 ＋ 버튼 위로 쌓임, 살짝 작고 차분한 색 */
+.fab--settings,
+.fab--groups {
   width: 3rem;
   height: 3rem;
   font-size: 1.35rem;
@@ -412,8 +413,151 @@ body.dragging-active { cursor: grabbing; user-select: none; }
   color: var(--fg);
   border: 1px solid var(--line);
   right: calc(max(1rem, env(safe-area-inset-right)) + 0.25rem);
-  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 4.25rem);
 }
+.fab--settings { bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 4.25rem); }
+.fab--groups {
+  font-size: 1.25rem;
+  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 7.75rem);
+}
+
+/* ── 조합(그룹) 패널 ─────────────────────────── */
+.groups { display: flex; flex-direction: column; gap: 0.6rem; }
+.groups__new {
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.6rem;
+  border: 1px dashed var(--line);
+  background: var(--card-2);
+  color: var(--fg);
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.groups__new:hover { border-color: var(--accent); color: var(--accent); }
+.groups__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.4rem; }
+.group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: var(--card);
+}
+.group__name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.group__count { color: var(--muted); font-size: 0.8rem; white-space: nowrap; }
+.group__view {
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.82rem;
+}
+.group__view:hover { background: var(--accent); color: #fff; }
+.group__del {
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 0.2rem 0.35rem;
+}
+.group__del:hover { color: var(--past); }
+
+/* ── 조합 필터 보기 배너 ─────────────────────── */
+.group-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.6rem;
+  border: 1px solid var(--accent);
+  border-radius: 0.6rem;
+  background: var(--card-2);
+}
+.group-banner[hidden] { display: none; }
+.group-banner__name { font-weight: 700; }
+.group-banner__clear {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+.group-banner__clear:hover { color: var(--fg); border-color: var(--muted); }
+
+/* ── 조합 만들기: 다중 선택 모드 ─────────────── */
+.select-bar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  padding: 0.6rem 0.9rem;
+  border-radius: 0.9rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+  max-width: calc(100vw - 2rem);
+}
+.select-bar[hidden] { display: none; }
+.select-bar__count { font-weight: 700; color: var(--accent); white-space: nowrap; }
+.select-bar__name {
+  padding: 0.45rem 0.6rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+  color: var(--fg);
+  min-width: 8rem;
+}
+.select-bar__save {
+  padding: 0.45rem 0.9rem;
+  border-radius: 0.5rem;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+.select-bar__save:disabled { opacity: 0.45; cursor: not-allowed; }
+.select-bar__cancel {
+  padding: 0.45rem 0.8rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+/* 선택 모드: 카드 전체가 선택 토글, 우상단 체크 표시 */
+body.select-mode .card { cursor: pointer; }
+body.select-mode .card__del { visibility: hidden; }
+body.select-mode .card__lap,
+body.select-mode .card__handle,
+body.select-mode .card__label,
+body.select-mode .card__meta,
+body.select-mode .card__laps { pointer-events: none; }
+body.select-mode .card::after {
+  content: '';
+  position: absolute;
+  top: 0.5rem;
+  right: 0.6rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 50%;
+  border: 2px solid var(--muted);
+  background: var(--card-2);
+}
+body.select-mode .card.card--selected { border-color: var(--accent); }
+body.select-mode .card.card--selected::after { background: var(--accent); border-color: var(--accent); }
 
 /* ── 디자인 설정 패널 ─────────────────────────── */
 .settings { display: flex; flex-direction: column; gap: 0.2rem; }

@@ -100,3 +100,67 @@ export function sortByUrgency(list, now = Date.now()) {
     return fa ? ta - tb : tb - ta; // 미래는 가까운 순, 과거는 최근 순
   });
 }
+
+// ── 타임카드 조합(그룹) 저장소: 사용자가 카드들을 묶어 이름 붙여 저장 ──
+// 그룹 형태: { id, name, itemIds: string[], createdAt }
+const KEY_GROUPS = 'groups';
+
+/** 저장된 그룹 목록. 없거나 손상되면 빈 배열. */
+export function loadGroups(storage) {
+  try {
+    const raw = storage.getItem(KEY_GROUPS);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveGroups(storage, groups) {
+  storage.setItem(KEY_GROUPS, JSON.stringify(groups));
+}
+
+/** 새 그룹 추가 후 그 그룹을 반환. */
+export function addGroup(storage, { name = '', itemIds = [] }) {
+  const groups = loadGroups(storage);
+  const group = { id: newId(), name, itemIds: [...itemIds], createdAt: new Date().toISOString() };
+  groups.push(group);
+  saveGroups(storage, groups);
+  return group;
+}
+
+/** id 그룹 삭제 후 남은 그룹을 반환. */
+export function removeGroup(storage, id) {
+  const groups = loadGroups(storage).filter((g) => g.id !== id);
+  saveGroups(storage, groups);
+  return groups;
+}
+
+/** id 그룹 이름 변경 후 그룹 목록 반환. */
+export function renameGroup(storage, id, name) {
+  const groups = loadGroups(storage).map((g) => (g.id === id ? { ...g, name } : g));
+  saveGroups(storage, groups);
+  return groups;
+}
+
+/** id 그룹의 멤버(itemIds) 교체 후 그룹 목록 반환. */
+export function setGroupItems(storage, id, itemIds) {
+  const groups = loadGroups(storage).map((g) => (g.id === id ? { ...g, itemIds: [...itemIds] } : g));
+  saveGroups(storage, groups);
+  return groups;
+}
+
+/** 항목 삭제 시 모든 그룹 멤버에서 그 id를 제거(깨진 참조 방지). 그룹 목록 반환. */
+export function removeItemFromGroups(storage, itemId) {
+  const groups = loadGroups(storage).map((g) => ({
+    ...g,
+    itemIds: (g.itemIds || []).filter((x) => x !== itemId),
+  }));
+  saveGroups(storage, groups);
+  return groups;
+}
+
+/** (순수) 그 항목이 속한 그룹들만. */
+export function groupsForItem(groups, itemId) {
+  return groups.filter((g) => Array.isArray(g.itemIds) && g.itemIds.includes(itemId));
+}

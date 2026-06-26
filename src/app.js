@@ -2,7 +2,18 @@
 // 렌더 전략: 데이터 변경 시에만 DOM을 (재)구성하고, 매초엔 각 카드의 시간/색만 갱신한다.
 // 추가 영역은 우하단 FAB로 열리는 드로어(오버레이)에 들어 있다.
 import { parseFlexible, diff, formatDuration, formatLocal, elapsedFraction } from './time.js';
-import { load, add, remove, reorder, updateItem, moveId } from './store.js';
+import {
+  load,
+  add,
+  remove,
+  reorder,
+  updateItem,
+  moveId,
+  loadGroups,
+  addGroup,
+  removeGroup,
+  removeItemFromGroups,
+} from './store.js';
 import {
   load as loadSettings,
   update as updateSettings,
@@ -23,6 +34,24 @@ const fab = $('fab');
 const drawer = $('drawer');
 const settingsFab = $('settings-fab');
 const settingsDrawer = $('settings-drawer');
+const groupsFab = $('groups-fab');
+const groupsDrawer = $('groups-drawer');
+const groupsNewBtn = $('groups-new');
+const groupsListEl = $('groups-list');
+const groupsEmpty = $('groups-empty');
+const groupBanner = $('group-banner');
+const groupBannerName = $('group-banner-name');
+const groupBannerClear = $('group-banner-clear');
+const selectBar = $('select-bar');
+const selectCountEl = $('select-count');
+const groupNameInput = $('group-name');
+const selectSaveBtn = $('select-save');
+const selectCancelBtn = $('select-cancel');
+
+// 조합(그룹) 상태: 필터 보기 중인 그룹 id, 다중 선택 모드 + 선택된 카드 id 집합.
+let activeGroupId = null;
+let selectMode = false;
+const selectedIds = new Set();
 
 // 부호는 D-Day 관례: 남은=− (D-7), 지난=+ (D+3). 색은 부호와 별개(남은=초록/지난=빨강).
 const DIRS = {
@@ -200,10 +229,20 @@ function updateProgress(refs, item, target, direction) {
 }
 
 // 데이터 변경 시: 저장된(수동) 순서 그대로 목록 DOM 재구성.
+// 조합 필터(activeGroupId)가 있으면 그 그룹 멤버만 보여준다.
 function rebuild() {
-  emptyHint.hidden = list.length > 0;
-  refsList = list.map(makeCard);
+  let shown = list;
+  if (activeGroupId) {
+    const g = loadGroups(localStorage).find((x) => x.id === activeGroupId);
+    if (g) shown = list.filter((t) => g.itemIds.includes(t.id));
+    else activeGroupId = null; // 그룹이 사라졌으면 필터 해제
+  }
+  emptyHint.hidden = shown.length > 0 || !!activeGroupId;
+  refsList = shown.map(makeCard);
   listEl.replaceChildren(...refsList.map((r) => r.card));
+  if (selectMode) {
+    for (const r of refsList) r.card.classList.toggle('card--selected', selectedIds.has(r.item.id));
+  }
 }
 
 // 매초: 각 카드 시간/색만 갱신. 수동 순서이므로 경계 넘어도 재정렬하지 않음.
@@ -254,6 +293,9 @@ function addFrom(source) {
     textInput.value = '';
     updatePreview();
   }
+  // 조합 필터 보기 중이었다면 해제해 새 카드가 보이게.
+  activeGroupId = null;
+  groupBanner.hidden = true;
   rebuild();
   closeDrawer();
   srStatus.textContent = `${labelText || '카운트다운'} 추가됨`;
@@ -275,6 +317,7 @@ function closeDrawer() {
   openEl = null;
   fab.setAttribute('aria-expanded', 'false');
   settingsFab.setAttribute('aria-expanded', 'false');
+  groupsFab.setAttribute('aria-expanded', 'false');
   if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
 }
 
@@ -435,9 +478,15 @@ listEl.addEventListener('click', (e) => {
   const card = e.target.closest('.card');
   if (!card) return;
   const id = card.dataset.id;
+  if (selectMode) {
+    // 선택 모드: 카드 클릭은 조합 선택 토글만(다른 동작 막음).
+    toggleSelect(card);
+    return;
+  }
   const lapDel = e.target.closest('.lap__del');
   if (e.target.closest('.card__del')) {
     list = remove(localStorage, id);
+    removeItemFromGroups(localStorage, id); // 그룹 멤버에서도 제거(깨진 참조 방지)
     rebuild();
     srStatus.textContent = '카운트다운 삭제됨';
   } else if (lapDel) {
@@ -458,7 +507,11 @@ listEl.addEventListener('click', (e) => {
 // 드로어 열기/닫기 (추가 ＋ / 설정 ⚙️)
 fab.addEventListener('click', () => openDrawer(drawer, fab, textInput));
 settingsFab.addEventListener('click', () => openDrawer(settingsDrawer, settingsFab));
-[drawer, settingsDrawer].forEach((d) => {
+groupsFab.addEventListener('click', () => {
+  renderGroups();
+  openDrawer(groupsDrawer, groupsFab);
+});
+[drawer, settingsDrawer, groupsDrawer].forEach((d) => {
   d.addEventListener('click', (e) => {
     if (e.target.closest('[data-close]')) closeDrawer();
   });
@@ -475,18 +528,135 @@ function isTyping(el) {
 }
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    closeDrawer();
+    if (selectMode) exitSelectMode();
+    else closeDrawer();
     return;
   }
-  if (openEl || isTyping(document.activeElement) || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (openEl || selectMode || isTyping(document.activeElement) || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.code === 'KeyA' || e.code === 'NumpadAdd') {
     e.preventDefault();
     openDrawer(drawer, fab, textInput);
   } else if (e.code === 'KeyS') {
     e.preventDefault();
     openDrawer(settingsDrawer, settingsFab);
+  } else if (e.code === 'KeyG') {
+    e.preventDefault();
+    renderGroups();
+    openDrawer(groupsDrawer, groupsFab);
   }
 });
+
+// ── 조합(그룹): 카드 다중 선택 → 이름 저장, 조합별 필터 보기 ──
+function renderGroups() {
+  const groups = loadGroups(localStorage);
+  groupsEmpty.hidden = groups.length > 0;
+  groupsListEl.replaceChildren(
+    ...groups.map((g) => {
+      const li = document.createElement('li');
+      li.className = 'group';
+      const name = document.createElement('span');
+      name.className = 'group__name';
+      name.textContent = g.name || '(이름 없음)';
+      const count = document.createElement('span');
+      count.className = 'group__count';
+      count.textContent = `${(g.itemIds || []).length}개`;
+      const view = document.createElement('button');
+      view.type = 'button';
+      view.className = 'group__view';
+      view.dataset.id = g.id;
+      view.textContent = '보기';
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'group__del';
+      del.dataset.id = g.id;
+      del.title = '조합 삭제';
+      del.setAttribute('aria-label', `${g.name || '조합'} 삭제`);
+      del.textContent = '✕';
+      li.append(name, count, view, del);
+      return li;
+    }),
+  );
+}
+
+function viewGroup(id) {
+  const g = loadGroups(localStorage).find((x) => x.id === id);
+  if (!g) return;
+  activeGroupId = id;
+  groupBanner.hidden = false;
+  groupBannerName.textContent = `🗂️ ${g.name || '조합'} · ${(g.itemIds || []).length}개`;
+  closeDrawer();
+  rebuild();
+}
+
+function clearGroupView() {
+  activeGroupId = null;
+  groupBanner.hidden = true;
+  rebuild();
+}
+
+function enterSelectMode() {
+  selectMode = true;
+  selectedIds.clear();
+  activeGroupId = null; // 전체 카드에서 선택하도록 필터 해제
+  groupBanner.hidden = true;
+  document.body.classList.add('select-mode');
+  selectBar.hidden = false;
+  groupNameInput.value = '';
+  updateSelectCount();
+  closeDrawer();
+  rebuild();
+}
+
+function exitSelectMode() {
+  selectMode = false;
+  selectedIds.clear();
+  document.body.classList.remove('select-mode');
+  selectBar.hidden = true;
+  rebuild();
+}
+
+function toggleSelect(card) {
+  const id = card.dataset.id;
+  if (selectedIds.has(id)) selectedIds.delete(id);
+  else selectedIds.add(id);
+  card.classList.toggle('card--selected', selectedIds.has(id));
+  updateSelectCount();
+}
+
+function updateSelectCount() {
+  selectCountEl.textContent = `${selectedIds.size}개 선택`;
+  selectSaveBtn.disabled = selectedIds.size === 0;
+}
+
+function saveGroup() {
+  if (selectedIds.size === 0) return;
+  const name = groupNameInput.value.trim() || `조합 (${selectedIds.size}개)`;
+  addGroup(localStorage, { name, itemIds: [...selectedIds] });
+  srStatus.textContent = `조합 "${name}" 저장됨`;
+  exitSelectMode();
+}
+
+groupsNewBtn.addEventListener('click', enterSelectMode);
+groupsListEl.addEventListener('click', (e) => {
+  const view = e.target.closest('.group__view');
+  const del = e.target.closest('.group__del');
+  if (view) viewGroup(view.dataset.id);
+  else if (del) {
+    removeGroup(localStorage, del.dataset.id);
+    if (activeGroupId === del.dataset.id) clearGroupView();
+    renderGroups();
+    srStatus.textContent = '조합 삭제됨';
+  }
+});
+selectSaveBtn.addEventListener('click', saveGroup);
+selectCancelBtn.addEventListener('click', exitSelectMode);
+groupNameInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    saveGroup();
+  }
+});
+groupBannerClear.addEventListener('click', clearGroupView);
 
 // ── 디자인 설정: 저장 → CSS 변수/제목 표시에 즉시 반영 ──
 const setTimerScale = $('set-timer-scale');
@@ -634,6 +804,7 @@ function commitOrder() {
 listEl.addEventListener('pointerdown', (e) => {
   const handle = e.target.closest('.card__handle');
   if (!handle) return;
+  if (selectMode || activeGroupId) return; // 선택 모드·조합 필터 보기에선 재배치 비활성
   const card = handle.closest('.card');
   if (!card) return;
   e.preventDefault();
@@ -653,6 +824,7 @@ const KEY_DELTA = { ArrowUp: -1, ArrowDown: 1, Home: -Infinity, End: Infinity };
 listEl.addEventListener('keydown', (e) => {
   const handle = e.target.closest('.card__handle');
   if (!handle || !(e.key in KEY_DELTA)) return;
+  if (selectMode || activeGroupId) return; // 선택 모드·조합 필터 보기에선 재배치 비활성
   e.preventDefault();
   const id = handle.closest('.card').dataset.id;
   const ids = [...listEl.querySelectorAll('.card')].map((c) => c.dataset.id);

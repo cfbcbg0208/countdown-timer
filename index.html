@@ -148,13 +148,58 @@
         </div>
       </div>
 
+      <!-- 조합 필터 보기 배너 (조합 선택 시에만 표시) -->
+      <div class="group-banner" id="group-banner" hidden>
+        <span class="group-banner__name" id="group-banner-name"></span>
+        <button type="button" class="group-banner__clear" id="group-banner-clear">전체 보기 ✕</button>
+      </div>
+
       <!-- 카운트다운 목록 (매초 갱신되므로 aria-live 미사용 → 스팸 방지) -->
       <section class="list" id="list"></section>
       <p class="hint" id="empty-hint">아직 카운트다운이 없습니다. 오른쪽 아래 ＋ 버튼으로 추가하세요.</p>
 
+      <!-- 조합(그룹) 패널: 평소 숨김, 🗂️ FAB로 열기 -->
+      <div class="drawer" id="groups-drawer" hidden>
+        <div class="drawer__backdrop" data-close></div>
+        <div class="drawer__panel" role="dialog" aria-modal="true" aria-labelledby="groups-title">
+          <header class="drawer__head">
+            <h2 class="drawer__title" id="groups-title">🗂️ 조합 <kbd class="drawer__kbd" title="단축키">G</kbd></h2>
+            <button class="drawer__close" type="button" data-close aria-label="닫기">✕</button>
+          </header>
+          <div class="groups">
+            <button type="button" class="groups__new" id="groups-new">＋ 새 조합 만들기 (카드 선택)</button>
+            <ul class="groups__list" id="groups-list"></ul>
+            <p class="hint" id="groups-empty" hidden>저장된 조합이 없습니다.</p>
+          </div>
+        </div>
+      </div>
+
       <!-- 추가/삭제 시에만 스크린리더에 알리는 상태 영역 -->
       <p id="sr-status" class="sr-only" aria-live="polite" role="status"></p>
     </main>
+
+    <!-- 조합 만들기: 다중 선택 모드 하단 툴바(선택 모드에서만 표시) -->
+    <div class="select-bar" id="select-bar" hidden role="region" aria-label="조합 만들기">
+      <span class="select-bar__count" id="select-count">0개 선택</span>
+      <input type="text" id="group-name" class="select-bar__name" placeholder="조합 이름" autocomplete="off" />
+      <button type="button" class="select-bar__save" id="select-save">저장</button>
+      <button type="button" class="select-bar__cancel" id="select-cancel">취소</button>
+    </div>
+
+    <!-- 조합(그룹) 패널을 여는 플로팅 버튼(보조) -->
+    <button
+      class="fab fab--groups"
+      id="groups-fab"
+      type="button"
+      title="조합 (단축키: G)"
+      aria-haspopup="dialog"
+      aria-controls="groups-drawer"
+      aria-expanded="false"
+    >
+      <span aria-hidden="true">🗂️</span>
+      <kbd class="fab__key" aria-hidden="true">G</kbd>
+      <span class="sr-only">조합 패널 열기 (단축키 G)</span>
+    </button>
 
     <!-- 디자인 설정 패널을 여는 플로팅 버튼(보조) -->
     <button

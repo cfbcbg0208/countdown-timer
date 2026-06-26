@@ -118,6 +118,13 @@ async function main() {
   await browser.open;
   await browser.send('Page.enable');
   await browser.send('Runtime.enable');
+  // 스크린샷이 2000px를 넘지 않도록 뷰포트 고정(Read로 직접 볼 수 있게).
+  await browser.send('Emulation.setDeviceMetricsOverride', {
+    width: 820,
+    height: 1180,
+    deviceScaleFactor: 1,
+    mobile: false,
+  });
 
   // 4) 앱으로 이동 + 로드 완료 대기
   await browser.send('Page.navigate', { url: BASE + '/' });
@@ -159,13 +166,35 @@ async function main() {
   if (!String(checks.drawerTitle).includes('타임카드 추가')) fails.push(`드로어 제목="${checks.drawerTitle}"`);
   if (checks.dirChip !== '남은시간') fails.push(`방향 칩="${checks.dirChip}" (남은시간 기대)`);
 
-  // 7) 스크린샷
-  const shot = await browser.send('Page.captureScreenshot', { format: 'png' });
+  // 7) 카드 화면 스크린샷
+  const shot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   const out = join(ARTIFACTS, 'verify.png');
   await writeFile(out, Buffer.from(shot.data, 'base64'));
 
-  console.log('검증 결과:', JSON.stringify(checks, null, 2));
-  console.log('스크린샷:', out);
+  // 8) 캘린더 열고 그리드 렌더 확인
+  await evalJS(browser, "document.getElementById('calendar-fab').click()");
+  await until(() => evalJS(browser, "document.querySelectorAll('#cal-grid .cal__day').length"), {
+    label: 'calendar grid',
+  });
+  const cal = await evalJS(
+    browser,
+    `(() => ({
+       open: !document.getElementById('calendar-drawer').hidden,
+       weekdays: document.querySelectorAll('#cal-grid .cal__wd').length,
+       days: document.querySelectorAll('#cal-grid .cal__day').length,
+       month: document.getElementById('cal-month').textContent,
+     }))()`,
+  );
+  if (!cal.open) fails.push('캘린더 안 열림');
+  if (cal.weekdays !== 7) fails.push(`요일헤더 7 기대, 실제 ${cal.weekdays}`);
+  if (cal.days % 7 !== 0 || cal.days < 28) fails.push(`날짜셀 7배수(28+) 기대, 실제 ${cal.days}`);
+  if (!/^\d{4}년 \d{1,2}월$/.test(cal.month)) fails.push(`월 표기 형식="${cal.month}"`);
+  const calShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  await writeFile(join(ARTIFACTS, 'verify-calendar.png'), Buffer.from(calShot.data, 'base64'));
+
+  console.log('카드 검증:', JSON.stringify(checks, null, 2));
+  console.log('캘린더 검증:', JSON.stringify(cal, null, 2));
+  console.log('스크린샷:', out, '+ verify-calendar.png');
   if (fails.length) {
     console.error('❌ 실패:\n - ' + fails.join('\n - '));
     process.exitCode = 1;

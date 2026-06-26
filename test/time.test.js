@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseTarget, diff, formatDuration, elapsedFraction } from '../src/time.js';
+import { parseTarget, diff, formatDuration, elapsedFraction, monthGrid, dateKeyOf } from '../src/time.js';
 
 test('parseTarget: 로컬 datetime 문자열을 기기 로컬 시각으로 해석', () => {
   const d = parseTarget('2026-12-31T09:00');
@@ -102,4 +102,43 @@ test('elapsedFraction: ISO 문자열도 허용', () => {
     elapsedFraction('2026-01-01T00:00:00', '2026-01-03T00:00:00', '2026-01-02T00:00:00'),
     0.5,
   );
+});
+
+test('monthGrid: 7일×주, 일요일 시작, 1일/말일 포함, inMonth 플래그', () => {
+  const weeks = monthGrid(2026, 5); // 2026년 6월
+  assert.ok(weeks.length >= 4 && weeks.length <= 6);
+  for (const w of weeks) assert.equal(w.length, 7);
+  assert.equal(weeks[0][0].y && weeks[0][0].m >= 0, true);
+  // 첫 칸은 일요일(주 시작), 마지막 칸은 토요일
+  // 6월 1일과 30일이 그리드 어딘가 inMonth로 존재
+  const flat = weeks.flat();
+  const first = flat.find((c) => c.inMonth && c.d === 1 && c.m === 5);
+  const last = flat.find((c) => c.inMonth && c.d === 30 && c.m === 5);
+  assert.ok(first && last);
+  // 그리드 첫날은 6월 1일 이전(또는 같음)인 일요일
+  assert.ok(weeks[0].every((c) => !c.inMonth || c.d === 1) || weeks[0].some((c) => c.inMonth));
+  // inMonth=true 칸은 정확히 30개(6월은 30일)
+  assert.equal(flat.filter((c) => c.inMonth).length, 30);
+});
+
+test('monthGrid: 연말(12월) 경계 — 다음달은 이듬해 1월', () => {
+  const weeks = monthGrid(2026, 11); // 2026년 12월
+  const flat = weeks.flat();
+  assert.equal(flat.filter((c) => c.inMonth).length, 31);
+  // 12월 마지막 주 뒤 칸은 2027년 1월
+  assert.ok(flat.some((c) => !c.inMonth && c.y === 2027 && c.m === 0));
+});
+
+test('dateKeyOf: 기준에 따라 로컬 YYYY-MM-DD', () => {
+  const item = {
+    targetISO: '2026-06-27T13:05:00',
+    createdAt: '2026-06-20T09:00:00',
+    updatedAt: '2026-06-25T22:00:00',
+  };
+  assert.equal(dateKeyOf(item, 'target'), '2026-06-27');
+  assert.equal(dateKeyOf(item, 'created'), '2026-06-20');
+  assert.equal(dateKeyOf(item, 'updated'), '2026-06-25');
+  assert.equal(dateKeyOf(item), '2026-06-27'); // 기본 target
+  assert.equal(dateKeyOf({ targetISO: 'bad' }, 'target'), null);
+  assert.equal(dateKeyOf({}, 'created'), null);
 });

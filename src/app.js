@@ -1,7 +1,15 @@
 // 여러 카운트다운을 목록으로 관리(추가·삭제·영속·드래그 수동정렬·동시 틱).
 // 렌더 전략: 데이터 변경 시에만 DOM을 (재)구성하고, 매초엔 각 카드의 시간/색만 갱신한다.
 // 추가 영역은 우하단 FAB로 열리는 드로어(오버레이)에 들어 있다.
-import { parseFlexible, diff, formatDuration, formatLocal, elapsedFraction } from './time.js';
+import {
+  parseFlexible,
+  diff,
+  formatDuration,
+  formatLocal,
+  elapsedFraction,
+  monthGrid,
+  dateKeyOf,
+} from './time.js';
 import {
   load,
   add,
@@ -36,6 +44,12 @@ const settingsFab = $('settings-fab');
 const settingsDrawer = $('settings-drawer');
 const groupsFab = $('groups-fab');
 const groupsDrawer = $('groups-drawer');
+const calendarFab = $('calendar-fab');
+const calendarDrawer = $('calendar-drawer');
+const calMonthEl = $('cal-month');
+const calGridEl = $('cal-grid');
+const calPrevBtn = $('cal-prev');
+const calNextBtn = $('cal-next');
 const groupsNewBtn = $('groups-new');
 const groupsListEl = $('groups-list');
 const groupsEmpty = $('groups-empty');
@@ -356,6 +370,7 @@ function closeDrawer() {
   fab.setAttribute('aria-expanded', 'false');
   settingsFab.setAttribute('aria-expanded', 'false');
   groupsFab.setAttribute('aria-expanded', 'false');
+  calendarFab.setAttribute('aria-expanded', 'false');
   if (lastFocus && document.contains(lastFocus)) lastFocus.focus();
 }
 
@@ -549,7 +564,7 @@ groupsFab.addEventListener('click', () => {
   renderGroups();
   openDrawer(groupsDrawer, groupsFab);
 });
-[drawer, settingsDrawer, groupsDrawer].forEach((d) => {
+[drawer, settingsDrawer, groupsDrawer, calendarDrawer].forEach((d) => {
   d.addEventListener('click', (e) => {
     if (e.target.closest('[data-close]')) closeDrawer();
   });
@@ -581,6 +596,9 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     renderGroups();
     openDrawer(groupsDrawer, groupsFab);
+  } else if (e.code === 'KeyC') {
+    e.preventDefault();
+    openCalendar();
   }
 });
 
@@ -695,6 +713,89 @@ groupNameInput.addEventListener('keydown', (e) => {
   }
 });
 groupBannerClear.addEventListener('click', clearGroupView);
+
+// ── 캘린더(P3): 기준일시 기준 월 그리드. 각 날에 제목 미니목록 + "+N" ──
+let calYear = new Date().getFullYear();
+let calMonth0 = new Date().getMonth();
+const WD = ['일', '월', '화', '수', '목', '금', '토'];
+const pad2c = (n) => String(n).padStart(2, '0');
+
+function renderCalendar() {
+  calMonthEl.textContent = `${calYear}년 ${calMonth0 + 1}월`;
+  const byDate = new Map(); // 기준일시 기준 날짜키 → 항목들
+  for (const it of list) {
+    const k = dateKeyOf(it, 'target');
+    if (!k) continue;
+    if (!byDate.has(k)) byDate.set(k, []);
+    byDate.get(k).push(it);
+  }
+  const now = new Date();
+  const todayKey = `${now.getFullYear()}-${pad2c(now.getMonth() + 1)}-${pad2c(now.getDate())}`;
+
+  const cells = WD.map((w, i) => {
+    const h = document.createElement('div');
+    h.className = 'cal__wd' + (i === 0 ? ' cal__wd--sun' : i === 6 ? ' cal__wd--sat' : '');
+    h.textContent = w;
+    return h;
+  });
+  for (const week of monthGrid(calYear, calMonth0)) {
+    for (const day of week) {
+      const key = `${day.y}-${pad2c(day.m + 1)}-${pad2c(day.d)}`;
+      const cell = document.createElement('div');
+      cell.className =
+        'cal__day' + (day.inMonth ? '' : ' cal__day--out') + (key === todayKey ? ' cal__day--today' : '');
+      cell.dataset.date = key;
+      const num = document.createElement('div');
+      num.className = 'cal__daynum';
+      num.textContent = day.d;
+      cell.append(num);
+      const items = byDate.get(key) || [];
+      if (items.length) {
+        const ul = document.createElement('ul');
+        ul.className = 'cal__items';
+        const MAX = 3;
+        for (const it of items.slice(0, MAX)) {
+          const li = document.createElement('li');
+          li.className = 'cal__item';
+          li.textContent = it.label || '(제목 없음)';
+          li.title = it.label || '';
+          ul.append(li);
+        }
+        if (items.length > MAX) {
+          const more = document.createElement('li');
+          more.className = 'cal__more';
+          more.textContent = `+${items.length - MAX}`;
+          ul.append(more);
+        }
+        cell.append(ul);
+      }
+      cells.push(cell);
+    }
+  }
+  calGridEl.replaceChildren(...cells);
+}
+
+function shiftMonth(delta) {
+  calMonth0 += delta;
+  if (calMonth0 < 0) {
+    calMonth0 = 11;
+    calYear--;
+  } else if (calMonth0 > 11) {
+    calMonth0 = 0;
+    calYear++;
+  }
+  renderCalendar();
+}
+
+calPrevBtn.addEventListener('click', () => shiftMonth(-1));
+calNextBtn.addEventListener('click', () => shiftMonth(1));
+function openCalendar() {
+  calYear = new Date().getFullYear();
+  calMonth0 = new Date().getMonth();
+  renderCalendar();
+  openDrawer(calendarDrawer, calendarFab);
+}
+calendarFab.addEventListener('click', openCalendar);
 
 // ── 디자인 설정: 저장 → CSS 변수/제목 표시에 즉시 반영 ──
 const setTimerScale = $('set-timer-scale');

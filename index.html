@@ -187,6 +187,23 @@
         </div>
       </div>
 
+      <!-- 캘린더: 평소 숨김, 🗓️ FAB로 열기. 기본 기준=기준일시 -->
+      <div class="drawer" id="calendar-drawer" hidden>
+        <div class="drawer__backdrop" data-close></div>
+        <div class="drawer__panel drawer__panel--cal" role="dialog" aria-modal="true" aria-labelledby="cal-title">
+          <header class="drawer__head">
+            <h2 class="drawer__title" id="cal-title">🗓️ 캘린더 <kbd class="drawer__kbd" title="단축키">C</kbd></h2>
+            <button class="drawer__close" type="button" data-close aria-label="닫기">✕</button>
+          </header>
+          <div class="cal__nav">
+            <button type="button" class="cal__navbtn" id="cal-prev" aria-label="이전 달">◀</button>
+            <span class="cal__month" id="cal-month"></span>
+            <button type="button" class="cal__navbtn" id="cal-next" aria-label="다음 달">▶</button>
+          </div>
+          <div class="cal__grid" id="cal-grid"></div>
+        </div>
+      </div>
+
       <!-- 추가/삭제 시에만 스크린리더에 알리는 상태 영역 -->
       <p id="sr-status" class="sr-only" aria-live="polite" role="status"></p>
     </main>
@@ -198,6 +215,21 @@
       <button type="button" class="select-bar__save" id="select-save">저장</button>
       <button type="button" class="select-bar__cancel" id="select-cancel">취소</button>
     </div>
+
+    <!-- 캘린더를 여는 플로팅 버튼(보조) -->
+    <button
+      class="fab fab--calendar"
+      id="calendar-fab"
+      type="button"
+      title="캘린더 (단축키: C)"
+      aria-haspopup="dialog"
+      aria-controls="calendar-drawer"
+      aria-expanded="false"
+    >
+      <span aria-hidden="true">🗓️</span>
+      <kbd class="fab__key" aria-hidden="true">C</kbd>
+      <span class="sr-only">캘린더 열기 (단축키 C)</span>
+    </button>
 
     <!-- 조합(그룹) 패널을 여는 플로팅 버튼(보조) -->
     <button

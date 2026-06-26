@@ -430,9 +430,10 @@ body.dragging-active { cursor: grabbing; user-select: none; }
   box-shadow: none;
 }
 
-/* 보조 FAB(설정·조합): 추가 ＋ 버튼 위로 쌓임, 살짝 작고 차분한 색 */
+/* 보조 FAB(설정·조합·캘린더): 추가 ＋ 버튼 위로 쌓임, 살짝 작고 차분한 색 */
 .fab--settings,
-.fab--groups {
+.fab--groups,
+.fab--calendar {
   width: 3rem;
   height: 3rem;
   font-size: 1.35rem;
@@ -446,6 +447,58 @@ body.dragging-active { cursor: grabbing; user-select: none; }
   font-size: 1.25rem;
   bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 7.75rem);
 }
+.fab--calendar {
+  font-size: 1.2rem;
+  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 11.25rem);
+}
+
+/* ── 캘린더 ─────────────────────────────────── */
+.drawer__panel--cal { width: min(100%, 44rem); }
+.cal__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin: 0.4rem 0 0.6rem;
+}
+.cal__month { font-weight: 700; font-size: 1.05rem; }
+.cal__navbtn {
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  color: var(--fg);
+  border-radius: 0.5rem;
+  padding: 0.3rem 0.8rem;
+  cursor: pointer;
+}
+.cal__navbtn:hover { border-color: var(--accent); color: var(--accent); }
+.cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal__wd { text-align: center; font-size: 0.75rem; color: var(--muted); font-weight: 700; padding: 0.3rem 0; }
+.cal__wd--sun { color: var(--past); }
+.cal__wd--sat { color: #5b8cff; }
+.cal__day {
+  min-height: 4.4rem;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  background: var(--card);
+  padding: 0.2rem;
+  overflow: hidden;
+}
+.cal__day--out { opacity: 0.4; }
+.cal__day--today { border-color: var(--accent); }
+.cal__daynum { font-size: 0.72rem; font-weight: 700; color: var(--muted); }
+.cal__day--today .cal__daynum { color: var(--accent); }
+.cal__items { list-style: none; margin: 0.15rem 0 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.cal__item {
+  font-size: 0.66rem;
+  background: var(--card-2);
+  border-radius: 0.25rem;
+  padding: 0.05rem 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--fg);
+}
+.cal__more { font-size: 0.62rem; color: var(--muted); padding: 0 0.25rem; }
 
 /* ── 조합(그룹) 패널 ─────────────────────────── */
 .groups { display: flex; flex-direction: column; gap: 0.6rem; }

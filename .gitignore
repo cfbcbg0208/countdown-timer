@@ -18,4 +18,7 @@ Desktop.ini
 # 빌드 산출물 (배포용 dist는 tools/build-dist.mjs 로 재생성)
 dist/
 
+# CDP 자동검증 산출물(스크린샷 등)
+tools/.artifacts/
+
 # (참고) 런타임 의존성 0 — node_modules 없음

@@ -6,6 +6,7 @@
   "description": "특정 datetime까지 남은/지난 시간을 표시하는 웹/PWA (의존성 0)",
   "scripts": {
     "test": "node --test",
-    "start": "node serve.mjs"
+    "start": "node serve.mjs",
+    "verify": "node tools/cdp-verify.mjs"
   }
 }

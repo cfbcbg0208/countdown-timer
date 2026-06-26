@@ -21,6 +21,7 @@ const emptyHint = $('empty-hint');
 const srStatus = $('sr-status');
 const fab = $('fab');
 const drawer = $('drawer');
+const drawerPanel = drawer.querySelector('.drawer__panel');
 const settingsFab = $('settings-fab');
 const settingsDrawer = $('settings-drawer');
 
@@ -423,7 +424,10 @@ listEl.addEventListener('click', (e) => {
 });
 
 // 드로어 열기/닫기 (추가 ＋ / 설정 ⚙️)
-fab.addEventListener('click', () => openDrawer(drawer, fab, textInput));
+// 추가 드로어는 기준일시 칸을 '자동 포커스하지 않는다'. JS 자동 포커스는 OS 캐럿을
+// 클릭만큼 확실히 잡지 못해 외부 텍스트확장기(Beeftext/Textspend)의 단축키가 안 먹혔다
+// (사용자 클릭이면 정상). 그래서 드로어 패널만 포커스(접근성)하고, 입력은 사용자가 칸 클릭.
+fab.addEventListener('click', () => openDrawer(drawer, fab, drawerPanel));
 settingsFab.addEventListener('click', () => openDrawer(settingsDrawer, settingsFab));
 [drawer, settingsDrawer].forEach((d) => {
   d.addEventListener('click', (e) => {
@@ -448,7 +452,7 @@ document.addEventListener('keydown', (e) => {
   if (openEl || isTyping(document.activeElement) || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.code === 'KeyA' || e.code === 'NumpadAdd') {
     e.preventDefault();
-    openDrawer(drawer, fab, textInput);
+    openDrawer(drawer, fab, drawerPanel); // 기준일시 자동 포커스 안 함(Beeftext 호환)
   } else if (e.code === 'KeyS') {
     e.preventDefault();
     openDrawer(settingsDrawer, settingsFab);

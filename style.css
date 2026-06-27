@@ -178,7 +178,7 @@ kbd {
 .card__cols {
   display: grid;
   grid-template-columns: minmax(0, 1.22fr) minmax(0, 1fr);
-  align-items: start;
+  align-items: stretch; /* 두 열 높이를 같게 → 중앙 구분선이 카드 전체 높이를 채움(내용은 상단 정렬 유지) */
   gap: 0;
   padding-right: 1.4rem; /* 우상단 ✕ 자리 비우기 */
 }

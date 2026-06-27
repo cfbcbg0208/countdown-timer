@@ -97,20 +97,38 @@ body {
 }
 .add__label:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-.zones { display: flex; flex-direction: column; gap: 0.6rem; }
-
-.zone {
+/* 추가 패널: 텍스트입력 · 제목입력 · 선택기 — 3영역을 카드로 분리(현대 iOS 톤) */
+.addzone {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 0.85rem;
-  padding: 0.9rem 1rem;
+  border-radius: 0.9rem;
+  padding: 0.85rem 0.95rem;
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
 }
+.addzone__head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.addzone__title {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.9rem; font-weight: 700; color: var(--fg);
+}
+.addzone__icon { width: 1.05rem; height: 1.05rem; color: var(--accent); flex: none; }
+.addzone__opt { font-size: 0.75rem; font-weight: 500; color: var(--muted); }
+.addzone__tools { display: inline-flex; align-items: center; gap: 0.35rem; }
+/* '지원 형식' 펼침 버튼: 평소 숨긴 형식 도움말을 따로 펼침 */
+.addzone__help {
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.addzone__help:hover { color: var(--accent); border-color: var(--accent); }
+.addzone__help[aria-expanded='true'] { color: var(--accent); border-color: var(--accent); }
 
-.zone__head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
-.zone__name { font-size: 0.9rem; color: var(--muted); font-weight: 600; }
 /* '지금' 버튼: 현재시각을 기준일시에 채움(모바일 키보드 Enter 한계 보완) */
 .zone__now {
   padding: 0.15rem 0.65rem;
@@ -154,23 +172,23 @@ body {
 }
 .zone__apply:hover { filter: brightness(1.08); }
 
-.zone__formats { font-size: 0.8rem; color: var(--muted); }
-.zone__formats summary { cursor: pointer; }
-.zone__formats ul { margin: 0.4rem 0 0; padding-left: 1.1rem; line-height: 1.7; }
-.zone__formats code {
+/* 지원 형식 도움말: 평소 hidden, '지원 형식' 버튼으로만 펼침 */
+.add__formats {
+  font-size: 0.8rem; color: var(--muted);
+  border-top: 1px solid var(--line);
+  margin-top: 0.15rem; padding-top: 0.5rem;
+}
+.add__formats[hidden] { display: none; }
+.add__formats ul { margin: 0; padding-left: 1.1rem; line-height: 1.7; }
+.add__formats code {
   background: var(--card-2);
   padding: 0.05rem 0.3rem;
   border-radius: 0.3rem;
   color: var(--fg);
 }
 
-/* 선택기: 거의 안 쓰므로 접어서 숨김(접근성 유지). 펼치면 입력+버튼이 세로로. */
-.add__picker { font-size: 0.85rem; color: var(--muted); }
-.add__picker summary { cursor: pointer; padding: 0.2rem 0; }
-.add__picker .zone__apply { margin-top: 0.2rem; }
-
 /* 달력 선택기: 한 행 3열 — 연도(10칩 십년뷰+입력) | 월(2열 칩) | 일(달력). Apple/Google 톤 */
-.pick { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.pick { display: flex; flex-direction: column; gap: 0.5rem; }
 .pick__cols { display: flex; gap: 0.4rem; align-items: stretch; }
 .pick__sect { display: flex; flex-direction: column; gap: 0.28rem; }
 .pick__sect:nth-child(1) { flex: none; width: 5.6rem; }
@@ -852,8 +870,6 @@ body.dragging-active { cursor: grabbing; user-select: none; }
   white-space: nowrap;
 }
 .combo__add:hover { color: var(--accent); border-color: var(--accent); }
-.add__groups-wrap { font-size: 0.78rem; color: var(--muted); }
-.add__groups-wrap summary { cursor: pointer; padding: 0.2rem 0; }
 
 /* ── 조합(그룹) 패널 ─────────────────────────── */
 .groups { display: flex; flex-direction: column; gap: 0.6rem; }

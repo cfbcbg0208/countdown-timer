@@ -24,7 +24,6 @@ import {
   removeItemFromGroups,
   groupsForItem,
   toggleItemInGroup,
-  setItemGroups,
 } from './store.js';
 import {
   load as loadSettings,
@@ -38,7 +37,8 @@ const textInput = $('text-input');
 const textPreview = $('text-preview');
 const addForm = $('add-form');
 const nowBtn = $('now-btn');
-const addPicker = $('add-picker');
+const fmtBtn = $('fmt-btn');
+const addFormatsEl = $('add-formats');
 const pickYearsEl = $('pick-years');
 const pickMonthsEl = $('pick-months');
 const pickDaysEl = $('pick-days');
@@ -80,10 +80,6 @@ const selectCountEl = $('select-count');
 const groupNameInput = $('group-name');
 const selectSaveBtn = $('select-save');
 const selectCancelBtn = $('select-cancel');
-const addGroupsEl = $('add-groups');
-
-// 추가 드로어에서 새 카드가 들어갈 조합 id들(생성 시 적용).
-let pendingGroupIds = new Set();
 
 // 보기 필터: null=전체 | {kind:'group',id} | {kind:'date',key,basis} | {kind:'item',id}.
 // (조합 보기·캘린더 날짜 보기·항목 단독 보기를 하나의 필터로 통합)
@@ -94,9 +90,9 @@ const BASIS_LABEL = { target: '기준일시', created: '등록일시', updated: 
 
 // 부호는 D-Day 관례: 남은=− (D-7), 지난=+ (D+3). 색은 부호와 별개(남은=초록/지난=빨강).
 const DIRS = {
-  future: { label: '남은 시간', chip: '남은시간', emoji: '⏳', sign: '−', cls: 'display--future' },
-  past: { label: '지난 시간', chip: '지난시간', emoji: '⌛', sign: '+', cls: 'display--past' },
-  now: { label: '바로 지금!', chip: '지금', emoji: '🎯', sign: '', cls: '' },
+  future: { label: '남은 시간', chip: '남은시간', sign: '−', cls: 'display--future' },
+  past: { label: '지난 시간', chip: '지난시간', sign: '+', cls: 'display--past' },
+  now: { label: '바로 지금!', chip: '지금', sign: '', cls: '' },
 };
 
 // 로컬 시각을 보존하는 ISO 문자열(오프셋 없이 → new Date()가 로컬로 되읽음).
@@ -414,7 +410,7 @@ function updatePreview() {
   const d = parseFlexible(raw);
   if (!d) {
     textPreview.className = 'zone__preview preview--err';
-    textPreview.textContent = '❌ 인식할 수 없는 형식입니다.';
+    textPreview.textContent = '인식할 수 없는 형식입니다.';
     return;
   }
   const r = diff(d);
@@ -422,7 +418,7 @@ function updatePreview() {
   // 해석된 기준일시까지/부터 남은·지난 양도 함께(방향 라벨 우측 빈 공간 활용).
   const amount = r.direction === 'now' ? '' : `  ·  ${formatDuration(r)}`;
   textPreview.className = 'zone__preview preview--ok';
-  textPreview.textContent = `✅ ${formatLocal(d)}  ·  ${dir.emoji} ${dir.label}${amount}`;
+  textPreview.textContent = `${formatLocal(d)}  ·  ${dir.label}${amount}`;
 }
 
 function addFrom(source) {
@@ -437,15 +433,13 @@ function addFrom(source) {
     date = parseFlexible(textInput.value.trim());
     if (!date) {
       textPreview.className = 'zone__preview preview--err';
-      textPreview.textContent = '❌ 인식할 수 없는 형식입니다.';
+      textPreview.textContent = '인식할 수 없는 형식입니다.';
       return;
     }
   }
-  // 제목을 비우면 기준일시와 같은 서식(formatLocal)으로 자동 제목 생성.
   // 제목을 비우면 자동 생성하지 않고 빈 채로 둠(기준일시는 메타에 따로 표시 → 중복 제거).
   const labelText = labelInput.value.trim();
   const item = add(localStorage, { label: labelText, targetISO: toLocalISO(date) });
-  if (pendingGroupIds.size) setItemGroups(localStorage, item.id, [...pendingGroupIds]); // 생성 시 태그 지정
   list = load(localStorage);
   // 추가 위치 설정: 기본 'top'이면 방금 추가한 항목을 맨 앞으로 재배치(영속).
   if (settings.addPosition === 'top') {
@@ -514,6 +508,12 @@ function fillNow(focusField = true) {
   }
 }
 nowBtn.addEventListener('click', () => fillNow(true));
+// '지원 형식' 버튼: 형식 도움말 패널을 따로 펼침/접음(평소 숨김).
+fmtBtn.addEventListener('click', () => {
+  const show = addFormatsEl.hidden;
+  addFormatsEl.hidden = !show;
+  fmtBtn.setAttribute('aria-expanded', String(show));
+});
 // 추가: form submit(=PC Enter on 제목·모바일 완료/이동 액션키·＋추가 버튼) → 한 경로로 통일.
 addForm.addEventListener('submit', (e) => {
   e.preventDefault();
@@ -625,13 +625,13 @@ function openFieldEditor(card, id, field) {
       }
       const d = parseFlexible(raw);
       if (!d) {
-        preview.textContent = '❌ 인식할 수 없는 형식';
+        preview.textContent = '인식할 수 없는 형식';
         preview.dataset.ok = 'no';
         return;
       }
       const dir = DIRS[diff(d).direction];
       preview.textContent =
-        field === 'start' ? `✅ ${formatLocal(d)}` : `✅ ${formatLocal(d)} · ${dir.emoji} ${dir.label}`;
+        field === 'start' ? formatLocal(d) : `${formatLocal(d)} · ${dir.label}`;
       preview.dataset.ok = 'yes';
     };
     input.addEventListener('input', refresh);
@@ -716,14 +716,9 @@ listEl.addEventListener('click', (e) => {
   }
 });
 
-// 추가 드로어 열기: 조합 선택 초기화 + 조합 선택기 렌더 후 연다.
+// 추가 드로어 열기: 선택기(달력)를 항상 보이게 초기화한 뒤 연다(접힘 없앰).
 function openAddDrawer() {
-  pendingGroupIds = new Set();
-  renderComboChooser(addGroupsEl, {
-    isOn: (gid) => pendingGroupIds.has(gid),
-    toggle: (gid) => (pendingGroupIds.has(gid) ? pendingGroupIds.delete(gid) : pendingGroupIds.add(gid)),
-    onCreate: (name) => pendingGroupIds.add(addGroup(localStorage, { name, itemIds: [] }).id),
-  });
+  ensurePickerInit();
   openDrawer(drawer, fab, textInput);
 }
 
@@ -1182,9 +1177,6 @@ function ensurePickerInit() {
   pickTime.value = `${pad2c(now.getHours())}${pad2c(now.getMinutes())}`;
   renderPickerCalendar();
 }
-addPicker.addEventListener('toggle', () => {
-  if (addPicker.open && !pickDaysEl.childElementCount) ensurePickerInit();
-});
 pickYearsEl.addEventListener('click', (e) => {
   const b = e.target.closest('.pick__opt');
   if (!b) return;

@@ -38,14 +38,20 @@
             <button class="drawer__close" type="button" data-close aria-label="닫기">✕</button>
           </header>
       <section class="add">
-        <!-- form으로 감싸 'submit'으로 추가 → PC Enter·모바일 액션키(다음/이동/완료)·버튼 모두 안정 동작 -->
+        <!-- 영역 1·2(텍스트 입력·제목)는 한 form: submit으로 추가(PC Enter·모바일 완료/이동·버튼). -->
         <form id="add-form" class="add__form">
-          <!-- 기준일시(메인): 자유 텍스트 → 해석. 드로어 열면 여기에 먼저 포커스 -->
-          <div class="zone" id="zone-text">
-            <header class="zone__head">
-              <label class="zone__name" for="text-input">⌨️ 기준일시</label>
-              <button type="button" id="now-btn" class="zone__now">지금</button>
-            </header>
+          <!-- 영역 1: 텍스트 입력 -->
+          <div class="addzone">
+            <div class="addzone__head">
+              <span class="addzone__title">
+                <svg class="addzone__icon" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" aria-hidden="true"><path d="M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7Zm4 1v2h2V8H6Zm3 0v2h2V8H9Zm3 0v2h2V8h-2Zm3 0v2h2V8h-2ZM6 11v2h2v-2H6Zm3 0v2h2v-2H9Zm3 0v2h2v-2h-2Zm3 0v2h2v-2h-2ZM8 14v2h8v-2H8Z"/></svg>
+                기준일시
+              </span>
+              <div class="addzone__tools">
+                <button type="button" id="fmt-btn" class="addzone__help" aria-controls="add-formats" aria-expanded="false">지원 형식</button>
+                <button type="button" id="now-btn" class="zone__now">지금</button>
+              </div>
+            </div>
             <input
               type="text"
               id="text-input"
@@ -58,43 +64,48 @@
             <p class="zone__preview preview--idle" id="text-preview">
               기준일시를 입력하면 해석 결과가 표시됩니다.
             </p>
+            <!-- 지원 형식: 평소 숨김, '지원 형식' 버튼으로 따로 펼침 -->
+            <div class="add__formats" id="add-formats" hidden>
+              <ul>
+                <li><b>날짜</b> <code>2026-06-21</code> · <code>2026/6/21</code> · <code>2026.6.21</code> · <code>26-06-21</code> · <code>2026년 6월 21일</code></li>
+                <li><b>컴팩트</b> <code>260621</code> · <code>260621일110333</code> · <code>260621일1300</code></li>
+                <li><b>날짜+시간</b> <code>2026-06-21 11:03:30</code> · <code>2026-06-21T11:03</code> · <code>…일 오후 1시 30분</code></li>
+                <li><b>시간만</b> <code>110338</code> · <code>1300</code> · <code>11:03:41</code> · <code>오후 11:30</code> (→ 오늘)</li>
+                <li><b>기간(지금부터)</b> <code>d30</code>=30분 · <code>d0530</code>=5시간30분 · <code>d2h</code> · <code>d30s</code> · <code>d3일</code> (대소문자 무관·m=분/월은 mo·월)</li>
+                <li><b>유닉스</b> 10자리(초)·13자리(밀리초)</li>
+              </ul>
+            </div>
           </div>
 
-          <!-- 제목(선택): 비우면 제목 없이 저장(기준일시는 메타에 따로 표시) -->
-          <label class="sr-only" for="label-input">제목 (선택)</label>
-          <input
-            type="text"
-            id="label-input"
-            class="add__label"
-            enterkeyhint="done"
-            placeholder="제목 (선택)"
-            autocomplete="off"
-          />
-
-          <button class="zone__apply" data-source="text" type="submit">＋ 추가</button>
+          <!-- 영역 2: 제목 입력 + 추가 -->
+          <div class="addzone">
+            <div class="addzone__head">
+              <span class="addzone__title">
+                <svg class="addzone__icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 5h14v3h-2V7h-4v10h2v2H9v-2h2V7H7v1H5V5Z"/></svg>
+                제목 <span class="addzone__opt">(선택)</span>
+              </span>
+            </div>
+            <label class="sr-only" for="label-input">제목 (선택)</label>
+            <input
+              type="text"
+              id="label-input"
+              class="add__label"
+              enterkeyhint="done"
+              placeholder="제목 (선택)"
+              autocomplete="off"
+            />
+            <button class="zone__apply zone__apply--primary" data-source="text" type="submit">＋ 추가</button>
+          </div>
         </form>
 
-        <!-- 태그 지정(선택): 생성 시 바로 태그를 붙임 -->
-        <details class="add__groups-wrap">
-          <summary>태그 지정 (선택)</summary>
-          <div class="combo-chooser" id="add-groups"></div>
-        </details>
-
-        <details class="zone__formats">
-          <summary>지원 형식 보기</summary>
-          <ul>
-            <li><b>날짜</b> <code>2026-06-21</code> · <code>2026/6/21</code> · <code>2026.6.21</code> · <code>26-06-21</code> · <code>2026년 6월 21일</code></li>
-            <li><b>컴팩트</b> <code>260621</code> · <code>260621일110333</code> · <code>260621일1300</code></li>
-            <li><b>날짜+시간</b> <code>2026-06-21 11:03:30</code> · <code>2026-06-21T11:03</code> · <code>…일 오후 1시 30분</code></li>
-            <li><b>시간만</b> <code>110338</code> · <code>1300</code> · <code>11:03:41</code> · <code>오후 11:30</code> (→ 오늘)</li>
-            <li><b>기간(지금부터)</b> <code>d30</code>=30분 · <code>d0530</code>=5시간30분 · <code>d2h</code> · <code>d30s</code> · <code>d3일</code> (대소문자 무관·m=분/월은 mo·월)</li>
-            <li><b>유닉스</b> 10자리(초)·13자리(밀리초)</li>
-          </ul>
-        </details>
-
-        <!-- 달력 선택기: 두 달 가로 배치 + 클릭 선택 + 시간 텍스트 해석(접어서 숨김) -->
-        <details class="add__picker" id="add-picker">
-          <summary>📅 달력에서 클릭으로 선택</summary>
+        <!-- 영역 3: 선택기로 추가(항상 표시) -->
+        <div class="addzone">
+          <div class="addzone__head">
+            <span class="addzone__title">
+              <svg class="addzone__icon" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd" clip-rule="evenodd" aria-hidden="true"><path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h.5A2.5 2.5 0 0 1 21 6.5v12a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 18.5v-12A2.5 2.5 0 0 1 5.5 4H6V3a1 1 0 0 1 1-1ZM5 8.4h14v1.3H5ZM7 11.5h2v2H7ZM11 11.5h2v2h-2ZM15 11.5h2v2h-2ZM7 15h2v2H7ZM11 15h2v2h-2ZM15 15h2v2h-2Z"/></svg>
+              달력에서 선택
+            </span>
+          </div>
           <div class="pick">
             <!-- 한 행 3열: 연도(10칩 십년뷰) | 월(2열 칩) | 일(달력) -->
             <div class="pick__cols">
@@ -137,7 +148,7 @@
             <p class="pick__sel" id="pick-sel"></p>
             <button class="zone__apply" data-source="picker" type="button">＋ 선택기로 추가</button>
           </div>
-        </details>
+        </div>
       </section>
         </div>
       </div>

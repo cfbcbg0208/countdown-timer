@@ -443,13 +443,28 @@ async function main() {
   const addedCount = await evalJS(browser, "document.querySelectorAll('.card').length");
   if (addedCount !== 1) fails.push(`form submit 추가 실패, 카드 ${addedCount}`);
 
-  // 14) 클릭형 달력 선택기: ＋FAB → 선택기 펼침 → 날짜 클릭 → 추가 → 카드 2개
+  // 14) 클릭형 달력 선택기: ＋FAB → (선택기 항상 표시) → 날짜 클릭 → 추가 → 카드 2개
   await evalJS(browser, "document.getElementById('fab').click()");
   await until(() => evalJS(browser, "!document.getElementById('drawer').hidden"), { label: 'add drawer 2' });
-  await evalJS(
+  // 3영역 재구성: 태그 지정 제거 + 선택기는 접힘 없이 바로 보임(openAddDrawer가 초기화)
+  const addPanel = await evalJS(
     browser,
-    "(() => { const d = document.getElementById('add-picker'); d.open = true; d.dispatchEvent(new Event('toggle')); })()",
+    `(() => ({
+       noTagChooser: !document.getElementById('add-groups'),
+       noPickerDetails: !document.getElementById('add-picker'),
+       zones: document.querySelectorAll('.add .addzone').length,
+       fmtHidden: document.getElementById('add-formats').hidden,
+     }))()`,
   );
+  if (!addPanel.noTagChooser) fails.push('태그 지정(add-groups)이 아직 추가 패널에 있음');
+  if (!addPanel.noPickerDetails) fails.push('선택기가 아직 details(add-picker)로 접혀 있음');
+  if (addPanel.zones !== 3) fails.push(`추가 패널 3영역 기대, 실제 ${addPanel.zones}`);
+  if (!addPanel.fmtHidden) fails.push('지원 형식 패널이 평소 숨김이 아님');
+  // 지원 형식 버튼: 펼침/접음 토글
+  await evalJS(browser, "document.getElementById('fmt-btn').click()");
+  const fmtShown = await evalJS(browser, "!document.getElementById('add-formats').hidden");
+  if (!fmtShown) fails.push('지원 형식 버튼이 패널을 펼치지 못함');
+  await evalJS(browser, "document.getElementById('fmt-btn').click()");
   await until(() => evalJS(browser, "document.querySelectorAll('#pick-days .pick__day').length >= 28"), {
     label: 'picker (year+month chips, day grid)',
   });
@@ -510,7 +525,7 @@ async function main() {
   const pickerShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-picker.png'), Buffer.from(pickerShot.data, 'base64'));
   await evalJS(browser, "document.querySelector('#pick-days .pick__day:not(.pick__day--out):not(.pick__day--sel)').click()");
-  await evalJS(browser, "document.querySelector('.add__picker .zone__apply').click()");
+  await evalJS(browser, "document.querySelector('.zone__apply[data-source=\"picker\"]').click()");
   await until(() => evalJS(browser, "document.querySelectorAll('.card').length === 2"), {
     label: 'picker add',
   });

@@ -47,6 +47,7 @@ const pickPrevBtn = $('pick-prev');
 const pickNextBtn = $('pick-next');
 const pickYPrevBtn = $('pick-yprev');
 const pickYNextBtn = $('pick-ynext');
+const pickYInput = $('pick-yinput');
 const pickTime = $('pick-time');
 const pickSelEl = $('pick-sel');
 const listEl = $('list');
@@ -1062,10 +1063,11 @@ let calBasis = 'target'; // 'target'|'created'|'updated'
 const WD = ['일', '월', '화', '수', '목', '금', '토'];
 const pad2c = (n) => String(n).padStart(2, '0');
 
-// ── 달력 선택기(추가 드로어): 연/월/일 3열 스크롤 목록 + 시간 텍스트 해석 ──
+// ── 달력 선택기(추가 드로어): 연도(10칩 십년뷰) | 월(2열 칩) | 일(달력) + 시간 텍스트 해석 ──
 let pickYear = new Date().getFullYear();
 let pickMonth0 = new Date().getMonth();
 let pickDay = new Date().getDate();
+let pickYearBase = Math.floor(pickYear / 10) * 10; // 연도 칩 십년뷰 시작(x0)
 
 // 시간 텍스트를 해석(기준일시와 동일 파서). 비우면 0시, 해석 불가면 null.
 function pickTimeParts() {
@@ -1098,17 +1100,16 @@ function pickOpt(label, sel, now, data, extra) {
   b.textContent = label;
   return b;
 }
-function scrollSelIntoView(col) {
-  col.querySelector('.pick__opt--sel')?.scrollIntoView({ block: 'nearest' });
-}
+// 연도: 현재 십년뷰(x0~x9) 10개를 2열 칩으로. 텍스트 입력엔 선택 연도 표시.
 function renderYears() {
   const ty = new Date().getFullYear();
-  const lo = Math.min(ty, pickYear) - 6;
-  const hi = Math.max(ty, pickYear) + 18;
   const opts = [];
-  for (let y = lo; y <= hi; y++) opts.push(pickOpt(y, y === pickYear, y === ty, { year: y }));
+  for (let i = 0; i < 10; i++) {
+    const y = pickYearBase + i;
+    opts.push(pickOpt(y, y === pickYear, y === ty, { year: y }));
+  }
   pickYearsEl.replaceChildren(...opts);
-  scrollSelIntoView(pickYearsEl);
+  if (document.activeElement !== pickYInput) pickYInput.value = pickYear;
 }
 // 월: 12개를 2열 칩으로 모두 표시(스크롤 없음).
 function renderMonths() {
@@ -1164,9 +1165,14 @@ function renderPickerCalendar() {
   renderDays();
   pickSummary();
 }
+// 선택 연도 설정 + 십년뷰를 그 연도 십년대로 동기화.
+function setPickYear(y) {
+  pickYear = y;
+  pickYearBase = Math.floor(y / 10) * 10;
+}
 function ensurePickerInit() {
   const now = new Date();
-  pickYear = now.getFullYear();
+  setPickYear(now.getFullYear());
   pickMonth0 = now.getMonth();
   pickDay = now.getDate();
   pickTime.value = `${pad2c(now.getHours())}${pad2c(now.getMinutes())}`;
@@ -1178,12 +1184,26 @@ addPicker.addEventListener('toggle', () => {
 pickYearsEl.addEventListener('click', (e) => {
   const b = e.target.closest('.pick__opt');
   if (!b) return;
-  pickYear = +b.dataset.year;
-  renderYears();
-  renderMonths(); // '오늘 월' 표시 갱신
-  renderDays(); // 윤년 등 일수 재계산
-  pickSummary();
+  pickYear = +b.dataset.year; // 칩은 현재 십년뷰 안 → base 유지
+  renderPickerCalendar();
 });
+// 연도 텍스트 입력: 유효한 연도면 점프, 무효면 복원.
+function applyYearInput() {
+  const y = parseInt(pickYInput.value, 10);
+  if (Number.isInteger(y) && y >= 1 && y <= 9999) {
+    setPickYear(y);
+    renderPickerCalendar();
+  } else {
+    pickYInput.value = pickYear;
+  }
+}
+pickYInput.addEventListener('change', applyYearInput);
+pickYInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); applyYearInput(); pickYInput.blur(); }
+});
+// 연도 십년뷰 이동(prev/next 10년): 선택은 유지, 칩 범위만 이동.
+pickYPrevBtn.addEventListener('click', () => { pickYearBase -= 10; renderYears(); });
+pickYNextBtn.addEventListener('click', () => { pickYearBase += 10; renderYears(); });
 pickMonthsEl.addEventListener('click', (e) => {
   const b = e.target.closest('.pick__opt');
   if (!b) return;
@@ -1195,22 +1215,20 @@ pickMonthsEl.addEventListener('click', (e) => {
 pickDaysEl.addEventListener('click', (e) => {
   const b = e.target.closest('.pick__day');
   if (!b) return;
-  pickYear = +b.dataset.y; // 다른 달 날짜를 누르면 그 달/해로 이동
+  setPickYear(+b.dataset.y); // 다른 달 날짜를 누르면 그 달/해로 이동
   pickMonth0 = +b.dataset.m;
   pickDay = +b.dataset.d;
   renderPickerCalendar();
 });
-// 일 달력 헤더: 이전/다음 달·해 네비
+// 일 달력 헤더: 이전/다음 달 네비(해 경계 넘으면 십년뷰도 동기화).
 pickPrevBtn.addEventListener('click', () => {
-  if (--pickMonth0 < 0) { pickMonth0 = 11; pickYear--; }
+  if (--pickMonth0 < 0) { pickMonth0 = 11; setPickYear(pickYear - 1); }
   renderPickerCalendar();
 });
 pickNextBtn.addEventListener('click', () => {
-  if (++pickMonth0 > 11) { pickMonth0 = 0; pickYear++; }
+  if (++pickMonth0 > 11) { pickMonth0 = 0; setPickYear(pickYear + 1); }
   renderPickerCalendar();
 });
-pickYPrevBtn.addEventListener('click', () => { pickYear--; renderPickerCalendar(); });
-pickYNextBtn.addEventListener('click', () => { pickYear++; renderPickerCalendar(); });
 pickTime.addEventListener('input', pickSummary);
 
 function renderCalendar() {

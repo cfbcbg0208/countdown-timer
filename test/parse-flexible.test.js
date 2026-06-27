@@ -56,6 +56,17 @@ test('parseDuration 무단위: 자릿수 규칙(분/HHMM/HHMMSS)', () => {
   assert.equal(parseDuration('d0560'), null); // 분 60 → 무효
 });
 
+test('한영 IME 자모 보정: ㅇ0500=d0500, ㅇ2ㅗ=d2h 등 의도대로 해석', () => {
+  // parseFlexible는 자모를 형식 글자로 되돌린 뒤 해석한다(now+기간).
+  const eq = (a, b) => assert.equal(parseFlexible(a, NOW).getTime(), parseFlexible(b, NOW).getTime(), `${a} == ${b}`);
+  eq('ㅇ0500', 'd0500'); // d→ㅇ
+  eq('ㅇ30', 'd30');
+  eq('ㅇ2ㅗ', 'd2h'); // h→ㅗ
+  eq('ㅇ30ㄴ', 'd30s'); // s→ㄴ
+  eq('ㅇ30ㅡ', 'd30m'); // m→ㅡ
+  eq('ㅇ30ㅡㅐ', 'd30mo'); // mo(월)
+});
+
 test('parseDuration 단위: 초/분/시/일/월/년', () => {
   for (const s of ['d30s', 'd30"', 'd30초', 'd30sec', 'd30seconds'])
     assert.deepEqual(parseDuration(s), { ...Z, seconds: 30 }, s);

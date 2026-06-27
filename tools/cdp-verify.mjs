@@ -465,9 +465,9 @@ async function main() {
        selD: !!document.querySelector('#pick-days .pick__day--sel'),
      }))()`,
   );
+  if (pickInfo.years !== 10) fails.push(`연도 칩 10개(십년뷰) 기대, 실제 ${pickInfo.years}`);
   if (pickInfo.months !== 12) fails.push(`월 칩 12개 기대, 실제 ${pickInfo.months}`);
   if (pickInfo.wd !== 7) fails.push(`일 달력 요일헤더 7 기대, 실제 ${pickInfo.wd}`);
-  if (pickInfo.years < 5) fails.push(`연도 항목 부족, 실제 ${pickInfo.years}`);
   if (!pickInfo.selY || !pickInfo.selM || !pickInfo.selD) fails.push('연/월/일 기본 선택 표시 누락');
   // 시간 텍스트 해석(1430 → 14:30)
   await evalJS(
@@ -476,20 +476,26 @@ async function main() {
   );
   const timeOk = await evalJS(browser, "document.getElementById('pick-sel').dataset.ok");
   if (timeOk !== 'yes') fails.push(`시간 텍스트 해석 실패, ok=${timeOk}`);
-  // 연도 picker로 빠른 연도 선택 → 요약 갱신
-  const sBefore = await evalJS(browser, "document.getElementById('pick-sel').textContent");
+  // 연도 텍스트 입력으로 먼 연도 점프(2020~2044 밖)
   await evalJS(
     browser,
-    "(() => { const ys = [...document.querySelectorAll('#pick-years .pick__opt')]; const i = ys.findIndex((b) => b.classList.contains('pick__opt--sel')); (ys[i + 2] || ys[ys.length - 1]).click(); })()",
+    "(() => { const y = document.getElementById('pick-yinput'); y.value = '2099'; y.dispatchEvent(new Event('change', { bubbles: true })); })()",
   );
-  const sAfter = await evalJS(browser, "document.getElementById('pick-sel').textContent");
-  if (sBefore === sAfter) fails.push('연도 picker 클릭이 선택 요약을 바꾸지 못함');
-  // 일 헤더 네비(이전/다음 달·해) 존재 + 다음 달 버튼 동작
+  const yJump = await evalJS(browser, "document.getElementById('pick-mlabel').textContent");
+  if (!/2099/.test(yJump)) fails.push(`연도 텍스트 입력 점프 실패, 라벨=${yJump}`);
+  // 연도 십년뷰 prev → 칩 범위 이동
+  const firstYrBefore = await evalJS(browser, "document.querySelector('#pick-years .pick__opt').textContent");
+  await evalJS(browser, "document.getElementById('pick-yprev').click()");
+  const firstYrAfter = await evalJS(browser, "document.querySelector('#pick-years .pick__opt').textContent");
+  if (firstYrBefore === firstYrAfter) fails.push('연도 prev(10년) 이동이 칩 범위를 안 바꿈');
+  // 연도 칩 클릭으로 선택(현재 십년뷰 첫 칩)
+  await evalJS(browser, "document.querySelector('#pick-years .pick__opt').click()");
+  // 일 헤더 월 네비 존재 + 다음 달 버튼 동작
   const navOk = await evalJS(
     browser,
-    "['pick-yprev','pick-prev','pick-next','pick-ynext'].every((id) => !!document.getElementById(id))",
+    "['pick-yprev','pick-prev','pick-next','pick-ynext','pick-yinput'].every((id) => !!document.getElementById(id))",
   );
-  if (!navOk) fails.push('일 헤더 네비 버튼(이전/다음 달·해) 누락');
+  if (!navOk) fails.push('연도 입력/네비·월 네비 요소 누락');
   const mlBefore = await evalJS(browser, "document.getElementById('pick-mlabel').textContent");
   await evalJS(browser, "document.getElementById('pick-next').click()");
   const mlAfter = await evalJS(browser, "document.getElementById('pick-mlabel').textContent");

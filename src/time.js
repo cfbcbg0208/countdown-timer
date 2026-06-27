@@ -193,9 +193,16 @@ function applyDuration(now, dur) {
  * - 시간: "11:03:30" "11:03" "110338" "1300" "11시 03분 30초" / 오전·오후(am·pm) 보정.
  * - 유닉스: 10자리(초)·13자리(밀리초). 6자리 숫자는 날짜(YYMMDD) 우선, 무효하면 시간(HHMMSS).
  */
+// 한영 IME 오입력 보정: 영문 키를 한글 모드로 눌러 자모로 찍힌 경우(예: d→ㅇ, h→ㅗ)를
+// 형식 글자로 되돌린다. 이 자모들은 정상 날짜/시간 입력엔 단독으로 나오지 않으므로 안전.
+const JAMO_FIX = { ㅇ: 'd', ㅗ: 'h', ㅡ: 'm', ㄴ: 's', ㅐ: 'o', ㅛ: 'y' };
+function fixImeJamo(s) {
+  return s.replace(/[ㅇㅗㅡㄴㅐㅛ]/g, (c) => JAMO_FIX[c]);
+}
+
 export function parseFlexible(input, now = new Date()) {
   if (input == null) return null;
-  let s = String(input).trim();
+  let s = fixImeJamo(String(input).trim());
   if (s === '') return null;
 
   // 'd…' 기간 입력은 '지금부터 그만큼 뒤'로 해석(정규화 전에 먼저 가로챔).

@@ -96,17 +96,27 @@
         <details class="add__picker" id="add-picker">
           <summary>📅 달력에서 클릭으로 선택</summary>
           <div class="pick">
-            <!-- 한 행 3열: 연도(스크롤) | 월(2열 칩) | 일(헤더 네비 + 달력 그리드) -->
+            <!-- 한 행 3열: 연도(10칩 십년뷰) | 월(2열 칩) | 일(달력) -->
             <div class="pick__cols">
-              <div class="pick__years" id="pick-years" role="listbox" aria-label="연도"></div>
-              <div class="pick__months" id="pick-months" role="listbox" aria-label="월"></div>
-              <div class="pick__daycol">
+              <div class="pick__sect">
+                <div class="pick__collabel">연도</div>
+                <div class="pick__yrnav">
+                  <button type="button" class="pick__navbtn" id="pick-yprev" title="이전 10년" aria-label="이전 10년">‹</button>
+                  <input type="text" id="pick-yinput" class="pick__yinput" inputmode="numeric" maxlength="4" aria-label="연도 입력" />
+                  <button type="button" class="pick__navbtn" id="pick-ynext" title="다음 10년" aria-label="다음 10년">›</button>
+                </div>
+                <div class="pick__years" id="pick-years" role="listbox" aria-label="연도"></div>
+              </div>
+              <div class="pick__sect">
+                <div class="pick__collabel">월</div>
+                <div class="pick__months" id="pick-months" role="listbox" aria-label="월"></div>
+              </div>
+              <div class="pick__sect pick__sect--day">
+                <div class="pick__collabel">일</div>
                 <div class="pick__mnav">
-                  <button type="button" class="pick__navbtn" id="pick-yprev" title="이전 해" aria-label="이전 해">«</button>
                   <button type="button" class="pick__navbtn" id="pick-prev" title="이전 달" aria-label="이전 달">‹</button>
                   <span class="pick__mlabel" id="pick-mlabel"></span>
                   <button type="button" class="pick__navbtn" id="pick-next" title="다음 달" aria-label="다음 달">›</button>
-                  <button type="button" class="pick__navbtn" id="pick-ynext" title="다음 해" aria-label="다음 해">»</button>
                 </div>
                 <div class="pick__grid" id="pick-days" role="grid" aria-label="일"></div>
               </div>

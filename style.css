@@ -212,6 +212,15 @@ kbd {
 .card__label:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .card__label--empty { font-weight: 500; font-style: italic; opacity: 0.7; }
 .card__labeltext { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 클릭=편집 어포던스: 평시에도 점선 밑줄로 '편집 가능'함을 표시(호버 시 강조). */
+.card__labeltext,
+.card__metadate {
+  text-decoration: underline dotted var(--muted);
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+.card__label:hover .card__labeltext,
+.card__meta:hover .card__metadate { text-decoration-color: var(--accent); }
 
 .card__time {
   display: block;
@@ -395,33 +404,35 @@ kbd {
 .lap__del:hover { color: var(--past); }
 .lap__del:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
-/* 제목/기준일시 인라인 에디터 */
+/* 제목/기준일시 인라인 에디터 (카드 밀도에 맞춰 컴팩트) */
 .card__editor {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.45rem;
-  margin-top: 0.6rem;
+  gap: 0.35rem;
+  margin-top: 0.45rem;
 }
 .card__editinput {
-  padding: 0.4rem 0.5rem;
-  border-radius: 0.5rem;
+  flex: 1 1 8rem;
+  min-width: 0;
+  padding: 0.3rem 0.45rem;
+  border-radius: 0.45rem;
   border: 1px solid var(--line);
   background: var(--card-2);
   color: var(--fg);
-  font-size: 0.9rem;
+  font-size: 0.76rem;
 }
 /* 기준일시 자유입력 해석 결과 라이브 미리보기(에디터 줄바꿈 위치) */
-.card__editpreview { flex-basis: 100%; margin: 0; font-size: 0.78rem; color: var(--muted); }
+.card__editpreview { flex-basis: 100%; margin: 0; font-size: 0.68rem; color: var(--muted); }
 .card__editpreview[data-ok='yes'] { color: var(--future); }
 .card__editpreview[data-ok='no'] { color: var(--past); }
 .card__editinput[aria-invalid='true'] { border-color: var(--err); }
 .card__save,
 .card__cancel {
-  padding: 0.4rem 0.8rem;
-  border-radius: 0.5rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.45rem;
   border: 1px solid var(--line);
-  font-size: 0.85rem;
+  font-size: 0.74rem;
   cursor: pointer;
 }
 .card__save { background: var(--accent); color: #fff; border-color: transparent; }
@@ -666,61 +677,62 @@ body.dragging-active { cursor: grabbing; user-select: none; }
 /* 조합 선택기(카드 팝오버 + 추가 드로어 공용) */
 .combo-pop {
   position: fixed; z-index: 70;
-  width: 240px; max-height: 60vh; overflow: auto;
-  padding: 0.5rem;
+  width: 210px; max-height: 60vh; overflow: auto;
+  padding: 0.4rem;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 0.7rem;
+  border-radius: 0.6rem;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
-.combo-chooser { margin-top: 0.5rem; }
-.combo__list { display: flex; flex-direction: column; gap: 0.25rem; }
-.combo__empty { margin: 0.2rem 0 0.4rem; font-size: 0.78rem; color: var(--muted); }
+.combo-chooser { margin-top: 0.4rem; }
+.combo__list { display: flex; flex-direction: column; gap: 0.2rem; }
+.combo__empty { margin: 0.15rem 0 0.3rem; font-size: 0.68rem; color: var(--muted); }
 .combo__opt {
-  display: flex; align-items: center; gap: 0.5rem;
+  display: flex; align-items: center; gap: 0.4rem;
   text-align: left;
-  padding: 0.4rem 0.5rem;
-  border-radius: 0.5rem;
+  padding: 0.3rem 0.4rem;
+  border-radius: 0.4rem;
   border: 1px solid transparent;
   background: var(--card-2);
   color: var(--fg);
-  font-size: 0.85rem;
+  font-size: 0.74rem;
   cursor: pointer;
 }
 .combo__opt:hover { border-color: var(--line); }
 .combo__check {
-  width: 1.1rem; height: 1.1rem; flex: none;
+  width: 0.95rem; height: 0.95rem; flex: none;
   display: inline-flex; align-items: center; justify-content: center;
-  border-radius: 0.3rem;
+  border-radius: 0.28rem;
   border: 1.5px solid var(--line);
   color: transparent;
-  font-size: 0.7rem; font-weight: 800;
+  font-size: 0.62rem; font-weight: 800;
 }
 .combo__opt[aria-pressed='true'] .combo__check { background: var(--accent); border-color: var(--accent); color: #fff; }
 .combo__optname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.combo__new { display: flex; gap: 0.35rem; margin-top: 0.5rem; }
+.combo__new { display: flex; gap: 0.3rem; margin-top: 0.4rem; }
 .combo__newname {
   flex: 1; min-width: 0;
-  padding: 0.4rem 0.55rem;
-  border-radius: 0.5rem;
+  padding: 0.3rem 0.45rem;
+  border-radius: 0.4rem;
   border: 1px solid var(--line);
   background: var(--card-2);
   color: var(--fg);
-  font-size: 0.85rem;
+  font-size: 0.74rem;
 }
 .combo__newname:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 .combo__add {
   flex: none;
-  padding: 0.4rem 0.6rem;
-  border-radius: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 0.4rem;
   border: 1px solid var(--line);
   background: var(--card-2);
   color: var(--fg);
-  font-size: 0.82rem; font-weight: 600;
+  font-size: 0.72rem; font-weight: 600;
   cursor: pointer;
+  white-space: nowrap;
 }
 .combo__add:hover { color: var(--accent); border-color: var(--accent); }
-.add__groups-wrap { font-size: 0.85rem; color: var(--muted); }
+.add__groups-wrap { font-size: 0.78rem; color: var(--muted); }
 .add__groups-wrap summary { cursor: pointer; padding: 0.2rem 0; }
 
 /* ── 조합(그룹) 패널 ─────────────────────────── */

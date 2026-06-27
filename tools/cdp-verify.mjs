@@ -240,6 +240,9 @@ async function main() {
     `(() => { const i = document.querySelector('.card__editor .card__editinput');
        i.value = '2026-06-26 00:00:00'; i.dispatchEvent(new Event('input', { bubbles: true })); })()`,
   );
+  // 인라인 에디터(컴팩트 밀도) 스크린샷
+  const edShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  await writeFile(join(ARTIFACTS, 'verify-editor.png'), Buffer.from(edShot.data, 'base64'));
   await evalJS(browser, "document.querySelector('.card__editor .card__save')?.click()");
   await until(
     () => evalJS(browser, "(JSON.parse(localStorage.getItem('countdowns'))[0].startISO || '').length > 0"),

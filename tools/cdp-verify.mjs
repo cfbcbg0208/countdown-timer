@@ -357,6 +357,32 @@ async function main() {
   const lightShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-light.png'), Buffer.from(lightShot.data, 'base64'));
 
+  // 10.5) 태그 이름 변경: (설정 드로어 닫고) 태그 드로어 → 이름 클릭 → 입력 → Enter → 반영
+  await evalJS(browser, "document.querySelector('#settings-drawer .drawer__backdrop')?.click()");
+  await until(() => evalJS(browser, "document.getElementById('settings-drawer').hidden"), { label: 'settings closed' });
+  await evalJS(browser, "document.getElementById('groups-fab').click()");
+  await until(() => evalJS(browser, "!!document.querySelector('#groups-list .group__name')"), {
+    label: 'tag list',
+  });
+  const tagsShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  await writeFile(join(ARTIFACTS, 'verify-tags.png'), Buffer.from(tagsShot.data, 'base64'));
+  await evalJS(browser, "document.querySelector('#groups-list .group__name').click()");
+  await until(() => evalJS(browser, "!!document.querySelector('#groups-list .group__rename')"), {
+    label: 'tag rename input',
+  });
+  await evalJS(
+    browser,
+    `(() => { const i = document.querySelector('#groups-list .group__rename');
+       i.value = '시험공부2'; i.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })); })()`,
+  );
+  await until(
+    () => evalJS(browser, "JSON.parse(localStorage.getItem('groups')||'[]')[0]?.name === '시험공부2'"),
+    { label: 'tag renamed' },
+  );
+  const renamed = await evalJS(browser, "JSON.parse(localStorage.getItem('groups')||'[]')[0]?.name");
+  if (renamed !== '시험공부2') fails.push(`태그 이름변경 실패: ${renamed}`);
+  await evalJS(browser, "document.getElementById('groups-drawer').querySelector('[data-close]')?.click()");
+
   // 11) 밀도 데모: 모바일 폭에서 여러 카드 스택 스크린샷(우측 액션 레일·압축 레이아웃 판단용)
   const many = JSON.stringify(
     Array.from({ length: 4 }, (_, i) => {

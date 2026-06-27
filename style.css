@@ -780,7 +780,36 @@ body.dragging-active { cursor: grabbing; user-select: none; }
   border-radius: 0.6rem;
   background: var(--card);
 }
-.group__name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* 태그 이름: 클릭하면 인라인 이름 변경(연필 어포던스) */
+.group__name {
+  flex: 1; min-width: 0;
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  margin: -0.15rem -0.25rem; padding: 0.15rem 0.25rem;
+  border: none; background: none; border-radius: 0.4rem;
+  font-family: inherit; font-weight: 600; font-size: 0.9rem;
+  color: var(--fg); text-align: left; cursor: pointer;
+  overflow: hidden;
+}
+.group__nametext { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.group__name::after {
+  content: ''; flex: none; width: 0.75rem; height: 0.75rem;
+  background: var(--muted);
+  -webkit-mask: var(--pencil) center / contain no-repeat;
+  mask: var(--pencil) center / contain no-repeat;
+  opacity: 0.45; transition: opacity 0.12s, background 0.12s;
+}
+.group__name:hover { background: var(--elev); }
+.group__name:hover::after { background: var(--accent); opacity: 1; }
+.group__rename {
+  flex: 1; min-width: 0;
+  padding: 0.3rem 0.45rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--accent);
+  background: var(--card-2);
+  color: var(--fg);
+  font-size: 0.85rem; font-family: inherit;
+}
+.group__rename:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 .group__count { color: var(--muted); font-size: 0.8rem; white-space: nowrap; }
 .group__view {
   padding: 0.3rem 0.7rem;

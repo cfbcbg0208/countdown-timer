@@ -20,6 +20,7 @@ import {
   loadGroups,
   addGroup,
   removeGroup,
+  renameGroup,
   removeItemFromGroups,
   groupsForItem,
   toggleItemInGroup,
@@ -740,9 +741,15 @@ function renderGroups() {
     ...groups.map((g) => {
       const li = document.createElement('li');
       li.className = 'group';
-      const name = document.createElement('span');
+      const name = document.createElement('button');
+      name.type = 'button';
       name.className = 'group__name';
-      name.textContent = g.name || '(이름 없음)';
+      name.dataset.id = g.id;
+      name.title = '클릭하여 이름 변경';
+      const nameText = document.createElement('span');
+      nameText.className = 'group__nametext';
+      nameText.textContent = g.name || '(이름 없음)';
+      name.append(nameText);
       const count = document.createElement('span');
       count.className = 'group__count';
       count.textContent = `${(g.itemIds || []).length}개`;
@@ -949,11 +956,51 @@ function saveGroup() {
   exitSelectMode();
 }
 
+// 태그 이름 변경: 이름 버튼 클릭 → 그 자리에 입력창. Enter/포커스아웃=저장, Esc=취소.
+function startRenameGroup(nameBtn, id) {
+  const g = loadGroups(localStorage).find((x) => x.id === id);
+  if (!g) return;
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'group__rename';
+  input.value = g.name || '';
+  input.maxLength = 40;
+  input.setAttribute('aria-label', '태그 이름');
+  let done = false;
+  const finish = (save) => {
+    if (done) return;
+    done = true;
+    const nm = input.value.trim();
+    if (save && nm && nm !== g.name) {
+      renameGroup(localStorage, id, nm);
+      if (viewFilter?.kind === 'group' && viewFilter.id === id) viewGroup(id); // 배너 텍스트 갱신
+      rebuild(); // 카드의 태그 칩 이름 갱신
+    }
+    renderGroups();
+  };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      finish(true);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation(); // 드로어가 닫히지 않게
+      finish(false);
+    }
+  });
+  input.addEventListener('blur', () => finish(true));
+  nameBtn.replaceWith(input);
+  input.focus();
+  input.select();
+}
+
 groupsNewBtn.addEventListener('click', enterSelectMode);
 groupsListEl.addEventListener('click', (e) => {
   const view = e.target.closest('.group__view');
   const del = e.target.closest('.group__del');
-  if (view) viewGroup(view.dataset.id);
+  const nameBtn = e.target.closest('.group__name');
+  if (nameBtn) startRenameGroup(nameBtn, nameBtn.dataset.id);
+  else if (view) viewGroup(view.dataset.id);
   else if (del) {
     removeGroup(localStorage, del.dataset.id);
     if (viewFilter?.kind === 'group' && viewFilter.id === del.dataset.id) clearViewFilter();

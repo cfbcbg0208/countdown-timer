@@ -351,7 +351,17 @@ function rebuild() {
   } else if (viewFilter?.kind === 'item') {
     shown = list.filter((t) => t.id === viewFilter.id);
   }
-  emptyHint.hidden = shown.length > 0 || !!viewFilter;
+  // 빈 상태: 전체/필터 보기 모두 맥락에 맞는 안내를 보여준다(필터 빈 화면 공백 방지).
+  emptyHint.hidden = shown.length > 0;
+  if (shown.length === 0) {
+    emptyHint.textContent = !viewFilter
+      ? '아직 타임카드가 없습니다. 오른쪽 아래 ＋ 버튼으로 추가하세요.'
+      : viewFilter.kind === 'group'
+        ? '이 태그에 속한 타임카드가 없습니다.'
+        : viewFilter.kind === 'date'
+          ? '이 날짜에 해당하는 타임카드가 없습니다.'
+          : '해당 타임카드가 없습니다.';
+  }
   refsList = shown.map(makeCard);
   listEl.replaceChildren(...refsList.map((r) => r.card));
   for (const r of refsList) fitTime(r.timeEl); // DOM 삽입 후 폭 확정 → 시간 자동 축소

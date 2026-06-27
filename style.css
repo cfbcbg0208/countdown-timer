@@ -462,6 +462,9 @@ kbd {
 .card__cancel { background: var(--card-2); color: var(--muted); }
 
 .hint { margin: 0; text-align: center; color: var(--muted); font-size: 0.85rem; }
+/* 빈 상태: 충분한 여백으로 의도된 화면처럼 보이게 */
+#empty-hint { padding: 2.75rem 1rem; font-size: 0.9rem; line-height: 1.6; }
+#empty-hint[hidden] { display: none; }
 
 /* ── 드래그 핸들 / 드래그 중 카드 ─────────────── */
 

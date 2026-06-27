@@ -398,6 +398,18 @@ async function main() {
   const listShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-list.png'), Buffer.from(listShot.data, 'base64'));
 
+  // 12) 빈 상태: 카드 0개 → 안내 문구 표시
+  await evalJS(browser, "localStorage.setItem('countdowns', '[]'); location.reload();");
+  await until(() => evalJS(browser, "document.readyState === 'complete' && document.querySelectorAll('.card').length === 0"), {
+    label: 'empty reload',
+  });
+  const empty = await evalJS(
+    browser,
+    `(() => ({ hidden: document.getElementById('empty-hint').hidden, text: document.getElementById('empty-hint').textContent.trim() }))()`,
+  );
+  if (empty.hidden) fails.push('빈 상태 안내가 숨겨져 있음');
+  if (!/아직 타임카드가 없습니다/.test(empty.text)) fails.push(`빈 상태 문구="${empty.text}"`);
+
   console.log('카드 검증:', JSON.stringify(checks, null, 2));
   console.log('조합 검증:', JSON.stringify(combo));
   console.log('캘린더 검증:', JSON.stringify(cal, null, 2));

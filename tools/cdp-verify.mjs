@@ -443,6 +443,37 @@ async function main() {
   const addedCount = await evalJS(browser, "document.querySelectorAll('.card').length");
   if (addedCount !== 1) fails.push(`form submit 추가 실패, 카드 ${addedCount}`);
 
+  // 14) 클릭형 달력 선택기: ＋FAB → 선택기 펼침 → 날짜 클릭 → 추가 → 카드 2개
+  await evalJS(browser, "document.getElementById('fab').click()");
+  await until(() => evalJS(browser, "!document.getElementById('drawer').hidden"), { label: 'add drawer 2' });
+  await evalJS(
+    browser,
+    "(() => { const d = document.getElementById('add-picker'); d.open = true; d.dispatchEvent(new Event('toggle')); })()",
+  );
+  await until(() => evalJS(browser, "document.querySelectorAll('#pick-grid .pick__day').length >= 28"), {
+    label: 'picker grid',
+  });
+  const pickInfo = await evalJS(
+    browser,
+    `(() => ({
+       days: document.querySelectorAll('#pick-grid .pick__day').length,
+       wd: document.querySelectorAll('#pick-grid .cal__wd').length,
+       hasSel: !!document.querySelector('.pick__day--sel'),
+     }))()`,
+  );
+  if (pickInfo.wd !== 7) fails.push(`선택기 요일헤더 7 기대, 실제 ${pickInfo.wd}`);
+  if (!pickInfo.hasSel) fails.push('선택기 기본 선택(오늘) 표시 없음');
+  await evalJS(browser, "document.getElementById('pick-grid').scrollIntoView({ block: 'center' })");
+  const pickerShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  await writeFile(join(ARTIFACTS, 'verify-picker.png'), Buffer.from(pickerShot.data, 'base64'));
+  await evalJS(browser, "document.querySelector('#pick-grid .pick__day:not(.pick__day--out)').click()");
+  await evalJS(browser, "document.querySelector('.add__picker .zone__apply').click()");
+  await until(() => evalJS(browser, "document.querySelectorAll('.card').length === 2"), {
+    label: 'picker add',
+  });
+  const pickAdded = await evalJS(browser, "document.querySelectorAll('.card').length");
+  if (pickAdded !== 2) fails.push(`달력 선택기 추가 실패, 카드 ${pickAdded}`);
+
   console.log('카드 검증:', JSON.stringify(checks, null, 2));
   console.log('조합 검증:', JSON.stringify(combo));
   console.log('캘린더 검증:', JSON.stringify(cal, null, 2));

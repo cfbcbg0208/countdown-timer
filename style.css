@@ -159,8 +159,40 @@ body {
 /* 선택기: 거의 안 쓰므로 접어서 숨김(접근성 유지). 펼치면 입력+버튼이 세로로. */
 .add__picker { font-size: 0.85rem; color: var(--muted); }
 .add__picker summary { cursor: pointer; padding: 0.2rem 0; }
-.add__picker .zone__input { margin-top: 0.5rem; }
-.add__picker .zone__apply { margin-top: 0.5rem; }
+.add__picker .zone__apply { margin-top: 0.2rem; }
+
+/* 클릭형 달력 선택기 */
+.pick { margin-top: 0.6rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.pick__nav { display: flex; align-items: center; justify-content: space-between; }
+.pick__month { font-weight: 700; font-size: 0.9rem; color: var(--fg); }
+.pick__navbtn {
+  background: var(--card-2); border: 1px solid var(--line); color: var(--fg);
+  border-radius: 0.5rem; padding: 0.2rem 0.7rem; cursor: pointer; font-size: 0.85rem;
+}
+.pick__navbtn:hover { border-color: var(--accent); color: var(--accent); }
+.pick__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.pick__grid .cal__wd { text-align: center; font-size: 0.7rem; color: var(--muted); padding: 0.1rem 0; }
+.pick__day {
+  aspect-ratio: 1 / 1;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--card-2); border: 1px solid transparent; border-radius: 0.45rem;
+  color: var(--fg); font-size: 0.82rem; font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+.pick__day:hover { border-color: var(--accent); }
+.pick__day--out { opacity: 0.4; }
+.pick__day--today { border-color: var(--line); font-weight: 700; }
+.pick__day--sun { color: var(--past); }
+.pick__day--sat { color: var(--future); }
+.pick__day--sel { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 700; }
+.pick__day--sel.pick__day--sun, .pick__day--sel.pick__day--sat { color: #fff; }
+.pick__timerow { display: flex; align-items: center; gap: 0.5rem; }
+.pick__timelabel { font-size: 0.8rem; color: var(--muted); }
+.pick__time {
+  padding: 0.3rem 0.5rem; border-radius: 0.45rem;
+  border: 1px solid var(--line); background: var(--card-2); color: var(--fg); font-size: 0.85rem;
+}
+.pick__sel { margin: 0; font-size: 0.78rem; color: var(--accent); }
 
 /* 단축키 표기용 키캡 */
 kbd {

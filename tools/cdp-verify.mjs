@@ -450,23 +450,25 @@ async function main() {
     browser,
     "(() => { const d = document.getElementById('add-picker'); d.open = true; d.dispatchEvent(new Event('toggle')); })()",
   );
-  await until(() => evalJS(browser, "document.querySelectorAll('.pick__day').length >= 28"), {
-    label: 'picker grid (month)',
+  await until(() => evalJS(browser, "document.querySelectorAll('#pick-days .pick__opt').length >= 28"), {
+    label: 'picker 3 columns',
   });
   const pickInfo = await evalJS(
     browser,
     `(() => ({
-       years: document.querySelectorAll('.pick__year').length,
-       days: document.querySelectorAll('.pick__day').length,
-       wd: document.querySelectorAll('#pick-grid .cal__wd').length,
-       hasSelDay: !!document.querySelector('.pick__day--sel'),
-       hasSelYear: !!document.querySelector('.pick__year--sel'),
+       cols: document.querySelectorAll('.pick__col').length,
+       years: document.querySelectorAll('#pick-years .pick__opt').length,
+       months: document.querySelectorAll('#pick-months .pick__opt').length,
+       days: document.querySelectorAll('#pick-days .pick__opt').length,
+       selY: !!document.querySelector('#pick-years .pick__opt--sel'),
+       selM: !!document.querySelector('#pick-months .pick__opt--sel'),
+       selD: !!document.querySelector('#pick-days .pick__opt--sel'),
      }))()`,
   );
-  if (pickInfo.years < 5) fails.push(`연도 picker 항목 부족, 실제 ${pickInfo.years}`);
-  if (pickInfo.wd !== 7) fails.push(`선택기 요일헤더 7 기대, 실제 ${pickInfo.wd}`);
-  if (!pickInfo.hasSelDay) fails.push('선택기 기본 날짜 선택 없음');
-  if (!pickInfo.hasSelYear) fails.push('연도 picker 선택 표시 없음');
+  if (pickInfo.cols !== 3) fails.push(`연/월/일 3열 기대, 실제 ${pickInfo.cols}`);
+  if (pickInfo.months !== 12) fails.push(`월 12개 기대, 실제 ${pickInfo.months}`);
+  if (pickInfo.years < 5) fails.push(`연도 항목 부족, 실제 ${pickInfo.years}`);
+  if (!pickInfo.selY || !pickInfo.selM || !pickInfo.selD) fails.push('연/월/일 기본 선택 표시 누락');
   // 시간 텍스트 해석(1430 → 14:30)
   await evalJS(
     browser,
@@ -474,18 +476,18 @@ async function main() {
   );
   const timeOk = await evalJS(browser, "document.getElementById('pick-sel').dataset.ok");
   if (timeOk !== 'yes') fails.push(`시간 텍스트 해석 실패, ok=${timeOk}`);
-  // 좌측 연도 picker로 빠른 연도 선택 → 월 라벨 연도 변경
-  const mlBefore = await evalJS(browser, "document.getElementById('pick-mlabel').textContent");
+  // 연도 picker로 빠른 연도 선택 → 요약 갱신
+  const sBefore = await evalJS(browser, "document.getElementById('pick-sel').textContent");
   await evalJS(
     browser,
-    "(() => { const ys = [...document.querySelectorAll('.pick__year')]; const i = ys.findIndex((b) => b.classList.contains('pick__year--sel')); (ys[i + 2] || ys[ys.length - 1]).click(); })()",
+    "(() => { const ys = [...document.querySelectorAll('#pick-years .pick__opt')]; const i = ys.findIndex((b) => b.classList.contains('pick__opt--sel')); (ys[i + 2] || ys[ys.length - 1]).click(); })()",
   );
-  const mlAfter = await evalJS(browser, "document.getElementById('pick-mlabel').textContent");
-  if (mlBefore === mlAfter) fails.push('연도 picker 클릭이 월 라벨 연도를 바꾸지 못함');
+  const sAfter = await evalJS(browser, "document.getElementById('pick-sel').textContent");
+  if (sBefore === sAfter) fails.push('연도 picker 클릭이 선택 요약을 바꾸지 못함');
   await evalJS(browser, "(() => { const p = document.querySelector('#drawer .drawer__panel'); if (p) p.scrollTop = p.scrollHeight; })()");
   const pickerShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-picker.png'), Buffer.from(pickerShot.data, 'base64'));
-  await evalJS(browser, "document.querySelector('.pick__day:not(.pick__day--out)').click()");
+  await evalJS(browser, "document.querySelector('#pick-days .pick__opt:not(.pick__opt--sel)').click()");
   await evalJS(browser, "document.querySelector('.add__picker .zone__apply').click()");
   await until(() => evalJS(browser, "document.querySelectorAll('.card').length === 2"), {
     label: 'picker add',

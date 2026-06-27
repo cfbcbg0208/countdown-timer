@@ -210,10 +210,11 @@ function makeCard(item) {
   const lapsEl = document.createElement('ul');
   lapsEl.className = 'card__laps';
 
-  // 좌측 열: 제목(상단) → 기준/등록/수정일시 → 태그(줄바꿈·접기). 모두 좌측·자르기.
+  // 좌측 열: 제목(상단) → 기준/등록/수정일시 → 진행률(좌측 폭만) → 태그. 모두 좌측·자르기.
+  // 진행률을 좌측 열에 둬서 파이·바가 중앙 구분선을 넘어 우측 열을 침범하지 않게 한다.
   const left = document.createElement('div');
   left.className = 'card__col card__col--left';
-  left.append(labelEl, metaEl, createdRow, updatedRow, groupsRow);
+  left.append(labelEl, metaEl, createdRow, updatedRow, progressEl, groupsRow);
 
   // 우측 열: 큰 시간(상단·우측·자동축소) → 기록(버튼 + 랩, 최근 외 접기).
   const right = document.createElement('div');
@@ -224,7 +225,7 @@ function makeCard(item) {
   cols.className = 'card__cols';
   cols.append(left, right);
 
-  card.append(handle, del, cols, progressEl);
+  card.append(handle, del, cols);
 
   const refs = { card, timeEl, progressEl, barFillEl, pieEl, metaEl, lapsEl, item, dir: null };
   renderLaps(refs);
@@ -296,8 +297,8 @@ function updateCard(refs) {
   refs.timeEl.innerHTML =
     `<span class="card__num">${d.sign ? `<span class="display__sign">${d.sign}</span>` : ''}${formatDuration(r)}</span>` +
     ` <span class="chip chip--${r.direction}">${d.chip}</span>`;
-  // 기준일시: 값(좌측) + [기준일시] 칩. (formatLocal 출력은 숫자·하이픈·요일뿐이라 innerHTML에 안전)
-  refs.metaEl.innerHTML = `${formatLocal(target)} <span class="chip">기준일시</span>`;
+  // 기준일시: 값(자르기) + [기준일시] 칩(고정 → 날짜가 길어도 칩은 항상 보임).
+  refs.metaEl.innerHTML = `<span class="card__metadate">${formatLocal(target)}</span><span class="chip">기준일시</span>`;
   updateProgress(refs, item, target, r.direction);
   fitTime(refs.timeEl); // 우측 열 폭에 맞게 폰트 자동 축소(오버플로우 방지)
   refs.dir = r.direction;
@@ -307,13 +308,12 @@ function updateCard(refs) {
 // 가용폭은 부모 열(.card__col--right)의 안쪽 너비 기준으로 측정.
 function fitTime(el) {
   el.style.fontSize = '';
-  const avail = el.parentElement ? el.parentElement.clientWidth : 0;
-  if (!avail || el.scrollWidth <= avail) return; // 레이아웃 전(0)·여유 있으면 그대로
+  if (!el.clientWidth || el.scrollWidth <= el.clientWidth) return; // 레이아웃 전(0)·여유 있으면 그대로
   const base = parseFloat(getComputedStyle(el).fontSize);
-  let size = Math.max(11, base * (avail / el.scrollWidth) - 0.5); // 비율로 한 번에 근접
+  let size = Math.max(11, base * (el.clientWidth / el.scrollWidth) - 0.5); // 비율로 한 번에 근접
   el.style.fontSize = `${size}px`;
   let guard = 0;
-  while (el.scrollWidth > avail && size > 11 && guard++ < 10) {
+  while (el.scrollWidth > el.clientWidth && size > 11 && guard++ < 10) {
     size -= 0.5;
     el.style.fontSize = `${size}px`;
   }

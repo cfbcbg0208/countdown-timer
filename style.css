@@ -175,14 +175,15 @@ kbd {
    grid + minmax(0,1fr): 콘텐츠가 트랙을 넘쳐 카드를 늘리지 못하게(blowout 방지). */
 .card__cols {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  grid-template-columns: minmax(0, 1.22fr) minmax(0, 1fr);
   align-items: start;
-  gap: 0.7rem;
+  gap: 0;
   padding-right: 1.4rem; /* 우상단 ✕ 자리 비우기 */
 }
 .card__col { min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
-.card__col--left { gap: 0.16rem; }
-.card__col--right { gap: 0.3rem; }
+/* 좌측 열 오른쪽에 중앙 구분선. 진행률 바도 이 선을 넘지 않음. */
+.card__col--left { gap: 0.16rem; border-right: 1px solid var(--line); padding-right: 0.7rem; }
+.card__col--right { gap: 0.28rem; padding-left: 0.7rem; }
 /* 우측 열: 시간은 우측 정렬, 기록(버튼·랩)은 좌측 정렬 */
 .card__col--right > .card__actions { align-self: flex-start; }
 .card__col--right > .card__laps { align-self: stretch; }
@@ -200,7 +201,7 @@ kbd {
   border: none;
   background: none;
   border-radius: 0.35rem;
-  font-size: 1.02rem;
+  font-size: 0.88rem;
   font-weight: 700;
   font-family: inherit;
   color: var(--fg); /* 제목을 또렷하게 → 큰 시간(우)과 균형 */
@@ -217,7 +218,7 @@ kbd {
   text-align: right;
   overflow: hidden;
   white-space: nowrap; /* 한 줄 유지 → 넘치면 fitTime이 폰트 축소 */
-  font-size: var(--card-time-size, 1.6rem);
+  font-size: var(--card-time-size, 1.3rem);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
@@ -263,42 +264,45 @@ kbd {
   background: conic-gradient(var(--accent) 0%, var(--track) 0);
 }
 
-/* 기준일시: 값(좌측) + [기준일시] 칩. 클릭하면 바로 수정되는 버튼. 하단 줄 좌측, 좁으면 줄어듦. */
+/* 기준일시: 값(자르기) + [기준일시] 칩(고정). 칩이 항상 보이도록 날짜만 줄어든다. */
 .card__meta {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
   width: 100%;
   overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
   margin: 0;
   padding: 0.05rem 0;
   border: none;
   background: none;
   border-radius: 0.35rem;
-  font-size: var(--card-meta-size, 0.8rem);
+  font-size: var(--card-meta-size, 0.64rem);
   font-family: inherit;
   color: var(--muted);
   text-align: left;
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
+.card__metadate { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card__meta .chip { flex: none; } /* 칩은 안 줄어듦 → 항상 표시 */
 .card__meta:hover { color: var(--fg); }
 .card__meta:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* 카드 내 행(요소 + 칩) */
 .card__row { display: flex; align-items: center; gap: 0.5rem; }
 /* 등록/수정일시: 좌측 열에서 한 줄 자르기 */
-.card__row--date { gap: 0.35rem; overflow: hidden; white-space: nowrap; }
+.card__row--date { gap: 0.3rem; overflow: hidden; white-space: nowrap; }
 .card__row--date[hidden] { display: none; }
-.card__datemeta { overflow: hidden; text-overflow: ellipsis; font-size: var(--card-meta-size, 0.8rem); color: var(--muted); font-variant-numeric: tabular-nums; }
+.card__row--date .chip { flex: none; } /* 칩 고정 → 항상 표시 */
+.card__datemeta { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: var(--card-meta-size, 0.64rem); color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* 작은 라벨 칩(pill) */
 .chip {
   display: inline-flex;
   align-items: center;
-  padding: 0.04rem 0.45rem;
+  padding: 0.04rem 0.4rem;
   border-radius: 999px;
-  font-size: 0.66rem;
+  font-size: 0.56rem;
   font-weight: 700;
   line-height: 1.5;
   white-space: nowrap;
@@ -360,7 +364,7 @@ kbd {
   flex-wrap: wrap;
   align-items: baseline;
   gap: 0.1rem 0.4rem;
-  font-size: var(--card-lap-size, 0.76rem);
+  font-size: var(--card-lap-size, 0.64rem);
   color: var(--muted);
   border-left: 2px solid var(--line);
   padding: 0.1rem 0 0.1rem 0.5rem;

@@ -169,35 +169,45 @@ body {
 .add__picker summary { cursor: pointer; padding: 0.2rem 0; }
 .add__picker .zone__apply { margin-top: 0.2rem; }
 
-/* 달력 선택기: 상단 연도(스크롤)+월(2열 칩), 하단 일(달력 그리드) */
+/* 달력 선택기: 한 행 3열(연도 스크롤 | 월 2열칩 | 일 달력+네비), 여백 최소 */
 .pick { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
-.pick__top { display: flex; gap: 0.5rem; align-items: flex-start; }
+.pick__cols { display: flex; gap: 0.4rem; align-items: flex-start; }
 .pick__years {
-  flex: none; width: 4rem; max-height: 10.5rem; overflow-y: auto;
+  flex: none; width: 3.4rem; max-height: 11.5rem; overflow-y: auto;
   display: flex; flex-direction: column; gap: 2px;
   border: 1px solid var(--line); border-radius: 0.5rem; padding: 2px;
 }
-.pick__months { flex: 1; min-width: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 3px; align-content: start; }
+.pick__months { flex: none; width: 5.2rem; display: grid; grid-template-columns: 1fr 1fr; gap: 2px; align-content: start; }
 .pick__opt {
   flex: none;
-  padding: 0.3rem 0; border: 1px solid transparent; border-radius: 0.35rem;
-  background: transparent; color: var(--fg); font-size: 0.8rem;
+  padding: 0.26rem 0; border: 1px solid transparent; border-radius: 0.35rem;
+  background: transparent; color: var(--fg); font-size: 0.74rem;
   text-align: center; font-variant-numeric: tabular-nums; font-family: inherit; cursor: pointer;
 }
 .pick__months .pick__opt { background: var(--card-2); }
 .pick__opt:hover { border-color: var(--accent); }
 .pick__opt--now { border-color: var(--line); }
 .pick__opt--sel { background: var(--accent); color: #fff; font-weight: 700; border-color: var(--accent); }
-/* 하단 일(달력 그리드) */
-.pick__dayswrap { display: flex; flex-direction: column; gap: 0.25rem; }
-.pick__mlabel { text-align: center; font-weight: 700; font-size: 0.8rem; color: var(--fg); }
+/* 일 열: 헤더 네비(이전/다음 달·해) + 달력 그리드 */
+.pick__daycol { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.25rem; }
+.pick__mnav { display: flex; align-items: center; gap: 0.1rem; }
+.pick__mlabel {
+  flex: 1; min-width: 0; text-align: center;
+  font-weight: 700; font-size: 0.72rem; color: var(--fg);
+  white-space: nowrap; overflow: hidden;
+}
+.pick__navbtn {
+  flex: none; background: var(--card-2); border: 1px solid var(--line); color: var(--fg);
+  border-radius: 0.35rem; padding: 0 0.3rem; cursor: pointer; font-size: 0.85rem; line-height: 1.55;
+}
+.pick__navbtn:hover { border-color: var(--accent); color: var(--accent); }
 .pick__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
-.pick__grid .cal__wd { text-align: center; font-size: 0.62rem; color: var(--muted); }
+.pick__grid .cal__wd { text-align: center; font-size: 0.56rem; color: var(--muted); }
 .pick__day {
-  min-height: 1.6rem;
+  min-height: 1.4rem;
   display: flex; align-items: center; justify-content: center;
   background: var(--card-2); border: 1px solid transparent; border-radius: 0.3rem;
-  color: var(--fg); font-size: 0.74rem; font-variant-numeric: tabular-nums; cursor: pointer;
+  color: var(--fg); font-size: 0.68rem; font-variant-numeric: tabular-nums; cursor: pointer;
 }
 .pick__day:hover { border-color: var(--accent); }
 .pick__day--out { opacity: 0.32; }

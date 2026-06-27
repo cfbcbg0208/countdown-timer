@@ -484,6 +484,16 @@ async function main() {
   );
   const sAfter = await evalJS(browser, "document.getElementById('pick-sel').textContent");
   if (sBefore === sAfter) fails.push('연도 picker 클릭이 선택 요약을 바꾸지 못함');
+  // 일 헤더 네비(이전/다음 달·해) 존재 + 다음 달 버튼 동작
+  const navOk = await evalJS(
+    browser,
+    "['pick-yprev','pick-prev','pick-next','pick-ynext'].every((id) => !!document.getElementById(id))",
+  );
+  if (!navOk) fails.push('일 헤더 네비 버튼(이전/다음 달·해) 누락');
+  const mlBefore = await evalJS(browser, "document.getElementById('pick-mlabel').textContent");
+  await evalJS(browser, "document.getElementById('pick-next').click()");
+  const mlAfter = await evalJS(browser, "document.getElementById('pick-mlabel').textContent");
+  if (mlBefore === mlAfter) fails.push('다음 달 버튼이 월 라벨을 바꾸지 못함');
   await evalJS(browser, "(() => { const p = document.querySelector('#drawer .drawer__panel'); if (p) p.scrollTop = p.scrollHeight; })()");
   const pickerShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-picker.png'), Buffer.from(pickerShot.data, 'base64'));

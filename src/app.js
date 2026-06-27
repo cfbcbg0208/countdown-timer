@@ -43,6 +43,10 @@ const pickYearsEl = $('pick-years');
 const pickMonthsEl = $('pick-months');
 const pickDaysEl = $('pick-days');
 const pickMlabelEl = $('pick-mlabel');
+const pickPrevBtn = $('pick-prev');
+const pickNextBtn = $('pick-next');
+const pickYPrevBtn = $('pick-yprev');
+const pickYNextBtn = $('pick-ynext');
 const pickTime = $('pick-time');
 const pickSelEl = $('pick-sel');
 const listEl = $('list');
@@ -1196,6 +1200,17 @@ pickDaysEl.addEventListener('click', (e) => {
   pickDay = +b.dataset.d;
   renderPickerCalendar();
 });
+// 일 달력 헤더: 이전/다음 달·해 네비
+pickPrevBtn.addEventListener('click', () => {
+  if (--pickMonth0 < 0) { pickMonth0 = 11; pickYear--; }
+  renderPickerCalendar();
+});
+pickNextBtn.addEventListener('click', () => {
+  if (++pickMonth0 > 11) { pickMonth0 = 0; pickYear++; }
+  renderPickerCalendar();
+});
+pickYPrevBtn.addEventListener('click', () => { pickYear--; renderPickerCalendar(); });
+pickYNextBtn.addEventListener('click', () => { pickYear++; renderPickerCalendar(); });
 pickTime.addEventListener('input', pickSummary);
 
 function renderCalendar() {

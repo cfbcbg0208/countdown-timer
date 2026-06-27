@@ -17,6 +17,8 @@
   --fab2-fg: #d7dde2;
   --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.28);
   --elev: rgba(255, 255, 255, 0.06); /* hover 등 미세 밝힘 */
+  /* 편집 가능 어포던스용 연필 아이콘(mask로 색만 입힘) */
+  --pencil: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z'/%3E%3C/svg%3E");
 }
 
 /* 라이트 테마: 녹색-중립 밝은 팔레트(미래/과거 의미색만 유지, 강조색은 사용자 인라인 우선) */
@@ -193,7 +195,9 @@ kbd {
 
 /* 제목: 클릭하면 바로 수정되는 버튼(평소엔 텍스트처럼). 우측에 [제목] 칩. 클릭 영역=글자 폭. */
 .card__label {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
   width: 100%;
   overflow: hidden;
   margin: 0;
@@ -211,16 +215,26 @@ kbd {
 .card__label:hover { color: var(--fg); background: rgba(255, 255, 255, 0.06); }
 .card__label:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .card__label--empty { font-weight: 500; font-style: italic; opacity: 0.7; }
-.card__labeltext { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* 클릭=편집 어포던스: 평시에도 점선 밑줄로 '편집 가능'함을 표시(호버 시 강조). */
-.card__labeltext,
-.card__metadate {
-  text-decoration: underline dotted var(--muted);
-  text-underline-offset: 0.2em;
-  text-decoration-thickness: 1px;
+.card__labeltext { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 클릭=편집 어포던스: 연필 아이콘(평시 muted, 호버 시 accent). 점선보다 또렷·세련. */
+.card__label::after,
+.card__meta::after,
+.card__progress::after {
+  content: '';
+  flex: none;
+  width: 0.8rem;
+  height: 0.8rem;
+  background: var(--muted);
+  -webkit-mask: var(--pencil) center / contain no-repeat;
+  mask: var(--pencil) center / contain no-repeat;
+  opacity: 0.45;
+  transition: opacity 0.12s, background 0.12s;
 }
-.card__label:hover .card__labeltext,
-.card__meta:hover .card__metadate { text-decoration-color: var(--accent); }
+.card__label:hover::after,
+.card__meta:hover::after,
+.card__progress:hover::after { background: var(--accent); opacity: 1; }
+.card__label--empty::after { display: none; } /* '＋ 제목'이면 ＋가 이미 안내 */
 
 .card__time {
   display: block;

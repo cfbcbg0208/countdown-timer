@@ -1119,13 +1119,14 @@ function renderMonths() {
   const thisYear = pickYear === now.getFullYear();
   const opts = [];
   for (let m = 0; m < 12; m++) {
-    opts.push(pickOpt(`${m + 1}월`, m === pickMonth0, thisYear && m === now.getMonth(), { month: m }));
+    // 0패딩(01월~12월)으로 칩 가로폭 고정 → 폭이 변하지 않음.
+    opts.push(pickOpt(`${pad2c(m + 1)}월`, m === pickMonth0, thisYear && m === now.getMonth(), { month: m }));
   }
   pickMonthsEl.replaceChildren(...opts);
 }
 // 일: 기존 달력 그리드(요일헤더 + 날짜). 다른 달 날짜 클릭 시 그 달로 이동.
 function renderDays() {
-  pickMlabelEl.textContent = `${pickYear}년 ${pickMonth0 + 1}월`;
+  pickMlabelEl.textContent = `${pickYear}년 ${pad2c(pickMonth0 + 1)}월`; // 0패딩 → 라벨 폭 고정
   const dim = new Date(pickYear, pickMonth0 + 1, 0).getDate();
   if (pickDay > dim) pickDay = dim; // 월/연 바뀌어 일수가 줄면 클램프
   const ws = settings.weekStart === 'sun' ? 0 : 1;

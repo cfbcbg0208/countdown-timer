@@ -508,18 +508,26 @@ function removeLap(id, index) {
 
 // ── 인라인 필드 편집: 제목/기준일시를 클릭하면 그 자리(필드 바로 아래)에 입력창이 열린다 ──
 // field: 'title'(텍스트) | 'date'(자유 텍스트→해석). 한 카드에 하나만. 같은 필드 재클릭 시 닫힘(토글).
+const FIELD_LABELS = { title: '제목 수정', date: '기준일시 수정', start: '진행 시작 일시' };
 function openFieldEditor(card, id, field) {
   const existing = card.querySelector('.card__editor');
   if (existing) {
     const sameField = existing.dataset.field === field;
     existing.remove(); // 다른 필드면 닫고 새로, 같은 필드면 토글로 닫기만
-    if (sameField) return;
+    if (sameField) {
+      card.removeAttribute('data-editing');
+      return;
+    }
   }
   const item = itemById(id);
   if (!item) return;
   const editor = document.createElement('div');
   editor.className = 'card__editor';
   editor.dataset.field = field;
+  // 무엇을 수정하는지 명시하는 라벨(전체폭 첫 줄).
+  const editLabel = document.createElement('span');
+  editLabel.className = 'card__editlabel';
+  editLabel.textContent = FIELD_LABELS[field] || '수정';
 
   const input = document.createElement('input');
   input.type = 'text';
@@ -548,6 +556,7 @@ function openFieldEditor(card, id, field) {
       e.preventDefault();
       e.stopPropagation();
       editor.remove();
+      card.removeAttribute('data-editing');
     }
   });
 
@@ -559,7 +568,7 @@ function openFieldEditor(card, id, field) {
   cancel.type = 'button';
   cancel.className = 'card__cancel';
   cancel.textContent = '취소';
-  editor.append(input, save, cancel);
+  editor.append(editLabel, input, save, cancel);
 
   // 기준일시/시작: 입력하는 동안 해석 결과를 라이브 미리보기로 보여준다.
   if (field === 'date' || field === 'start') {
@@ -593,6 +602,7 @@ function openFieldEditor(card, id, field) {
   const ANCHOR = { date: '.card__meta', start: '.card__progress', title: '.card__label' };
   const anchor = card.querySelector(ANCHOR[field]);
   (anchor.closest('.card__cols, .card__row') || anchor).after(editor);
+  card.dataset.editing = field; // 수정 중인 원본 필드를 CSS로 강조
   input.focus();
   input.select?.();
 }
@@ -652,6 +662,7 @@ listEl.addEventListener('click', (e) => {
     commitField(card, id, card.querySelector('.card__editor')?.dataset.field);
   } else if (e.target.closest('.card__cancel')) {
     card.querySelector('.card__editor')?.remove();
+    card.removeAttribute('data-editing');
   } else if (e.target.closest('.card__label')) {
     openFieldEditor(card, id, 'title');
   } else if (e.target.closest('.card__meta')) {

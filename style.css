@@ -426,6 +426,15 @@ kbd {
   gap: 0.35rem;
   margin-top: 0.45rem;
 }
+/* 무엇을 수정하는지 알려주는 라벨(전체폭 첫 줄, accent로 또렷) */
+.card__editlabel { flex-basis: 100%; margin: 0; font-size: 0.7rem; font-weight: 700; color: var(--accent); }
+/* 수정 중인 원본 필드를 강조해 에디터와 시각적으로 연결(inset → overflow에 안 잘림) */
+.card[data-editing='title'] .card__label,
+.card[data-editing='date'] .card__meta,
+.card[data-editing='start'] .card__progress {
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+  border-radius: 0.35rem;
+}
 .card__editinput {
   flex: 1 1 8rem;
   min-width: 0;

@@ -240,7 +240,17 @@ async function main() {
     `(() => { const i = document.querySelector('.card__editor .card__editinput');
        i.value = '2026-06-26 00:00:00'; i.dispatchEvent(new Event('input', { bubbles: true })); })()`,
   );
-  // 인라인 에디터(컴팩트 밀도) 스크린샷
+  // 에디터에 '무엇을 수정하는지' 라벨 + 원본 필드 강조(data-editing) 확인
+  const ed = await evalJS(
+    browser,
+    `(() => ({
+       label: document.querySelector('.card__editor .card__editlabel')?.textContent,
+       editing: document.querySelector('.card[data-editing]')?.dataset.editing,
+     }))()`,
+  );
+  if (ed.label !== '진행 시작 일시') fails.push(`에디터 라벨="${ed.label}" (진행 시작 일시 기대)`);
+  if (ed.editing !== 'start') fails.push(`수정중 필드 강조 data-editing="${ed.editing}" (start 기대)`);
+  // 인라인 에디터(컴팩트 밀도 + 라벨/강조) 스크린샷
   const edShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-editor.png'), Buffer.from(edShot.data, 'base64'));
   await evalJS(browser, "document.querySelector('.card__editor .card__save')?.click()");

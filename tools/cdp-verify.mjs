@@ -450,23 +450,38 @@ async function main() {
     browser,
     "(() => { const d = document.getElementById('add-picker'); d.open = true; d.dispatchEvent(new Event('toggle')); })()",
   );
-  await until(() => evalJS(browser, "document.querySelectorAll('#pick-grid .pick__day').length >= 28"), {
-    label: 'picker grid',
+  await until(() => evalJS(browser, "document.querySelectorAll('.pick__day').length >= 56"), {
+    label: 'picker grids (2 months)',
   });
   const pickInfo = await evalJS(
     browser,
     `(() => ({
-       days: document.querySelectorAll('#pick-grid .pick__day').length,
-       wd: document.querySelectorAll('#pick-grid .cal__wd').length,
+       cals: document.querySelectorAll('.pick__cal').length,
+       days: document.querySelectorAll('.pick__day').length,
+       wd: document.querySelectorAll('.pick__cal .cal__wd').length,
        hasSel: !!document.querySelector('.pick__day--sel'),
      }))()`,
   );
-  if (pickInfo.wd !== 7) fails.push(`선택기 요일헤더 7 기대, 실제 ${pickInfo.wd}`);
+  if (pickInfo.cals !== 2) fails.push(`선택기 달력 2개(가로) 기대, 실제 ${pickInfo.cals}`);
+  if (pickInfo.wd !== 14) fails.push(`선택기 요일헤더 14(2달) 기대, 실제 ${pickInfo.wd}`);
   if (!pickInfo.hasSel) fails.push('선택기 기본 선택(오늘) 표시 없음');
-  await evalJS(browser, "document.getElementById('pick-grid').scrollIntoView({ block: 'center' })");
+  // 시간 텍스트 해석(1430 → 14:30)
+  await evalJS(
+    browser,
+    "(() => { const t = document.getElementById('pick-time'); t.value = '1430'; t.dispatchEvent(new Event('input', { bubbles: true })); })()",
+  );
+  const timeOk = await evalJS(browser, "document.getElementById('pick-sel').dataset.ok");
+  if (timeOk !== 'yes') fails.push(`시간 텍스트 해석 실패, ok=${timeOk}`);
+  // 빠른 년도 스위칭(»)
+  const yBefore = await evalJS(browser, "document.getElementById('pick-range').textContent");
+  await evalJS(browser, "document.getElementById('pick-ynext').click()");
+  const yAfter = await evalJS(browser, "document.getElementById('pick-range').textContent");
+  if (yBefore === yAfter) fails.push('년도 스위칭(»)이 동작하지 않음');
+  await evalJS(browser, "document.getElementById('pick-yprev').click()"); // 현재 해로 원복
+  await evalJS(browser, "(() => { const p = document.querySelector('#drawer .drawer__panel'); if (p) p.scrollTop = p.scrollHeight; })()");
   const pickerShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-picker.png'), Buffer.from(pickerShot.data, 'base64'));
-  await evalJS(browser, "document.querySelector('#pick-grid .pick__day:not(.pick__day--out)').click()");
+  await evalJS(browser, "document.querySelector('.pick__day:not(.pick__day--out)').click()");
   await evalJS(browser, "document.querySelector('.add__picker .zone__apply').click()");
   await until(() => evalJS(browser, "document.querySelectorAll('.card').length === 2"), {
     label: 'picker add',

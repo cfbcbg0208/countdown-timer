@@ -92,19 +92,31 @@
           </ul>
         </details>
 
-        <!-- 달력 선택기: 클릭으로 날짜 선택 + 시간 입력(접어서 숨김, 접근성 유지) -->
+        <!-- 달력 선택기: 두 달 가로 배치 + 클릭 선택 + 시간 텍스트 해석(접어서 숨김) -->
         <details class="add__picker" id="add-picker">
           <summary>📅 달력에서 클릭으로 선택</summary>
           <div class="pick">
             <div class="pick__nav">
-              <button type="button" class="pick__navbtn" id="pick-prev" aria-label="이전 달">◀</button>
-              <span class="pick__month" id="pick-month"></span>
-              <button type="button" class="pick__navbtn" id="pick-next" aria-label="다음 달">▶</button>
+              <button type="button" class="pick__navbtn" id="pick-yprev" aria-label="이전 해" title="이전 해">«</button>
+              <button type="button" class="pick__navbtn" id="pick-prev" aria-label="이전 달" title="이전 달">‹</button>
+              <span class="pick__range" id="pick-range"></span>
+              <button type="button" class="pick__navbtn" id="pick-next" aria-label="다음 달" title="다음 달">›</button>
+              <button type="button" class="pick__navbtn" id="pick-ynext" aria-label="다음 해" title="다음 해">»</button>
             </div>
-            <div class="pick__grid" id="pick-grid"></div>
+            <div class="pick__months">
+              <div class="pick__cal" id="pick-cal-0"></div>
+              <div class="pick__cal" id="pick-cal-1"></div>
+            </div>
             <div class="pick__timerow">
               <label class="pick__timelabel" for="pick-time">시간</label>
-              <input type="time" id="pick-time" step="1" class="pick__time" />
+              <input
+                type="text"
+                id="pick-time"
+                class="pick__time"
+                enterkeyhint="done"
+                placeholder="예: 1430 · 오후 2시 · 9시반 (비우면 0시)"
+                autocomplete="off"
+              />
             </div>
             <p class="pick__sel" id="pick-sel"></p>
             <button class="zone__apply" data-source="picker" type="button">＋ 선택기로 추가</button>

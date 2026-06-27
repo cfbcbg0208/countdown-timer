@@ -39,10 +39,13 @@ const textPreview = $('text-preview');
 const addForm = $('add-form');
 const nowBtn = $('now-btn');
 const addPicker = $('add-picker');
-const pickGridEl = $('pick-grid');
-const pickMonthEl = $('pick-month');
+const pickCal0 = $('pick-cal-0');
+const pickCal1 = $('pick-cal-1');
+const pickRangeEl = $('pick-range');
 const pickPrevBtn = $('pick-prev');
 const pickNextBtn = $('pick-next');
+const pickYPrevBtn = $('pick-yprev');
+const pickYNextBtn = $('pick-ynext');
 const pickTime = $('pick-time');
 const pickSelEl = $('pick-sel');
 const listEl = $('list');
@@ -1058,34 +1061,58 @@ let calBasis = 'target'; // 'target'|'created'|'updated'
 const WD = ['일', '월', '화', '수', '목', '금', '토'];
 const pad2c = (n) => String(n).padStart(2, '0');
 
-// ── 달력 선택기(추가 드로어): 클릭으로 날짜 선택 + 시간 입력 ──
+// ── 달력 선택기(추가 드로어): 두 달 가로 배치 + 클릭 선택 + 시간 텍스트 해석 ──
 let pickYear = new Date().getFullYear();
 let pickMonth0 = new Date().getMonth();
 let pickSel = null; // { y, m, d }
 
+// 시간 텍스트를 해석(기준일시와 동일 파서). 비우면 0시, 해석 불가면 null.
+function pickTimeParts() {
+  const raw = pickTime.value.trim();
+  if (!raw) return { h: 0, m: 0, s: 0 };
+  const t = parseFlexible(raw);
+  if (!t) return null;
+  return { h: t.getHours(), m: t.getMinutes(), s: t.getSeconds() };
+}
 function pickerDate() {
   if (!pickSel) return null;
-  const [hh, mm, ss] = (pickTime.value || '00:00:00').split(':').map((n) => parseInt(n, 10) || 0);
-  return new Date(pickSel.y, pickSel.m, pickSel.d, hh, mm, ss);
+  const tp = pickTimeParts();
+  if (!tp) return null;
+  return new Date(pickSel.y, pickSel.m, pickSel.d, tp.h, tp.m, tp.s);
 }
 function pickSummary() {
+  if (!pickSel) {
+    pickSelEl.textContent = '날짜를 클릭해 선택하세요.';
+    pickSelEl.dataset.ok = '';
+    return;
+  }
   const d = pickerDate();
-  pickSelEl.textContent = d ? `선택: ${formatLocal(d)}` : '날짜를 클릭해 선택하세요.';
+  if (!d) {
+    pickSelEl.textContent = '시간 해석 불가 — 예: 1430 · 오후 2시';
+    pickSelEl.dataset.ok = 'no';
+    return;
+  }
+  pickSelEl.textContent = `선택: ${formatLocal(d)}`;
+  pickSelEl.dataset.ok = 'yes';
 }
-function renderPickerCalendar() {
-  pickMonthEl.textContent = `${pickYear}년 ${pickMonth0 + 1}월`;
+// 한 달치 그리드(요일헤더 + 날짜 버튼)를 container에 채운다.
+function buildMonthCal(container, year, month0) {
   const ws = settings.weekStart === 'sun' ? 0 : 1;
   const now = new Date();
   const todayKey = `${now.getFullYear()}-${pad2c(now.getMonth() + 1)}-${pad2c(now.getDate())}`;
   const selKey = pickSel ? `${pickSel.y}-${pad2c(pickSel.m + 1)}-${pad2c(pickSel.d)}` : '';
-  const cells = Array.from({ length: 7 }, (_, i) => {
+  const title = document.createElement('div');
+  title.className = 'pick__calmonth';
+  title.textContent = `${month0 + 1}월`;
+  const cells = [title];
+  for (let i = 0; i < 7; i++) {
     const w = WD[(ws + i) % 7];
     const h = document.createElement('div');
     h.className = 'cal__wd' + (w === '일' ? ' cal__wd--sun' : w === '토' ? ' cal__wd--sat' : '');
     h.textContent = w;
-    return h;
-  });
-  for (const week of monthGrid(pickYear, pickMonth0, ws)) {
+    cells.push(h);
+  }
+  for (const week of monthGrid(year, month0, ws)) {
     for (const day of week) {
       const key = `${day.y}-${pad2c(day.m + 1)}-${pad2c(day.d)}`;
       const dow = new Date(day.y, day.m, day.d).getDay();
@@ -1104,7 +1131,18 @@ function renderPickerCalendar() {
       cells.push(b);
     }
   }
-  pickGridEl.replaceChildren(...cells);
+  container.replaceChildren(...cells);
+}
+function renderPickerCalendar() {
+  let m2y = pickYear;
+  let m2m = pickMonth0 + 1;
+  if (m2m > 11) { m2m = 0; m2y++; }
+  pickRangeEl.textContent =
+    m2y !== pickYear
+      ? `${pickYear}년 ${pickMonth0 + 1}월 – ${m2y}년 ${m2m + 1}월`
+      : `${pickYear}년 ${pickMonth0 + 1}월 – ${m2m + 1}월`;
+  buildMonthCal(pickCal0, pickYear, pickMonth0);
+  buildMonthCal(pickCal1, m2y, m2m);
   pickSummary();
 }
 function ensurePickerInit() {
@@ -1112,20 +1150,20 @@ function ensurePickerInit() {
   pickYear = now.getFullYear();
   pickMonth0 = now.getMonth();
   pickSel = { y: now.getFullYear(), m: now.getMonth(), d: now.getDate() };
-  pickTime.value = `${pad2c(now.getHours())}:${pad2c(now.getMinutes())}:${pad2c(now.getSeconds())}`;
+  pickTime.value = `${pad2c(now.getHours())}${pad2c(now.getMinutes())}`;
   renderPickerCalendar();
 }
 addPicker.addEventListener('toggle', () => {
-  if (addPicker.open && !pickGridEl.childElementCount) ensurePickerInit();
+  if (addPicker.open && !pickCal0.childElementCount) ensurePickerInit();
 });
-pickGridEl.addEventListener('click', (e) => {
+function onPickDayClick(e) {
   const b = e.target.closest('.pick__day');
-  if (!b) return;
+  if (!b || b.classList.contains('pick__day--out')) return; // 다른 달 칸은 비활성
   pickSel = { y: +b.dataset.y, m: +b.dataset.m, d: +b.dataset.d };
-  pickYear = pickSel.y; // 다른 달의 날짜를 누르면 그 달로 이동
-  pickMonth0 = pickSel.m;
   renderPickerCalendar();
-});
+}
+pickCal0.addEventListener('click', onPickDayClick);
+pickCal1.addEventListener('click', onPickDayClick);
 pickPrevBtn.addEventListener('click', () => {
   if (--pickMonth0 < 0) { pickMonth0 = 11; pickYear--; }
   renderPickerCalendar();
@@ -1134,6 +1172,8 @@ pickNextBtn.addEventListener('click', () => {
   if (++pickMonth0 > 11) { pickMonth0 = 0; pickYear++; }
   renderPickerCalendar();
 });
+pickYPrevBtn.addEventListener('click', () => { pickYear--; renderPickerCalendar(); });
+pickYNextBtn.addEventListener('click', () => { pickYear++; renderPickerCalendar(); });
 pickTime.addEventListener('input', pickSummary);
 
 function renderCalendar() {

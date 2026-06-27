@@ -468,6 +468,7 @@ async function main() {
   if (pickInfo.years !== 10) fails.push(`연도 칩 10개(십년뷰) 기대, 실제 ${pickInfo.years}`);
   if (pickInfo.months !== 12) fails.push(`월 칩 12개 기대, 실제 ${pickInfo.months}`);
   if (pickInfo.wd !== 7) fails.push(`일 달력 요일헤더 7 기대, 실제 ${pickInfo.wd}`);
+  if (pickInfo.days !== 42) fails.push(`일 달력 6주 고정(42칸) 기대, 실제 ${pickInfo.days}`);
   if (!pickInfo.selY || !pickInfo.selM || !pickInfo.selD) fails.push('연/월/일 기본 선택 표시 누락');
   // 시간 텍스트 해석(1430 → 14:30)
   await evalJS(
@@ -493,13 +494,18 @@ async function main() {
   // 일 헤더 월 네비 존재 + 다음 달 버튼 동작
   const navOk = await evalJS(
     browser,
-    "['pick-yprev','pick-prev','pick-next','pick-ynext','pick-yinput'].every((id) => !!document.getElementById(id))",
+    "['pick-yprev','pick-prev','pick-next','pick-ynext','pick-yinput','pick-dyprev','pick-dynext'].every((id) => !!document.getElementById(id))",
   );
-  if (!navOk) fails.push('연도 입력/네비·월 네비 요소 누락');
+  if (!navOk) fails.push('연도 입력/네비·월/해 네비(«‹›») 요소 누락');
   const mlBefore = await evalJS(browser, "document.getElementById('pick-mlabel').textContent");
   await evalJS(browser, "document.getElementById('pick-next').click()");
   const mlAfter = await evalJS(browser, "document.getElementById('pick-mlabel').textContent");
-  if (mlBefore === mlAfter) fails.push('다음 달 버튼이 월 라벨을 바꾸지 못함');
+  if (mlBefore === mlAfter) fails.push('다음 달 버튼(›)이 월 라벨을 바꾸지 못함');
+  // 일 헤더 다음 해(») → 라벨 연도 변경
+  const mlY1 = await evalJS(browser, "document.getElementById('pick-mlabel').textContent");
+  await evalJS(browser, "document.getElementById('pick-dynext').click()");
+  const mlY2 = await evalJS(browser, "document.getElementById('pick-mlabel').textContent");
+  if (mlY1 === mlY2) fails.push('다음 해 버튼(»)이 라벨 연도를 바꾸지 못함');
   await evalJS(browser, "(() => { const p = document.querySelector('#drawer .drawer__panel'); if (p) p.scrollTop = p.scrollHeight; })()");
   const pickerShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-picker.png'), Buffer.from(pickerShot.data, 'base64'));

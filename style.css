@@ -171,12 +171,16 @@ body {
 
 /* 달력 선택기: 한 행 3열 — 연도(10칩 십년뷰+입력) | 월(2열 칩) | 일(달력). Apple/Google 톤 */
 .pick { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
-.pick__cols { display: flex; gap: 0.4rem; align-items: flex-start; }
+.pick__cols { display: flex; gap: 0.4rem; align-items: stretch; }
 .pick__sect { display: flex; flex-direction: column; gap: 0.28rem; }
 .pick__sect:nth-child(1) { flex: none; width: 5.6rem; }
 .pick__sect:nth-child(2) { flex: none; width: 4.7rem; }
 .pick__sect--day { flex: 1; min-width: 0; }
-.pick__collabel { text-align: center; font-size: 0.58rem; font-weight: 700; color: var(--muted); letter-spacing: 0.06em; }
+/* 열 헤더(연도/월/일): 둥근 사각형으로 각 열의 가로 시작~끝을 분명히 */
+.pick__collabel {
+  text-align: center; font-size: 0.62rem; font-weight: 700; color: var(--muted); letter-spacing: 0.08em;
+  background: var(--card-2); border: 1px solid var(--line); border-radius: 0.5rem; padding: 0.16rem 0;
+}
 .pick__yrnav { display: flex; align-items: center; gap: 0.15rem; }
 .pick__yinput {
   flex: 1; min-width: 0;
@@ -185,10 +189,13 @@ body {
   font-size: 0.72rem; text-align: center; font-variant-numeric: tabular-nums; font-family: inherit;
 }
 .pick__yinput:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+/* 연/월 칩 그리드: 일(6주 고정) 높이에 맞춰 늘어나 정렬(빈 공간 최소·버튼 위치 고정) */
 .pick__years,
-.pick__months { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; align-content: start; }
+.pick__months { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; flex: 1; grid-auto-rows: 1fr; }
 .pick__opt {
-  padding: 0.26rem 0; border: 1px solid var(--line); border-radius: 0.35rem;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 1.4rem;
+  padding: 0.1rem 0; border: 1px solid var(--line); border-radius: 0.35rem;
   background: var(--card-2); color: var(--fg); font-size: 0.72rem;
   text-align: center; font-variant-numeric: tabular-nums; font-family: inherit; cursor: pointer;
 }
@@ -204,7 +211,7 @@ body {
 }
 .pick__navbtn {
   flex: none; background: var(--card-2); border: 1px solid var(--line); color: var(--fg);
-  border-radius: 0.35rem; padding: 0 0.3rem; cursor: pointer; font-size: 0.82rem; line-height: 1.55;
+  border-radius: 0.35rem; padding: 0 0.22rem; cursor: pointer; font-size: 0.78rem; line-height: 1.5;
 }
 .pick__navbtn:hover { border-color: var(--accent); color: var(--accent); }
 .pick__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }

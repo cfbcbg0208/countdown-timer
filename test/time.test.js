@@ -144,6 +144,18 @@ test('monthGrid: 연말(12월) 경계 — 다음달은 이듬해 1월', () => {
   assert.ok(flat.some((c) => !c.inMonth && c.y === 2027 && c.m === 0));
 });
 
+test('monthGrid: minWeeks=6 — 5주짜리 달도 6주(42칸)로 고정, inMonth 수는 유지', () => {
+  // 2026-02(28일, 월요일 시작이면 5주)도 6주로 패딩.
+  const feb = monthGrid(2026, 1, 1, 6);
+  assert.equal(feb.length, 6);
+  assert.equal(feb.flat().length, 42);
+  assert.equal(feb.flat().filter((c) => c.inMonth).length, 28);
+  // 자연히 6주인 달은 그대로 6주.
+  assert.equal(monthGrid(2026, 4, 0, 6).length, 6);
+  // minWeeks 미지정이면 기존(가변) 동작.
+  assert.ok(monthGrid(2026, 1, 1).length <= 6);
+});
+
 test('dateKeyOf: 기준에 따라 로컬 YYYY-MM-DD', () => {
   const item = {
     targetISO: '2026-06-27T13:05:00',

@@ -47,6 +47,8 @@ const pickPrevBtn = $('pick-prev');
 const pickNextBtn = $('pick-next');
 const pickYPrevBtn = $('pick-yprev');
 const pickYNextBtn = $('pick-ynext');
+const pickDYPrevBtn = $('pick-dyprev');
+const pickDYNextBtn = $('pick-dynext');
 const pickYInput = $('pick-yinput');
 const pickTime = $('pick-time');
 const pickSelEl = $('pick-sel');
@@ -1138,7 +1140,8 @@ function renderDays() {
     h.textContent = w;
     cells.push(h);
   }
-  for (const week of monthGrid(pickYear, pickMonth0, ws)) {
+  for (const week of monthGrid(pickYear, pickMonth0, ws, 6)) {
+    // 항상 6주(42칸) 고정 → 월마다 높이가 안 바뀌어 아래 버튼 위치가 안 흔들림.
     for (const day of week) {
       const key = `${day.y}-${pad2c(day.m + 1)}-${pad2c(day.d)}`;
       const dow = new Date(day.y, day.m, day.d).getDay();
@@ -1220,7 +1223,7 @@ pickDaysEl.addEventListener('click', (e) => {
   pickDay = +b.dataset.d;
   renderPickerCalendar();
 });
-// 일 달력 헤더: 이전/다음 달 네비(해 경계 넘으면 십년뷰도 동기화).
+// 일 달력 헤더: « ‹ [연/월] › » (이전/다음 해·달). 해 경계 넘으면 십년뷰도 동기화.
 pickPrevBtn.addEventListener('click', () => {
   if (--pickMonth0 < 0) { pickMonth0 = 11; setPickYear(pickYear - 1); }
   renderPickerCalendar();
@@ -1229,6 +1232,8 @@ pickNextBtn.addEventListener('click', () => {
   if (++pickMonth0 > 11) { pickMonth0 = 0; setPickYear(pickYear + 1); }
   renderPickerCalendar();
 });
+pickDYPrevBtn.addEventListener('click', () => { setPickYear(pickYear - 1); renderPickerCalendar(); });
+pickDYNextBtn.addEventListener('click', () => { setPickYear(pickYear + 1); renderPickerCalendar(); });
 pickTime.addEventListener('input', pickSummary);
 
 function renderCalendar() {

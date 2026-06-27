@@ -473,27 +473,30 @@ function closeDrawer() {
 // ② 기준일시→Enter→제목 입력→Enter: 그 제목으로 생성.
 // (Beeftext 무클릭 호환은 JS로 불가 확인 — 자동 포커스 유지, 확장기는 클릭/→ 1회 필요.)
 textInput.addEventListener('input', updatePreview);
-// PC Enter 편의: 빈 칸이면 현재시각 채움, 채워져 유효하면 제목으로 이동.
-// (모바일 소프트키보드의 '다음/이동'은 keydown Enter를 안 보내므로 form submit/지금 버튼으로 보완)
+// 핵심: '다음 칸(제목)으로 넘어가는 모든 경로'(탭/엔터/모바일'다음'/클릭)에서 기준일시가
+// 비어 있으면 현재시각 자동 채움. 키보드 키 대신 제목의 focus를 트리거로 써서 플랫폼 무관 동작.
+labelInput.addEventListener('focus', () => {
+  if (textInput.value.trim() === '') fillNow(false); // 포커스는 제목에 유지(채우기만)
+});
+// PC Enter: 비었거나 유효하면 제목으로 이동(이동 시 위 focus 핸들러가 채움), 무효면 오류 표시.
 textInput.addEventListener('keydown', (e) => {
   if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return; // IME 조합 중 Enter 무시
   e.preventDefault(); // form 제출 막고 직접 처리
-  if (textInput.value.trim() === '') {
-    fillNow();
-    return;
-  }
-  if (parseFlexible(textInput.value.trim())) labelInput.focus();
+  const v = textInput.value.trim();
+  if (v === '' || parseFlexible(v)) labelInput.focus();
   else updatePreview();
 });
-// '지금' 버튼: 모든 플랫폼에서 현재시각을 기준일시에 채움(모바일 키보드 한계 보완).
-function fillNow() {
+// 현재시각을 기준일시에 채움. focusField=true면 기준일시로 포커스(편집), false면 포커스 유지(이동 중).
+function fillNow(focusField = true) {
   textInput.value = compactNow();
   updatePreview();
-  textInput.focus();
-  const end = textInput.value.length;
-  textInput.setSelectionRange(end, end);
+  if (focusField) {
+    textInput.focus();
+    const end = textInput.value.length;
+    textInput.setSelectionRange(end, end);
+  }
 }
-nowBtn.addEventListener('click', fillNow);
+nowBtn.addEventListener('click', () => fillNow(true));
 // 추가: form submit(=PC Enter on 제목·모바일 완료/이동 액션키·＋추가 버튼) → 한 경로로 통일.
 addForm.addEventListener('submit', (e) => {
   e.preventDefault();

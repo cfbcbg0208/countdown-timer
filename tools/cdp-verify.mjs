@@ -118,6 +118,10 @@ async function main() {
   await browser.open;
   await browser.send('Page.enable');
   await browser.send('Runtime.enable');
+  // 헤드리스에선 창이 비활성이라 element.focus()가 focus 이벤트를 안 쏨 → 포커스 에뮬레이션 ON.
+  try {
+    await browser.send('Emulation.setFocusEmulationEnabled', { enabled: true });
+  } catch {}
   // 모바일 우선 개발 → 폰 크기 뷰포트로 검증/스크린샷(밀도·레이아웃을 모바일 기준으로 판단).
   await browser.send('Emulation.setDeviceMetricsOverride', {
     width: 390,
@@ -418,6 +422,15 @@ async function main() {
   if (!nowFilled) fails.push("'지금' 버튼이 기준일시를 채우지 못함");
   const addShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-add.png'), Buffer.from(addShot.data, 'base64'));
+  // 다음 칸으로 이동(=제목 focus) 시 빈 기준일시 현재시각 자동채움(탭/엔터/모바일'다음' 동등)
+  await evalJS(
+    browser,
+    `(() => { const i = document.getElementById('text-input');
+       i.value = ''; i.dispatchEvent(new Event('input', { bubbles: true }));
+       document.getElementById('label-input').focus(); })()`,
+  );
+  const advanceFilled = await evalJS(browser, "document.getElementById('text-input').value.trim().length > 0");
+  if (!advanceFilled) fails.push('제목으로 이동 시 빈 기준일시 자동채움 실패');
   await evalJS(
     browser,
     `(() => { const i = document.getElementById('text-input');

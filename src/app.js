@@ -37,6 +37,8 @@ const labelInput = $('label-input');
 const textInput = $('text-input');
 const textPreview = $('text-preview');
 const pickerInput = $('picker-input');
+const addForm = $('add-form');
+const nowBtn = $('now-btn');
 const listEl = $('list');
 const emptyHint = $('empty-hint');
 const srStatus = $('sr-status');
@@ -471,28 +473,35 @@ function closeDrawer() {
 // ② 기준일시→Enter→제목 입력→Enter: 그 제목으로 생성.
 // (Beeftext 무클릭 호환은 JS로 불가 확인 — 자동 포커스 유지, 확장기는 클릭/→ 1회 필요.)
 textInput.addEventListener('input', updatePreview);
+// PC Enter 편의: 빈 칸이면 현재시각 채움, 채워져 유효하면 제목으로 이동.
+// (모바일 소프트키보드의 '다음/이동'은 keydown Enter를 안 보내므로 form submit/지금 버튼으로 보완)
 textInput.addEventListener('keydown', (e) => {
-  if (e.key !== 'Enter') return;
-  e.preventDefault();
-  // 비어 있으면 1번째 Enter: 현재 시각(컴팩트)으로 채우고 커서는 기준일시 끝에 유지.
+  if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return; // IME 조합 중 Enter 무시
+  e.preventDefault(); // form 제출 막고 직접 처리
   if (textInput.value.trim() === '') {
-    textInput.value = compactNow();
-    updatePreview();
-    const end = textInput.value.length;
-    textInput.setSelectionRange(end, end);
+    fillNow();
     return;
   }
-  // 채워져 있고 유효하면 다음 Enter: 제목으로 이동. 무효면 오류 표시(이동 안 함).
   if (parseFlexible(textInput.value.trim())) labelInput.focus();
   else updatePreview();
 });
-labelInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    addFrom('text');
-  }
+// '지금' 버튼: 모든 플랫폼에서 현재시각을 기준일시에 채움(모바일 키보드 한계 보완).
+function fillNow() {
+  textInput.value = compactNow();
+  updatePreview();
+  textInput.focus();
+  const end = textInput.value.length;
+  textInput.setSelectionRange(end, end);
+}
+nowBtn.addEventListener('click', fillNow);
+// 추가: form submit(=PC Enter on 제목·모바일 완료/이동 액션키·＋추가 버튼) → 한 경로로 통일.
+addForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  addFrom('text');
 });
+// 픽커의 '＋ 선택기로 추가'는 form 밖이라 클릭으로 처리(텍스트 ＋추가는 submit이라 중복 방지로 제외).
 document.querySelectorAll('.zone__apply').forEach((btn) => {
+  if (btn.type === 'submit') return;
   btn.addEventListener('click', () => addFrom(btn.dataset.source));
 });
 function itemById(id) {

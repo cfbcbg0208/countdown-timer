@@ -38,33 +38,41 @@
             <button class="drawer__close" type="button" data-close aria-label="닫기">✕</button>
           </header>
       <section class="add">
-        <!-- 기준일시(메인): 자유 텍스트 → 해석. 드로어 열면 여기에 먼저 포커스 -->
-        <div class="zone" id="zone-text">
-          <header class="zone__head"><label class="zone__name" for="text-input">⌨️ 기준일시</label></header>
+        <!-- form으로 감싸 'submit'으로 추가 → PC Enter·모바일 액션키(다음/이동/완료)·버튼 모두 안정 동작 -->
+        <form id="add-form" class="add__form">
+          <!-- 기준일시(메인): 자유 텍스트 → 해석. 드로어 열면 여기에 먼저 포커스 -->
+          <div class="zone" id="zone-text">
+            <header class="zone__head">
+              <label class="zone__name" for="text-input">⌨️ 기준일시</label>
+              <button type="button" id="now-btn" class="zone__now">지금</button>
+            </header>
+            <input
+              type="text"
+              id="text-input"
+              class="zone__input"
+              enterkeyhint="next"
+              placeholder="예: 260626금1800 · 2026-06-26 18:00 · 오후 6시 · d0530(5시간30분 뒤)"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <p class="zone__preview preview--idle" id="text-preview">
+              기준일시를 입력하면 해석 결과가 표시됩니다.
+            </p>
+          </div>
+
+          <!-- 제목(선택): 비우면 제목 없이 저장(기준일시는 메타에 따로 표시) -->
+          <label class="sr-only" for="label-input">제목 (선택)</label>
           <input
             type="text"
-            id="text-input"
-            class="zone__input"
-            placeholder="예: 260626금1800 · 2026-06-26 18:00 · 오후 6시 · d0530(5시간30분 뒤)"
+            id="label-input"
+            class="add__label"
+            enterkeyhint="done"
+            placeholder="제목 (선택)"
             autocomplete="off"
-            spellcheck="false"
           />
-          <p class="zone__preview preview--idle" id="text-preview">
-            기준일시를 입력하면 해석 결과가 표시됩니다.
-          </p>
-        </div>
 
-        <!-- 제목(선택): 비우면 제목 없이 저장(기준일시는 메타에 따로 표시) -->
-        <label class="sr-only" for="label-input">제목 (선택)</label>
-        <input
-          type="text"
-          id="label-input"
-          class="add__label"
-          placeholder="제목 (선택)"
-          autocomplete="off"
-        />
-
-        <button class="zone__apply" data-source="text" type="button">＋ 추가</button>
+          <button class="zone__apply" data-source="text" type="submit">＋ 추가</button>
+        </form>
 
         <!-- 태그 지정(선택): 생성 시 바로 태그를 붙임 -->
         <details class="add__groups-wrap">

@@ -410,6 +410,26 @@ async function main() {
   if (empty.hidden) fails.push('빈 상태 안내가 숨겨져 있음');
   if (!/아직 타임카드가 없습니다/.test(empty.text)) fails.push(`빈 상태 문구="${empty.text}"`);
 
+  // 13) 추가 흐름(form submit + 지금 버튼): 빈 상태 → ＋FAB → 지금/입력 → form submit → 카드 1개
+  await evalJS(browser, "document.getElementById('fab').click()");
+  await until(() => evalJS(browser, "!document.getElementById('drawer').hidden"), { label: 'add drawer open' });
+  await evalJS(browser, "document.getElementById('now-btn').click()");
+  const nowFilled = await evalJS(browser, "document.getElementById('text-input').value.trim().length > 0");
+  if (!nowFilled) fails.push("'지금' 버튼이 기준일시를 채우지 못함");
+  const addShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  await writeFile(join(ARTIFACTS, 'verify-add.png'), Buffer.from(addShot.data, 'base64'));
+  await evalJS(
+    browser,
+    `(() => { const i = document.getElementById('text-input');
+       i.value = '2026-12-31 23:59:00'; i.dispatchEvent(new Event('input', { bubbles: true }));
+       document.getElementById('add-form').requestSubmit(); })()`,
+  );
+  await until(() => evalJS(browser, "document.querySelectorAll('.card').length === 1"), {
+    label: 'card added via form submit',
+  });
+  const addedCount = await evalJS(browser, "document.querySelectorAll('.card').length");
+  if (addedCount !== 1) fails.push(`form submit 추가 실패, 카드 ${addedCount}`);
+
   console.log('카드 검증:', JSON.stringify(checks, null, 2));
   console.log('조합 검증:', JSON.stringify(combo));
   console.log('캘린더 검증:', JSON.stringify(cal, null, 2));

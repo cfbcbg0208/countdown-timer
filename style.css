@@ -101,8 +101,21 @@ body {
   gap: 0.55rem;
 }
 
-.zone__head { display: flex; align-items: center; justify-content: space-between; }
+.zone__head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
 .zone__name { font-size: 0.9rem; color: var(--muted); font-weight: 600; }
+/* '지금' 버튼: 현재시각을 기준일시에 채움(모바일 키보드 Enter 한계 보완) */
+.zone__now {
+  padding: 0.15rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--card-2);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.zone__now:hover { color: var(--accent); border-color: var(--accent); }
+.add__form { display: flex; flex-direction: column; gap: 0.7rem; }
 
 .zone__input {
   width: 100%;

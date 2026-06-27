@@ -96,11 +96,14 @@
         <details class="add__picker" id="add-picker">
           <summary>📅 달력에서 클릭으로 선택</summary>
           <div class="pick">
-            <!-- 3열: 연도 / 월 / 일 (각 세로 스크롤 목록) -->
-            <div class="pick__cols">
-              <div class="pick__col" id="pick-years" role="listbox" aria-label="연도"></div>
-              <div class="pick__col" id="pick-months" role="listbox" aria-label="월"></div>
-              <div class="pick__col" id="pick-days" role="listbox" aria-label="일"></div>
+            <!-- 상단: 연도(스크롤) + 월(2열 칩, 전부 표시) / 하단: 일(달력 그리드) -->
+            <div class="pick__top">
+              <div class="pick__years" id="pick-years" role="listbox" aria-label="연도"></div>
+              <div class="pick__months" id="pick-months" role="listbox" aria-label="월"></div>
+            </div>
+            <div class="pick__dayswrap">
+              <div class="pick__mlabel" id="pick-mlabel"></div>
+              <div class="pick__grid" id="pick-days" role="grid" aria-label="일"></div>
             </div>
             <div class="pick__timerow">
               <label class="pick__timelabel" for="pick-time">시간</label>

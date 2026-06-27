@@ -450,23 +450,23 @@ async function main() {
     browser,
     "(() => { const d = document.getElementById('add-picker'); d.open = true; d.dispatchEvent(new Event('toggle')); })()",
   );
-  await until(() => evalJS(browser, "document.querySelectorAll('#pick-days .pick__opt').length >= 28"), {
-    label: 'picker 3 columns',
+  await until(() => evalJS(browser, "document.querySelectorAll('#pick-days .pick__day').length >= 28"), {
+    label: 'picker (year+month chips, day grid)',
   });
   const pickInfo = await evalJS(
     browser,
     `(() => ({
-       cols: document.querySelectorAll('.pick__col').length,
        years: document.querySelectorAll('#pick-years .pick__opt').length,
        months: document.querySelectorAll('#pick-months .pick__opt').length,
-       days: document.querySelectorAll('#pick-days .pick__opt').length,
+       days: document.querySelectorAll('#pick-days .pick__day').length,
+       wd: document.querySelectorAll('#pick-days .cal__wd').length,
        selY: !!document.querySelector('#pick-years .pick__opt--sel'),
        selM: !!document.querySelector('#pick-months .pick__opt--sel'),
-       selD: !!document.querySelector('#pick-days .pick__opt--sel'),
+       selD: !!document.querySelector('#pick-days .pick__day--sel'),
      }))()`,
   );
-  if (pickInfo.cols !== 3) fails.push(`연/월/일 3열 기대, 실제 ${pickInfo.cols}`);
-  if (pickInfo.months !== 12) fails.push(`월 12개 기대, 실제 ${pickInfo.months}`);
+  if (pickInfo.months !== 12) fails.push(`월 칩 12개 기대, 실제 ${pickInfo.months}`);
+  if (pickInfo.wd !== 7) fails.push(`일 달력 요일헤더 7 기대, 실제 ${pickInfo.wd}`);
   if (pickInfo.years < 5) fails.push(`연도 항목 부족, 실제 ${pickInfo.years}`);
   if (!pickInfo.selY || !pickInfo.selM || !pickInfo.selD) fails.push('연/월/일 기본 선택 표시 누락');
   // 시간 텍스트 해석(1430 → 14:30)
@@ -487,7 +487,7 @@ async function main() {
   await evalJS(browser, "(() => { const p = document.querySelector('#drawer .drawer__panel'); if (p) p.scrollTop = p.scrollHeight; })()");
   const pickerShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-picker.png'), Buffer.from(pickerShot.data, 'base64'));
-  await evalJS(browser, "document.querySelector('#pick-days .pick__opt:not(.pick__opt--sel)').click()");
+  await evalJS(browser, "document.querySelector('#pick-days .pick__day:not(.pick__day--out):not(.pick__day--sel)').click()");
   await evalJS(browser, "document.querySelector('.add__picker .zone__apply').click()");
   await until(() => evalJS(browser, "document.querySelectorAll('.card').length === 2"), {
     label: 'picker add',

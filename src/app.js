@@ -42,6 +42,7 @@ const addPicker = $('add-picker');
 const pickYearsEl = $('pick-years');
 const pickMonthsEl = $('pick-months');
 const pickDaysEl = $('pick-days');
+const pickMlabelEl = $('pick-mlabel');
 const pickTime = $('pick-time');
 const pickSelEl = $('pick-sel');
 const listEl = $('list');
@@ -1105,6 +1106,7 @@ function renderYears() {
   pickYearsEl.replaceChildren(...opts);
   scrollSelIntoView(pickYearsEl);
 }
+// 월: 12개를 2열 칩으로 모두 표시(스크롤 없음).
 function renderMonths() {
   const now = new Date();
   const thisYear = pickYear === now.getFullYear();
@@ -1113,21 +1115,44 @@ function renderMonths() {
     opts.push(pickOpt(`${m + 1}월`, m === pickMonth0, thisYear && m === now.getMonth(), { month: m }));
   }
   pickMonthsEl.replaceChildren(...opts);
-  scrollSelIntoView(pickMonthsEl);
 }
+// 일: 기존 달력 그리드(요일헤더 + 날짜). 다른 달 날짜 클릭 시 그 달로 이동.
 function renderDays() {
-  const dim = new Date(pickYear, pickMonth0 + 1, 0).getDate(); // 그 달의 일수
+  pickMlabelEl.textContent = `${pickYear}년 ${pickMonth0 + 1}월`;
+  const dim = new Date(pickYear, pickMonth0 + 1, 0).getDate();
   if (pickDay > dim) pickDay = dim; // 월/연 바뀌어 일수가 줄면 클램프
+  const ws = settings.weekStart === 'sun' ? 0 : 1;
   const now = new Date();
-  const thisMonth = pickYear === now.getFullYear() && pickMonth0 === now.getMonth();
-  const opts = [];
-  for (let d = 1; d <= dim; d++) {
-    const dow = new Date(pickYear, pickMonth0, d).getDay();
-    const extra = dow === 0 ? ' pick__opt--sun' : dow === 6 ? ' pick__opt--sat' : '';
-    opts.push(pickOpt(d, d === pickDay, thisMonth && d === now.getDate(), { day: d }, extra));
+  const todayKey = `${now.getFullYear()}-${pad2c(now.getMonth() + 1)}-${pad2c(now.getDate())}`;
+  const selKey = `${pickYear}-${pad2c(pickMonth0 + 1)}-${pad2c(pickDay)}`;
+  const cells = [];
+  for (let i = 0; i < 7; i++) {
+    const w = WD[(ws + i) % 7];
+    const h = document.createElement('div');
+    h.className = 'cal__wd' + (w === '일' ? ' cal__wd--sun' : w === '토' ? ' cal__wd--sat' : '');
+    h.textContent = w;
+    cells.push(h);
   }
-  pickDaysEl.replaceChildren(...opts);
-  scrollSelIntoView(pickDaysEl);
+  for (const week of monthGrid(pickYear, pickMonth0, ws)) {
+    for (const day of week) {
+      const key = `${day.y}-${pad2c(day.m + 1)}-${pad2c(day.d)}`;
+      const dow = new Date(day.y, day.m, day.d).getDay();
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className =
+        'pick__day' +
+        (day.inMonth ? '' : ' pick__day--out') +
+        (key === todayKey ? ' pick__day--today' : '') +
+        (key === selKey ? ' pick__day--sel' : '') +
+        (dow === 0 ? ' pick__day--sun' : dow === 6 ? ' pick__day--sat' : '');
+      b.dataset.y = day.y;
+      b.dataset.m = day.m;
+      b.dataset.d = day.d;
+      b.textContent = day.d;
+      cells.push(b);
+    }
+  }
+  pickDaysEl.replaceChildren(...cells);
 }
 function renderPickerCalendar() {
   renderYears();
@@ -1164,11 +1189,12 @@ pickMonthsEl.addEventListener('click', (e) => {
   pickSummary();
 });
 pickDaysEl.addEventListener('click', (e) => {
-  const b = e.target.closest('.pick__opt');
+  const b = e.target.closest('.pick__day');
   if (!b) return;
-  pickDay = +b.dataset.day;
-  renderDays();
-  pickSummary();
+  pickYear = +b.dataset.y; // 다른 달 날짜를 누르면 그 달/해로 이동
+  pickMonth0 = +b.dataset.m;
+  pickDay = +b.dataset.d;
+  renderPickerCalendar();
 });
 pickTime.addEventListener('input', pickSummary);
 

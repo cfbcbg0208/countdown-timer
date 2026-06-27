@@ -450,21 +450,23 @@ async function main() {
     browser,
     "(() => { const d = document.getElementById('add-picker'); d.open = true; d.dispatchEvent(new Event('toggle')); })()",
   );
-  await until(() => evalJS(browser, "document.querySelectorAll('.pick__day').length >= 56"), {
-    label: 'picker grids (2 months)',
+  await until(() => evalJS(browser, "document.querySelectorAll('.pick__day').length >= 28"), {
+    label: 'picker grid (month)',
   });
   const pickInfo = await evalJS(
     browser,
     `(() => ({
-       cals: document.querySelectorAll('.pick__cal').length,
+       years: document.querySelectorAll('.pick__year').length,
        days: document.querySelectorAll('.pick__day').length,
-       wd: document.querySelectorAll('.pick__cal .cal__wd').length,
-       hasSel: !!document.querySelector('.pick__day--sel'),
+       wd: document.querySelectorAll('#pick-grid .cal__wd').length,
+       hasSelDay: !!document.querySelector('.pick__day--sel'),
+       hasSelYear: !!document.querySelector('.pick__year--sel'),
      }))()`,
   );
-  if (pickInfo.cals !== 2) fails.push(`선택기 달력 2개(가로) 기대, 실제 ${pickInfo.cals}`);
-  if (pickInfo.wd !== 14) fails.push(`선택기 요일헤더 14(2달) 기대, 실제 ${pickInfo.wd}`);
-  if (!pickInfo.hasSel) fails.push('선택기 기본 선택(오늘) 표시 없음');
+  if (pickInfo.years < 5) fails.push(`연도 picker 항목 부족, 실제 ${pickInfo.years}`);
+  if (pickInfo.wd !== 7) fails.push(`선택기 요일헤더 7 기대, 실제 ${pickInfo.wd}`);
+  if (!pickInfo.hasSelDay) fails.push('선택기 기본 날짜 선택 없음');
+  if (!pickInfo.hasSelYear) fails.push('연도 picker 선택 표시 없음');
   // 시간 텍스트 해석(1430 → 14:30)
   await evalJS(
     browser,
@@ -472,12 +474,14 @@ async function main() {
   );
   const timeOk = await evalJS(browser, "document.getElementById('pick-sel').dataset.ok");
   if (timeOk !== 'yes') fails.push(`시간 텍스트 해석 실패, ok=${timeOk}`);
-  // 빠른 년도 스위칭(»)
-  const yBefore = await evalJS(browser, "document.getElementById('pick-range').textContent");
-  await evalJS(browser, "document.getElementById('pick-ynext').click()");
-  const yAfter = await evalJS(browser, "document.getElementById('pick-range').textContent");
-  if (yBefore === yAfter) fails.push('년도 스위칭(»)이 동작하지 않음');
-  await evalJS(browser, "document.getElementById('pick-yprev').click()"); // 현재 해로 원복
+  // 좌측 연도 picker로 빠른 연도 선택 → 월 라벨 연도 변경
+  const mlBefore = await evalJS(browser, "document.getElementById('pick-mlabel').textContent");
+  await evalJS(
+    browser,
+    "(() => { const ys = [...document.querySelectorAll('.pick__year')]; const i = ys.findIndex((b) => b.classList.contains('pick__year--sel')); (ys[i + 2] || ys[ys.length - 1]).click(); })()",
+  );
+  const mlAfter = await evalJS(browser, "document.getElementById('pick-mlabel').textContent");
+  if (mlBefore === mlAfter) fails.push('연도 picker 클릭이 월 라벨 연도를 바꾸지 못함');
   await evalJS(browser, "(() => { const p = document.querySelector('#drawer .drawer__panel'); if (p) p.scrollTop = p.scrollHeight; })()");
   const pickerShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-picker.png'), Buffer.from(pickerShot.data, 'base64'));

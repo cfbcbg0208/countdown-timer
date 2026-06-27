@@ -39,13 +39,11 @@ const textPreview = $('text-preview');
 const addForm = $('add-form');
 const nowBtn = $('now-btn');
 const addPicker = $('add-picker');
-const pickCal0 = $('pick-cal-0');
-const pickCal1 = $('pick-cal-1');
-const pickRangeEl = $('pick-range');
+const pickYearsEl = $('pick-years');
+const pickGridEl = $('pick-grid');
+const pickMlabelEl = $('pick-mlabel');
 const pickPrevBtn = $('pick-prev');
 const pickNextBtn = $('pick-next');
-const pickYPrevBtn = $('pick-yprev');
-const pickYNextBtn = $('pick-ynext');
 const pickTime = $('pick-time');
 const pickSelEl = $('pick-sel');
 const listEl = $('list');
@@ -1095,16 +1093,32 @@ function pickSummary() {
   pickSelEl.textContent = `선택: ${formatLocal(d)}`;
   pickSelEl.dataset.ok = 'yes';
 }
-// 한 달치 그리드(요일헤더 + 날짜 버튼)를 container에 채운다.
-function buildMonthCal(container, year, month0) {
+// 좌측 연도 picker: pickYear/오늘을 포함하는 범위를 세로 목록으로.
+function renderYears() {
+  const ty = new Date().getFullYear();
+  const lo = Math.min(ty, pickYear) - 4;
+  const hi = Math.max(ty, pickYear) + 16;
+  const btns = [];
+  for (let y = lo; y <= hi; y++) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className =
+      'pick__year' + (y === pickYear ? ' pick__year--sel' : '') + (y === ty ? ' pick__year--now' : '');
+    b.dataset.year = y;
+    b.textContent = y;
+    btns.push(b);
+  }
+  pickYearsEl.replaceChildren(...btns);
+  pickYearsEl.querySelector('.pick__year--sel')?.scrollIntoView({ block: 'nearest' });
+}
+// 우측: 한 달치 그리드(요일헤더 + 날짜 버튼).
+function renderMonth() {
+  pickMlabelEl.textContent = `${pickYear}년 ${pickMonth0 + 1}월`;
   const ws = settings.weekStart === 'sun' ? 0 : 1;
   const now = new Date();
   const todayKey = `${now.getFullYear()}-${pad2c(now.getMonth() + 1)}-${pad2c(now.getDate())}`;
   const selKey = pickSel ? `${pickSel.y}-${pad2c(pickSel.m + 1)}-${pad2c(pickSel.d)}` : '';
-  const title = document.createElement('div');
-  title.className = 'pick__calmonth';
-  title.textContent = `${month0 + 1}월`;
-  const cells = [title];
+  const cells = [];
   for (let i = 0; i < 7; i++) {
     const w = WD[(ws + i) % 7];
     const h = document.createElement('div');
@@ -1112,7 +1126,7 @@ function buildMonthCal(container, year, month0) {
     h.textContent = w;
     cells.push(h);
   }
-  for (const week of monthGrid(year, month0, ws)) {
+  for (const week of monthGrid(pickYear, pickMonth0, ws)) {
     for (const day of week) {
       const key = `${day.y}-${pad2c(day.m + 1)}-${pad2c(day.d)}`;
       const dow = new Date(day.y, day.m, day.d).getDay();
@@ -1131,18 +1145,11 @@ function buildMonthCal(container, year, month0) {
       cells.push(b);
     }
   }
-  container.replaceChildren(...cells);
+  pickGridEl.replaceChildren(...cells);
 }
 function renderPickerCalendar() {
-  let m2y = pickYear;
-  let m2m = pickMonth0 + 1;
-  if (m2m > 11) { m2m = 0; m2y++; }
-  pickRangeEl.textContent =
-    m2y !== pickYear
-      ? `${pickYear}년 ${pickMonth0 + 1}월 – ${m2y}년 ${m2m + 1}월`
-      : `${pickYear}년 ${pickMonth0 + 1}월 – ${m2m + 1}월`;
-  buildMonthCal(pickCal0, pickYear, pickMonth0);
-  buildMonthCal(pickCal1, m2y, m2m);
+  renderYears();
+  renderMonth();
   pickSummary();
 }
 function ensurePickerInit() {
@@ -1154,16 +1161,21 @@ function ensurePickerInit() {
   renderPickerCalendar();
 }
 addPicker.addEventListener('toggle', () => {
-  if (addPicker.open && !pickCal0.childElementCount) ensurePickerInit();
+  if (addPicker.open && !pickGridEl.childElementCount) ensurePickerInit();
 });
-function onPickDayClick(e) {
+pickYearsEl.addEventListener('click', (e) => {
+  const b = e.target.closest('.pick__year');
+  if (!b) return;
+  pickYear = +b.dataset.year;
+  renderPickerCalendar();
+});
+pickGridEl.addEventListener('click', (e) => {
   const b = e.target.closest('.pick__day');
   if (!b || b.classList.contains('pick__day--out')) return; // 다른 달 칸은 비활성
   pickSel = { y: +b.dataset.y, m: +b.dataset.m, d: +b.dataset.d };
-  renderPickerCalendar();
-}
-pickCal0.addEventListener('click', onPickDayClick);
-pickCal1.addEventListener('click', onPickDayClick);
+  renderMonth(); // 선택 강조만 갱신(연도 목록 스크롤 유지)
+  pickSummary();
+});
 pickPrevBtn.addEventListener('click', () => {
   if (--pickMonth0 < 0) { pickMonth0 = 11; pickYear--; }
   renderPickerCalendar();
@@ -1172,8 +1184,6 @@ pickNextBtn.addEventListener('click', () => {
   if (++pickMonth0 > 11) { pickMonth0 = 0; pickYear++; }
   renderPickerCalendar();
 });
-pickYPrevBtn.addEventListener('click', () => { pickYear--; renderPickerCalendar(); });
-pickYNextBtn.addEventListener('click', () => { pickYear++; renderPickerCalendar(); });
 pickTime.addEventListener('input', pickSummary);
 
 function renderCalendar() {

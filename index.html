@@ -96,16 +96,18 @@
         <details class="add__picker" id="add-picker">
           <summary>📅 달력에서 클릭으로 선택</summary>
           <div class="pick">
-            <div class="pick__nav">
-              <button type="button" class="pick__navbtn" id="pick-yprev" aria-label="이전 해" title="이전 해">«</button>
-              <button type="button" class="pick__navbtn" id="pick-prev" aria-label="이전 달" title="이전 달">‹</button>
-              <span class="pick__range" id="pick-range"></span>
-              <button type="button" class="pick__navbtn" id="pick-next" aria-label="다음 달" title="다음 달">›</button>
-              <button type="button" class="pick__navbtn" id="pick-ynext" aria-label="다음 해" title="다음 해">»</button>
-            </div>
-            <div class="pick__months">
-              <div class="pick__cal" id="pick-cal-0"></div>
-              <div class="pick__cal" id="pick-cal-1"></div>
+            <div class="pick__body">
+              <!-- 좌: 연도 picker(세로 목록) -->
+              <div class="pick__years" id="pick-years" role="listbox" aria-label="연도"></div>
+              <!-- 우: 월 이동 + 일 그리드 -->
+              <div class="pick__month">
+                <div class="pick__mnav">
+                  <button type="button" class="pick__navbtn" id="pick-prev" aria-label="이전 달" title="이전 달">‹</button>
+                  <span class="pick__mlabel" id="pick-mlabel"></span>
+                  <button type="button" class="pick__navbtn" id="pick-next" aria-label="다음 달" title="다음 달">›</button>
+                </div>
+                <div class="pick__grid" id="pick-grid"></div>
+              </div>
             </div>
             <div class="pick__timerow">
               <label class="pick__timelabel" for="pick-time">시간</label>

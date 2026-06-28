@@ -168,9 +168,12 @@ async function main() {
        timeInRight: !!document.querySelector('.card__col--right .card__time'),
        labelInLeft: !!document.querySelector('.card__col--left .card__label'),
        lapsInRight: !!document.querySelector('.card__col--right .card__laps'),
+       lapRelChip: document.querySelector('.card__laps .lap__edit--rel .chip')?.textContent,
        lapTargetChip: document.querySelector('.card__laps .lap__edit--target .chip')?.textContent,
-       lapValClipped: (() => { const v = document.querySelector('.lap__edit--rel .lap__val');
-         return !!v && v.scrollWidth > v.clientWidth + 1; })(),
+       titleChip: document.querySelector('.card__label .chip')?.textContent,
+       // 삭제 ✕가 독립 열로 분리(구분선 border-left 존재)
+       lapDelSeparated: (() => { const d = document.querySelector('.card__laps .lap__del');
+         return !!d && parseFloat(getComputedStyle(d).borderLeftWidth) > 0; })(),
        // 무채색: 랩 상대시간 색이 메인 시간(방향색)과 달라야 함(= --fg 무채색)
        lapMono: (() => {
          const v = document.querySelector('.card__laps .lap__val');
@@ -209,9 +212,12 @@ async function main() {
   if (!checks.timeInRight) fails.push('큰 시간이 우측 열(.card__col--right)에 없음');
   if (!checks.labelInLeft) fails.push('제목이 좌측 열(.card__col--left)에 없음');
   if (!checks.lapsInRight) fails.push('기록(랩) 목록이 우측 열(.card__col--right .card__laps)에 없음');
+  if (checks.lapRelChip !== '남은시간' && checks.lapRelChip !== '지난시간')
+    fails.push(`기록 상대시간 칩 기대(남은/지난시간), 실제 "${checks.lapRelChip}"`);
   if (checks.lapTargetChip !== '기준일시')
     fails.push(`기록 기준일시 칩 텍스트="${checks.lapTargetChip}" (기준일시 기대)`);
-  if (checks.lapValClipped) fails.push('기록 상대시간이 좁은 열에서 잘림(ellipsis) — 전체 표시 실패');
+  if (checks.titleChip !== '제목') fails.push(`제목 칩 텍스트="${checks.titleChip}" (제목 기대)`);
+  if (!checks.lapDelSeparated) fails.push('기록 삭제(✕)가 독립 열(구분선)로 분리되지 않음');
   if (!checks.lapMono) fails.push('기록 상대시간이 무채색이 아님(메인 시간 방향색과 동일)');
   if (!checks.colsEqual) fails.push('zone2·zone3(.card__cols) 가로폭이 동일하지 않음');
   if (checks.lapsShown !== 1) fails.push(`기록 접힘 시 최근 1개만 기대, 실제 ${checks.lapsShown}`);

@@ -375,6 +375,7 @@ kbd {
 .card__label:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .card__label--empty { font-weight: 500; font-style: italic; opacity: 0.7; }
 .card__labeltext { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card__label .chip { flex: none; } /* [제목] 칩은 항상 보이고 제목 텍스트만 잘림 */
 
 /* 클릭=편집 어포던스: 연필 아이콘(평시 muted, 호버 시 accent). 점선보다 또렷·세련. */
 .card__label::after,
@@ -527,8 +528,8 @@ kbd {
 .card__laps[hidden] { display: none; }
 .lap {
   display: flex;
-  align-items: flex-start;
-  gap: 0.15rem;
+  align-items: stretch; /* 본문과 삭제 열 높이를 맞춰 삭제 ✕를 세로 중앙에 */
+  gap: 0.1rem;
   min-width: 0; /* 좁은 열에서 내용이 넘쳐 칩이 잘리지 않도록 */
   font-size: var(--card-lap-size, 0.64rem);
   color: var(--muted);
@@ -559,21 +560,31 @@ kbd {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 0.82rem;
+  font-size: 0.8rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--fg);
 }
 .lap__val .display__sign { font-weight: 700; margin-right: 0.04em; }
 .lap__edit--rel .chip,
-.lap__edit--target .chip { flex: none; font-size: 0.42rem; padding: 0.02rem 0.28rem; }
+.lap__edit--target .chip { flex: none; font-size: 0.4rem; padding: 0.02rem 0.24rem; }
 /* 기준일시 줄: 값(자르기) + [기준일시] 칩(우측 고정) */
 .lap__edit--target .lap__edittext { flex: 1 1 auto; }
 .lap__edittext { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-/* 좁은 열이라 연필 아이콘은 생략 — 행 클릭으로 수정(호버 시 강조 + title 안내). */
+/* 연필 어포던스(작게): 값은 자르고 칩·연필은 고정. */
+.lap__edit::after {
+  content: '';
+  flex: none;
+  width: 0.55rem;
+  height: 0.55rem;
+  background: var(--muted);
+  -webkit-mask: var(--pencil) center / contain no-repeat;
+  mask: var(--pencil) center / contain no-repeat;
+  opacity: 0.45;
+  transition: opacity 0.12s, background 0.12s;
+}
 .lap__edit:hover { color: var(--fg); }
-.lap__edit:hover .lap__val { text-decoration: underline; text-underline-offset: 2px; }
-.lap__edit:hover .chip { border-color: var(--accent); color: var(--accent); }
+.lap__edit:hover::after { background: var(--accent); opacity: 1; }
 .lap--more { border-left-color: transparent; padding-left: 0.5rem; }
 .lap__more {
   background: transparent;
@@ -586,15 +597,22 @@ kbd {
   text-underline-offset: 2px;
 }
 .lap__more:hover { color: var(--fg); }
+/* 삭제(✕): 독립 열로 분리 — 구분선 + 세로 중앙 정렬 */
 .lap__del {
   flex: none;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: none;
+  border-left: 1px solid var(--line);
+  margin-left: 0.1rem;
+  padding: 0 0.2rem;
   color: var(--muted);
   cursor: pointer;
   font-size: 0.82rem;
   line-height: 1;
-  padding: 0 0.1rem;
 }
 .lap__del:hover { color: var(--past); }
 .lap__del:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

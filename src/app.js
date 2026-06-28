@@ -200,6 +200,7 @@ function makeCard(item) {
   labelText.className = 'card__labeltext';
   labelText.textContent = item.label || '＋ 제목';
   labelEl.append(labelText);
+  if (item.label) labelEl.append(chip('제목')); // 제목 있을 때만 [제목] 칩(값 자르고 칩은 고정)
 
   // 큰 시간 + 방향 칩(updateCard가 채움).
   const timeEl = document.createElement('div');
@@ -327,8 +328,10 @@ function renderLaps(refs) {
     relBtn.dataset.index = String(i);
     relBtn.title = `상대 시간 수정 (기준일시 연동) · ${d.label}`;
     const sign = d.sign ? `<span class="display__sign">${d.sign}</span>` : '';
-    // 무채색: 색 대신 부호(−/+)로 방향 표시. 좁은 열이라 시간 전체 표시를 위해 별도 칩은 생략.
-    relBtn.innerHTML = `<span class="lap__val">${sign}${formatDuration(r)}</span>`;
+    // 무채색 칩(방향=남은/지난시간). 시간 값은 자르고(ellipsis) 칩·연필은 고정.
+    relBtn.innerHTML =
+      `<span class="lap__val">${sign}${formatDuration(r)}</span>` +
+      `<span class="chip">${d.chip}</span>`;
     // ② 기준일시: 값 + [기준일시] 칩(우측). 클릭→lap-target 연동.
     const targetBtn = document.createElement('button');
     targetBtn.type = 'button';

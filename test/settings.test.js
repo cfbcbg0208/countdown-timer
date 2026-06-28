@@ -36,7 +36,7 @@ test('addPosition: 기본 top, bottom만 허용, 그 외 → top', () => {
 test('progressStyle: 기본 both, 허용값만, 그 외 → both', () => {
   const st = fakeStorage();
   assert.equal(load(st).progressStyle, 'both'); // 기본값
-  for (const v of ['none', 'bar', 'pie', 'both']) {
+  for (const v of ['none', 'bar', 'pie', 'percent', 'both']) {
     assert.equal(update(st, { progressStyle: v }).progressStyle, v);
   }
   assert.equal(update(st, { progressStyle: 'rainbow' }).progressStyle, 'both'); // 폴백

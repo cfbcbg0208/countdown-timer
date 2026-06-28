@@ -5,7 +5,7 @@ const KEY = 'settings';
 
 export const DEFAULTS = {
   addPosition: 'top', // 새 카드는 기본적으로 목록 맨 앞에 추가
-  progressStyle: 'both', // 남은 시간 진행률 그래픽: 'none'|'bar'|'pie'|'both'
+  progressStyle: 'both', // 남은 시간 진행률 그래픽: 'none'|'bar'|'pie'|'percent'|'both'
   progressBase: 'created', // 진행률 0% 기준: 'created'(등록일시) | 'updated'(수정일시)
   showTarget: true, // 카드에 기준일시 표시(기본 보임)
   showCreated: false, // 카드에 등록일시 표시(기본 숨김)
@@ -14,7 +14,7 @@ export const DEFAULTS = {
   weekStart: 'mon', // 캘린더 시작 요일: 'mon' | 'sun'
 };
 
-const PROGRESS_STYLES = ['none', 'bar', 'pie', 'both'];
+const PROGRESS_STYLES = ['none', 'bar', 'pie', 'percent', 'both'];
 
 // 어떤 입력이든 유효한 설정 객체로 정규화(잘못된 값 폴백).
 function coerce(s) {

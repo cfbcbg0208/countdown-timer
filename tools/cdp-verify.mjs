@@ -455,6 +455,35 @@ async function main() {
   if (s10.accents !== 0) fails.push(`강조색 제거 기대, 실제 ${s10.accents}`);
   if (theme !== 'light') fails.push(`세그먼트로 라이트 전환 실패: ${theme}`);
   if (segPressed !== 'true') fails.push('세그먼트 선택 표시(aria-pressed) 실패');
+
+  // 10.4) 진행률 '퍼센트' 형식: 옵션 존재 + 선택 시 % 텍스트 표시, 바·파이 숨김
+  if (!(await evalJS(browser, "!!document.querySelector('#set-progress-style .seg[data-value=\"percent\"]')")))
+    fails.push('진행률 퍼센트 옵션이 설정에 없음');
+  await evalJS(browser, "document.querySelector('#set-progress-style .seg[data-value=\"percent\"]').click()");
+  await until(() => evalJS(browser, "!!document.querySelector('.card__progress[data-style=\"percent\"]')"), {
+    label: 'progress percent',
+  });
+  const pctState = await evalJS(
+    browser,
+    `(() => { const p = document.querySelector('.card__progress'); const t = document.querySelector('.card__pct');
+       const bar = document.querySelector('.card__bar');
+       return { style: p?.dataset.style, text: t?.textContent,
+         pctShown: t ? getComputedStyle(t).display !== 'none' : false,
+         barHidden: bar ? getComputedStyle(bar).display === 'none' : null }; })()`,
+  );
+  if (pctState.style !== 'percent') fails.push(`진행률 style=percent 기대, 실제 ${pctState.style}`);
+  if (!/^\d+%$/.test(pctState.text || '')) fails.push(`퍼센트 텍스트 형식 실패: "${pctState.text}"`);
+  if (!pctState.pctShown) fails.push('퍼센트 텍스트가 표시되지 않음');
+  if (!pctState.barHidden) fails.push('퍼센트 모드에서 진행률 바가 숨겨지지 않음');
+  // 설정 닫고 카드의 퍼센트 표시 스크린샷 → 다시 열어 '둘다'로 원복
+  await evalJS(browser, "document.querySelector('#settings-drawer .drawer__backdrop')?.click()");
+  await until(() => evalJS(browser, "document.getElementById('settings-drawer').hidden"), { label: 'settings closed (pct shot)' });
+  const pctShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  await writeFile(join(ARTIFACTS, 'verify-percent.png'), Buffer.from(pctShot.data, 'base64'));
+  await evalJS(browser, "document.getElementById('settings-fab').click()");
+  await until(() => evalJS(browser, "!document.getElementById('settings-drawer').hidden"), { label: 'settings reopen' });
+  await evalJS(browser, "document.querySelector('#set-progress-style .seg[data-value=\"both\"]').click()");
+
   const lightShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-light.png'), Buffer.from(lightShot.data, 'base64'));
 

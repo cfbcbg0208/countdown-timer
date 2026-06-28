@@ -206,7 +206,7 @@ function makeCard(item) {
   const timeEl = document.createElement('div');
   timeEl.className = 'card__time';
 
-  // 진행률(미래 카드만): '둘 다'면 파이 → 바 순서. 클릭하면 진행 시작 일시 지정.
+  // 진행률(미래 카드만): 바/파이/퍼센트/둘다. 클릭하면 진행 시작 일시 지정.
   const progressEl = document.createElement('div');
   progressEl.className = 'card__progress';
   progressEl.title = '클릭하여 진행 시작 일시 지정';
@@ -217,7 +217,9 @@ function makeCard(item) {
   const barFillEl = document.createElement('div');
   barFillEl.className = 'card__bar-fill';
   barEl.append(barFillEl);
-  progressEl.append(pieEl, barEl);
+  const pctEl = document.createElement('span');
+  pctEl.className = 'card__pct'; // 퍼센트 텍스트(updateProgress가 갱신, data-style로 표시 제어)
+  progressEl.append(pieEl, barEl, pctEl);
 
   // 기준일시(클릭 편집). 값 + [기준일시] 칩은 updateCard가 갱신. showTarget로 표시 토글.
   const metaEl = document.createElement('button');
@@ -279,7 +281,7 @@ function makeCard(item) {
 
   card.append(railLeft, body, railRight);
 
-  const refs = { card, timeEl, progressEl, barFillEl, pieEl, metaEl, lapsEl, item, dir: null };
+  const refs = { card, timeEl, progressEl, barFillEl, pieEl, pctEl, metaEl, lapsEl, item, dir: null };
   renderLaps(refs);
   updateCard(refs);
   return refs;
@@ -418,11 +420,13 @@ function updateProgress(refs, item, target, direction) {
     item.startISO || (settings.progressBase === 'updated' ? item.updatedAt : item.createdAt) || item.createdAt;
   const f = elapsedFraction(start, target);
   const pct = (f * 100).toFixed(1);
+  const pctRound = Math.round(f * 100);
   refs.progressEl.hidden = false;
-  refs.progressEl.dataset.style = style; // CSS로 바/파이/둘다 표시 제어
+  refs.progressEl.dataset.style = style; // CSS로 바/파이/퍼센트/둘다 표시 제어
   refs.barFillEl.style.width = `${pct}%`;
   refs.pieEl.style.background = `conic-gradient(var(--future) ${pct}%, var(--track) 0)`;
-  refs.progressEl.setAttribute('aria-label', `진행률 ${Math.round(f * 100)}%`);
+  refs.pctEl.textContent = `${pctRound}%`;
+  refs.progressEl.setAttribute('aria-label', `진행률 ${pctRound}%`);
 }
 
 // 데이터 변경 시: 저장된(수동) 순서 그대로 목록 DOM 재구성.

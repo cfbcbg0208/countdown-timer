@@ -426,6 +426,10 @@ kbd {
 .card__progress[hidden] { display: none; }
 .card__progress[data-style='bar'] .card__pie { display: none; }
 .card__progress[data-style='pie'] .card__bar { display: none; }
+/* 퍼센트: 바·파이 숨기고 % 텍스트만 */
+.card__progress[data-style='percent'] .card__bar,
+.card__progress[data-style='percent'] .card__pie { display: none; }
+.card__progress[data-style='percent'] .card__pct { display: inline; }
 .card__bar {
   flex: 1;
   height: 6px;
@@ -445,6 +449,15 @@ kbd {
   height: 1.4rem;
   border-radius: 50%;
   background: conic-gradient(var(--accent) 0%, var(--track) 0);
+}
+/* 진행률 퍼센트 텍스트(평소 숨김, data-style='percent'에서만 표시) */
+.card__pct {
+  display: none;
+  font-size: 0.82rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--future);
+  line-height: 1.1;
 }
 
 /* 기준일시: 값(자르기) + [기준일시] 칩(고정). 칩이 항상 보이도록 날짜만 줄어든다. */

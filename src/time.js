@@ -132,6 +132,14 @@ export function formatLocal(date) {
   );
 }
 
+/** Date → 컴팩트 표기 "YYMMDD요일HHMMSS" (예 260628일210436). 공간 절약 + parseFlexible로 되읽힘. */
+export function formatCompact(date) {
+  return (
+    `${String(date.getFullYear()).slice(-2)}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}` +
+    `${WEEKDAY[date.getDay()]}${pad2(date.getHours())}${pad2(date.getMinutes())}${pad2(date.getSeconds())}`
+  );
+}
+
 /**
  * 월 달력 그리드. year/month0(0=1월)의 주[] 반환. 각 주는 7일 {y, m(0-base), d, inMonth}.
  * weekStart: 한 주의 시작 요일(0=일, 1=월). 앞뒤 달 날짜로 주를 꽉 채운다(4~6주).

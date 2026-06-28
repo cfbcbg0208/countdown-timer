@@ -424,12 +424,9 @@ kbd {
   cursor: pointer;
 }
 .card__progress[hidden] { display: none; }
-.card__progress[data-style='bar'] .card__pie { display: none; }
-.card__progress[data-style='pie'] .card__bar { display: none; }
-/* 퍼센트: 바·파이 숨기고 % 텍스트만 */
-.card__progress[data-style='percent'] .card__bar,
-.card__progress[data-style='percent'] .card__pie { display: none; }
-.card__progress[data-style='percent'] .card__pct { display: inline; }
+/* 바·파이·퍼센트의 순서(flex order)·표시(hidden)는 updateProgress가 설정대로 제어.
+   연필 어포던스(::after)는 항상 맨 끝에 오도록 큰 order. */
+.card__progress::after { order: 9; }
 .card__bar {
   flex: 1;
   height: 6px;
@@ -450,15 +447,15 @@ kbd {
   border-radius: 50%;
   background: conic-gradient(var(--accent) 0%, var(--track) 0);
 }
-/* 진행률 퍼센트 텍스트(평소 숨김, data-style='percent'에서만 표시) */
+/* 진행률 퍼센트 텍스트(표시 여부는 updateProgress가 hidden으로 제어) */
 .card__pct {
-  display: none;
   font-size: 0.82rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--future);
   line-height: 1.1;
 }
+.card__pct[hidden], .card__bar[hidden], .card__pie[hidden] { display: none; }
 
 /* 기준일시: 값(자르기) + [기준일시] 칩(고정). 칩이 항상 보이도록 날짜만 줄어든다. */
 .card__meta {
@@ -1162,6 +1159,28 @@ body.select-mode .card.card--selected::after { background: var(--accent); border
   border-bottom: 1px solid var(--line);
 }
 .set-row__name { font-size: 0.92rem; color: var(--fg); }
+.set-row__hint { display: block; font-size: 0.72rem; font-weight: 400; color: var(--muted); margin-top: 0.1rem; }
+/* 세로 배치 행(이름 위, 컨트롤 아래) — 진행률 파트처럼 넓은 컨트롤용 */
+.set-row--col { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+
+/* 진행률 파트 칩(바·파이·퍼센트): 탭=표시 토글, 드래그=순서 */
+.pparts { display: flex; gap: 0.4rem; flex-wrap: wrap; touch-action: none; }
+.ppart {
+  flex: 0 0 auto;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: var(--card-2);
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-family: inherit;
+  cursor: grab;
+  user-select: none;
+}
+.ppart[aria-pressed='true'] { background: var(--accent); color: #fff; border-color: var(--accent); }
+.ppart[aria-pressed='false'] { opacity: 0.55; text-decoration: line-through; } /* 꺼짐 = 흐림+취소선 */
+.ppart--dragging { opacity: 0.85; cursor: grabbing; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4); }
+.ppart:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .set-row__ctrl { flex: 0 0 auto; }
 input[type='range'].set-row__ctrl { width: 11rem; max-width: 55%; accent-color: var(--accent); }
 input[type='checkbox'].set-row__ctrl { width: 1.2rem; height: 1.2rem; accent-color: var(--accent); }

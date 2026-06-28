@@ -7,6 +7,7 @@ import {
   formatDuration,
   parseRelative,
   formatLocal,
+  formatCompact,
   elapsedFraction,
   monthGrid,
   dateKeyOf,
@@ -39,6 +40,7 @@ const textInput = $('text-input');
 const textPreview = $('text-preview');
 const addForm = $('add-form');
 const nowBtn = $('now-btn');
+const todayBtn = $('today-btn');
 const fmtBtn = $('fmt-btn');
 const addFormatsEl = $('add-formats');
 const pickYearsEl = $('pick-years');
@@ -124,6 +126,11 @@ function compactNow(now = new Date()) {
 let list = load(localStorage);
 let refsList = []; // 화면에 그려진 카드들의 참조 { card, timeEl, metaEl, item, dir }
 
+// 카드 날짜 표시 형식: 설정에 따라 컴팩트(260628일210436) 또는 전체(2026-06-28 일 …).
+function fmtDate(date) {
+  return settings.dateFormat === 'full' ? formatLocal(date) : formatCompact(date);
+}
+
 // 작은 칩(라벨 pill) 생성.
 function chip(text, cls = '') {
   const s = document.createElement('span');
@@ -140,7 +147,7 @@ function dateRow(label, iso, show) {
   if (iso) {
     const val = document.createElement('span');
     val.className = 'card__datemeta';
-    val.textContent = formatLocal(new Date(iso));
+    val.textContent = fmtDate(new Date(iso));
     row.append(val, chip(label));
   }
   return row;
@@ -281,7 +288,7 @@ function makeCard(item) {
 
   card.append(railLeft, body, railRight);
 
-  const refs = { card, timeEl, progressEl, barFillEl, pieEl, pctEl, metaEl, lapsEl, item, dir: null };
+  const refs = { card, timeEl, progressEl, barEl, barFillEl, pieEl, pctEl, metaEl, lapsEl, item, dir: null };
   renderLaps(refs);
   updateCard(refs);
   return refs;
@@ -342,7 +349,7 @@ function renderLaps(refs) {
     targetBtn.dataset.index = String(i);
     targetBtn.title = '기준일시 수정 (상대시간 연동)';
     targetBtn.innerHTML =
-      `<span class="lap__edittext">${formatLocal(new Date(target))}</span><span class="chip">기준일시</span>`;
+      `<span class="lap__edittext">${fmtDate(new Date(target))}</span><span class="chip">기준일시</span>`;
     main.append(relBtn, targetBtn);
     const del = document.createElement('button');
     del.className = 'lap__del';
@@ -388,7 +395,7 @@ function updateCard(refs) {
     `<span class="card__num">${d.sign ? `<span class="display__sign">${d.sign}</span>` : ''}${formatDuration(r)}</span>` +
     ` <span class="chip chip--${r.direction}">${d.chip}</span>`;
   // 기준일시: 값(자르기) + [기준일시] 칩(고정 → 날짜가 길어도 칩은 항상 보임).
-  refs.metaEl.innerHTML = `<span class="card__metadate">${formatLocal(target)}</span><span class="chip">기준일시</span>`;
+  refs.metaEl.innerHTML = `<span class="card__metadate">${fmtDate(target)}</span><span class="chip">기준일시</span>`;
   updateProgress(refs, item, target, r.direction);
   fitTime(refs.timeEl); // 우측 열 폭에 맞게 폰트 자동 축소(오버플로우 방지)
   refs.dir = r.direction;
@@ -409,10 +416,12 @@ function fitTime(el) {
   }
 }
 
-// 진행률(미래 카드만): 설정 스타일/기준에 따라 바·파이 갱신. 과거/없음이면 숨김.
+// 진행률(미래 카드만): 바·파이·퍼센트를 설정 순서(progressOrder)·표시(progressShow)대로 그린다.
+// 과거이거나 표시할 요소가 하나도 없으면 숨김.
 function updateProgress(refs, item, target, direction) {
-  const style = settings.progressStyle;
-  if (direction !== 'future' || style === 'none') {
+  const order = settings.progressOrder;
+  const show = settings.progressShow;
+  if (direction !== 'future' || !order.some((p) => show[p])) {
     refs.progressEl.hidden = true;
     return;
   }
@@ -422,10 +431,15 @@ function updateProgress(refs, item, target, direction) {
   const pct = (f * 100).toFixed(1);
   const pctRound = Math.round(f * 100);
   refs.progressEl.hidden = false;
-  refs.progressEl.dataset.style = style; // CSS로 바/파이/퍼센트/둘다 표시 제어
   refs.barFillEl.style.width = `${pct}%`;
   refs.pieEl.style.background = `conic-gradient(var(--future) ${pct}%, var(--track) 0)`;
   refs.pctEl.textContent = `${pctRound}%`;
+  // 순서(flex order)·표시(hidden)를 설정대로: order 인덱스 → flex order, show → 표시
+  const els = { bar: refs.barEl, pie: refs.pieEl, percent: refs.pctEl };
+  order.forEach((p, i) => {
+    els[p].style.order = String(i);
+    els[p].hidden = !show[p];
+  });
   refs.progressEl.setAttribute('aria-label', `진행률 ${pctRound}%`);
 }
 
@@ -612,6 +626,16 @@ function fillNow(focusField = true) {
   }
 }
 nowBtn.addEventListener('click', () => fillNow(true));
+// '오늘' 버튼: 오늘 날짜를 YYMMDD(예 260628)로 채움(시간 없이). parseFlexible가 6자리 날짜로 해석.
+todayBtn.addEventListener('click', () => {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, '0');
+  textInput.value = `${String(d.getFullYear()).slice(-2)}${p(d.getMonth() + 1)}${p(d.getDate())}`;
+  updatePreview();
+  textInput.focus();
+  const end = textInput.value.length;
+  textInput.setSelectionRange(end, end);
+});
 // '지원 형식' 버튼: 형식 도움말을 버튼 옆 팝오버로 표시(인라인 아래 펼침 대신).
 // 드로어 패널은 transform 애니가 있어 내부 position:fixed가 어긋남 → 열 때 body로 옮겨 뷰포트 기준 배치.
 let fmtPopOpen = false;
@@ -1608,9 +1632,10 @@ calendarFab.addEventListener('click', openCalendar);
 
 // ── 디자인 설정: 변경 시 즉시 반영 ──
 const setAddPosition = $('set-add-position');
-const setProgressStyle = $('set-progress-style');
+const setProgressParts = $('set-progress-parts');
 const setProgressBase = $('set-progress-base');
 const setDates = $('set-dates');
+const setDateFormat = $('set-date-format');
 const setTheme = $('set-theme');
 const setCancel = $('set-cancel');
 const setOk = $('set-ok');
@@ -1636,11 +1661,27 @@ function applySettings(s) {
   if (themeColorMeta) themeColorMeta.content = s.theme === 'light' ? '#eef4f0' : '#0e1512';
 }
 
+const PART_LABEL = { bar: '바', pie: '파이', percent: '퍼센트' };
+// 진행률 파트 칩(바/파이/퍼센트): progressOrder 순서로 렌더, progressShow로 켜짐(aria-pressed) 표시.
+function renderProgressParts(s) {
+  setProgressParts.innerHTML = '';
+  for (const p of s.progressOrder) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'ppart';
+    b.dataset.part = p;
+    b.setAttribute('aria-pressed', String(!!s.progressShow[p]));
+    b.textContent = PART_LABEL[p];
+    setProgressParts.append(b);
+  }
+}
+
 function syncSettingControls(s) {
   syncSeg(setAddPosition, s.addPosition);
-  syncSeg(setProgressStyle, s.progressStyle);
+  renderProgressParts(s);
   syncSeg(setProgressBase, s.progressBase);
   for (const b of setDates.querySelectorAll('.seg')) b.setAttribute('aria-pressed', String(!!s[b.dataset.key]));
+  syncSeg(setDateFormat, s.dateFormat);
   syncSeg(setTheme, s.theme);
 }
 
@@ -1651,14 +1692,56 @@ function changeSetting(patch) {
 }
 
 onSeg(setAddPosition, (v) => changeSetting({ addPosition: v }));
-// 진행률 설정은 렌더 로직(updateCard)이 읽으므로, 변경 즉시 tick으로 카드에 반영.
-onSeg(setProgressStyle, (v) => {
-  changeSetting({ progressStyle: v });
-  tick();
+// 진행률 파트(바/파이/퍼센트): 탭=표시 토글, 드래그=순서 변경. 4px 임계로 탭/드래그 구분.
+let ppDrag = null;
+setProgressParts.addEventListener('pointerdown', (e) => {
+  const chip = e.target.closest('.ppart');
+  if (!chip) return;
+  ppDrag = { chip, startX: e.clientX, moved: false };
+  chip.setPointerCapture?.(e.pointerId);
 });
+setProgressParts.addEventListener('pointermove', (e) => {
+  if (!ppDrag) return;
+  if (!ppDrag.moved && Math.abs(e.clientX - ppDrag.startX) < 4) return;
+  ppDrag.moved = true;
+  ppDrag.chip.classList.add('ppart--dragging');
+  const sibs = [...setProgressParts.querySelectorAll('.ppart')];
+  const over = sibs.find((s) => {
+    if (s === ppDrag.chip) return false;
+    const r = s.getBoundingClientRect();
+    return e.clientX >= r.left && e.clientX <= r.right;
+  });
+  if (over) {
+    const r = over.getBoundingClientRect();
+    const after = e.clientX > r.left + r.width / 2;
+    setProgressParts.insertBefore(ppDrag.chip, after ? over.nextSibling : over);
+  }
+});
+function endPpDrag() {
+  if (!ppDrag) return;
+  const { chip, moved } = ppDrag;
+  chip.classList.remove('ppart--dragging');
+  ppDrag = null;
+  if (moved) {
+    const order = [...setProgressParts.querySelectorAll('.ppart')].map((b) => b.dataset.part);
+    changeSetting({ progressOrder: order });
+  } else {
+    const p = chip.dataset.part;
+    changeSetting({ progressShow: { ...settings.progressShow, [p]: !settings.progressShow[p] } });
+  }
+  tick(); // 렌더 로직(updateProgress)이 읽으므로 즉시 반영
+}
+setProgressParts.addEventListener('pointerup', endPpDrag);
+setProgressParts.addEventListener('pointercancel', endPpDrag);
+
 onSeg(setProgressBase, (v) => {
   changeSetting({ progressBase: v });
   tick();
+});
+// 날짜 표시 형식(컴팩트/전체): 카드 날짜 텍스트가 바뀌므로 rebuild.
+onSeg(setDateFormat, (v) => {
+  changeSetting({ dateFormat: v });
+  rebuild();
 });
 // 날짜 표시 토글(한 줄, 독립 다중): 각 칩 클릭 시 해당 키를 켜고 끔 → 카드 구조 바꾸므로 rebuild.
 setDates.addEventListener('click', (e) => {

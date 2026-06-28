@@ -18,10 +18,10 @@ test('빈 저장소 → 기본값', () => {
 
 test('update: 일부 키만 갱신 + 병합 영속', () => {
   const st = fakeStorage();
-  update(st, { progressStyle: 'bar' });
+  update(st, { dateFormat: 'full' });
   update(st, { addPosition: 'bottom' });
   const s = load(st);
-  assert.equal(s.progressStyle, 'bar');
+  assert.equal(s.dateFormat, 'full');
   assert.equal(s.addPosition, 'bottom');
   assert.equal(s.theme, DEFAULTS.theme); // 건드리지 않은 값 보존
 });
@@ -33,13 +33,31 @@ test('addPosition: 기본 top, bottom만 허용, 그 외 → top', () => {
   assert.equal(update(st, { addPosition: 'sideways' }).addPosition, 'top'); // 잘못된 값 폴백
 });
 
-test('progressStyle: 기본 both, 허용값만, 그 외 → both', () => {
+test('progressOrder: 기본 [bar,pie,percent], 유효 순열 정규화(중복·이상값 제거·빠짐 보충)', () => {
   const st = fakeStorage();
-  assert.equal(load(st).progressStyle, 'both'); // 기본값
-  for (const v of ['none', 'bar', 'pie', 'percent', 'both']) {
-    assert.equal(update(st, { progressStyle: v }).progressStyle, v);
-  }
-  assert.equal(update(st, { progressStyle: 'rainbow' }).progressStyle, 'both'); // 폴백
+  assert.deepEqual(load(st).progressOrder, ['bar', 'pie', 'percent']); // 기본
+  assert.deepEqual(
+    update(st, { progressOrder: ['percent', 'bar', 'pie'] }).progressOrder,
+    ['percent', 'bar', 'pie'],
+  );
+  assert.deepEqual(update(st, { progressOrder: ['pie', 'pie', 'x'] }).progressOrder, ['pie', 'bar', 'percent']);
+});
+
+test('progressShow: 기본 전부 표시, 각 파트 불리언(누락 → true)', () => {
+  const st = fakeStorage();
+  assert.deepEqual(load(st).progressShow, { bar: true, pie: true, percent: true });
+  assert.deepEqual(update(st, { progressShow: { bar: false } }).progressShow, {
+    bar: false,
+    pie: true,
+    percent: true,
+  });
+});
+
+test('dateFormat: 기본 compact, full만 허용, 그 외 → compact', () => {
+  const st = fakeStorage();
+  assert.equal(load(st).dateFormat, 'compact');
+  assert.equal(update(st, { dateFormat: 'full' }).dateFormat, 'full');
+  assert.equal(update(st, { dateFormat: 'weird' }).dateFormat, 'compact');
 });
 
 test('progressBase: 기본 created, updated만 허용, 그 외 → created', () => {

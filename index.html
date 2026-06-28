@@ -49,6 +49,7 @@
               </span>
               <div class="addzone__tools">
                 <button type="button" id="fmt-btn" class="addzone__help" aria-controls="add-formats" aria-expanded="false">지원 형식</button>
+                <button type="button" id="today-btn" class="zone__now" title="오늘 날짜(YYMMDD) 입력">오늘</button>
                 <button type="button" id="now-btn" class="zone__now">지금</button>
               </div>
             </div>
@@ -175,15 +176,10 @@
                 <button type="button" class="seg" data-value="bottom">맨 뒤</button>
               </div>
             </div>
-            <div class="set-row">
-              <span class="set-row__name">남은 시간 진행률</span>
-              <div class="segmented" id="set-progress-style" role="group" aria-label="남은 시간 진행률">
-                <button type="button" class="seg" data-value="none">없음</button>
-                <button type="button" class="seg" data-value="bar">바</button>
-                <button type="button" class="seg" data-value="pie">파이</button>
-                <button type="button" class="seg" data-value="percent">퍼센트</button>
-                <button type="button" class="seg" data-value="both">둘 다</button>
-              </div>
+            <div class="set-row set-row--col">
+              <span class="set-row__name">남은 시간 진행률 <small class="set-row__hint">탭=켜기/끄기 · 드래그=순서</small></span>
+              <!-- 바·파이·퍼센트 칩: 탭으로 표시 토글, 드래그로 순서 변경(app.js가 렌더) -->
+              <div class="pparts" id="set-progress-parts" role="group" aria-label="진행률 표시·순서"></div>
             </div>
             <div class="set-row">
               <span class="set-row__name">진행률 0% 기준</span>
@@ -198,6 +194,13 @@
                 <button type="button" class="seg seg--toggle" data-key="showTarget">기준일시</button>
                 <button type="button" class="seg seg--toggle" data-key="showCreated">등록일시</button>
                 <button type="button" class="seg seg--toggle" data-key="showUpdated">수정일시</button>
+              </div>
+            </div>
+            <div class="set-row">
+              <span class="set-row__name">날짜 표시 형식</span>
+              <div class="segmented" id="set-date-format" role="group" aria-label="날짜 표시 형식">
+                <button type="button" class="seg" data-value="compact">컴팩트</button>
+                <button type="button" class="seg" data-value="full">전체</button>
               </div>
             </div>
             <button type="button" class="set-reset" id="set-reset">기본값으로 되돌리기</button>

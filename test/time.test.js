@@ -5,6 +5,7 @@ import {
   diff,
   formatDuration,
   parseRelative,
+  formatCompact,
   elapsedFraction,
   monthGrid,
   dateKeyOf,
@@ -72,6 +73,12 @@ test('diff: 같은 시각 → direction now, 모두 0', () => {
     { days: r.days, hours: r.hours, minutes: r.minutes, seconds: r.seconds },
     { days: 0, hours: 0, minutes: 0, seconds: 0 },
   );
+});
+
+test('formatCompact: YYMMDD요일HHMMSS (예 260628일210436)', () => {
+  assert.equal(formatCompact(new Date(2026, 5, 28, 21, 4, 36)), '260628일210436'); // 일요일
+  const d = new Date(2026, 0, 5, 9, 0, 7);
+  assert.equal(formatCompact(d), `260105${'일월화수목금토'[d.getDay()]}090007`); // 형식 조립 검증
 });
 
 test('formatDuration: 일이 0이면 HH:MM:SS', () => {

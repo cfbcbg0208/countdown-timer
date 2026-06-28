@@ -1,6 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { load, save, add, remove, reorder, updateItem, moveId, sortByUrgency } from '../src/store.js';
+import {
+  load,
+  save,
+  add,
+  remove,
+  reorder,
+  updateItem,
+  setHidden,
+  moveId,
+  sortByUrgency,
+} from '../src/store.js';
 
 function fakeStorage() {
   const m = new Map();
@@ -97,6 +107,21 @@ test('updateItem: 없는 id면 변화 없음', () => {
   const after = updateItem(s, 'ghost', { targetISO: '2099-01-01T00:00:00' });
   assert.equal(after.length, 1);
   assert.equal(after[0].targetISO, '2026-01-01T00:00:00');
+});
+
+test('setHidden: hidden 토글 + updatedAt·createdAt·순서 보존', () => {
+  const s = fakeStorage();
+  const a = add(s, { label: 'a', targetISO: '2026-01-01T00:00:00' });
+  add(s, { label: 'b', targetISO: '2026-02-01T00:00:00' });
+  const before = load(s).find((t) => t.id === a.id).updatedAt;
+  const after = setHidden(s, a.id, true);
+  const itemA = after.find((t) => t.id === a.id);
+  assert.equal(itemA.hidden, true);
+  assert.equal(itemA.updatedAt, before); // 숨김은 수정으로 치지 않음(updatedAt 불변)
+  assert.equal(itemA.createdAt, a.createdAt);
+  assert.deepEqual(after.map((t) => t.label), ['a', 'b']); // 순서 보존
+  // 다시 false → hidden 해제
+  assert.equal(setHidden(s, a.id, false).find((t) => t.id === a.id).hidden, false);
 });
 
 test('reorder: 주어진 id 순서대로 저장 목록 재배치 + 영속', () => {

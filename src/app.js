@@ -16,6 +16,7 @@ import {
   remove,
   reorder,
   updateItem,
+  setHidden,
   moveId,
   loadGroups,
   addGroup,
@@ -80,10 +81,15 @@ const selectCountEl = $('select-count');
 const groupNameInput = $('group-name');
 const selectSaveBtn = $('select-save');
 const selectCancelBtn = $('select-cancel');
+const hiddenBar = $('hidden-bar');
+const hiddenBarName = $('hidden-bar-name');
+const hiddenBarToggle = $('hidden-bar-toggle');
 
 // 보기 필터: null=전체 | {kind:'group',id} | {kind:'date',key,basis} | {kind:'item',id}.
 // (조합 보기·캘린더 날짜 보기·항목 단독 보기를 하나의 필터로 통합)
 let viewFilter = null;
+// '현재 화면에서 숨기기'한 카드를 임시로 함께 볼지 여부(세션 상태, 기본 숨김).
+let showHidden = false;
 let selectMode = false;
 const selectedIds = new Set();
 const BASIS_LABEL = { target: '기준일시', created: '등록일시', updated: '수정일시' };
@@ -139,12 +145,22 @@ function dateRow(label, iso, show) {
   return row;
 }
 
+// 숨기기/보이기 아이콘(filled mono SVG). hidden=true면 '눈'(보이기), false면 '눈-사선'(숨기기).
+function hideIcon(hidden) {
+  const eye =
+    '<path d="M12 4.5C7 4.5 2.7 7.6 1 12c1.7 4.4 6 7.5 11 7.5s9.3-3.1 11-7.5c-1.7-4.4-6-7.5-11-7.5Zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10Zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6Z"/>';
+  const eyeOff =
+    '<path d="M12 7c2.8 0 5 2.2 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92A12 12 0 0 0 23 12c-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7ZM2 4.27l2.28 2.28.46.46A11.8 11.8 0 0 0 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27Zm5.53 5.53 1.55 1.55c-.05.21-.08.43-.08.65a3 3 0 0 0 3 3c.22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53a5 5 0 0 1-5-5c0-.79.2-1.53.53-2.2Zm4.31-.78 3.15 3.15.02-.16a3 3 0 0 0-3-3l-.17.01Z"/>';
+  return `<svg class="card__railicon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${hidden ? eye : eyeOff}</svg>`;
+}
+
 // 카드 1장 DOM 생성(텍스트는 textContent로 넣어 자동 이스케이프).
 function makeCard(item) {
   const card = document.createElement('article');
-  card.className = 'card';
+  card.className = 'card' + (item.hidden ? ' card--hidden' : '');
   card.dataset.id = item.id;
 
+  // 좌측 레일(상): 드래그 핸들(≡). 드래그·↑/↓ 키로 순서 변경.
   const handle = document.createElement('button');
   handle.className = 'card__handle';
   handle.type = 'button';
@@ -153,8 +169,18 @@ function makeCard(item) {
     'aria-label',
     `${item.label || '타임카드'} 순서 변경. 드래그하거나 화살표 위/아래, Home/End 키 사용`,
   );
-  handle.textContent = '≡';
+  handle.innerHTML = '<svg class="card__railicon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg>';
 
+  // 좌측 레일(하): 숨기기/보이기. item.hidden이면 '보이기'(눈), 아니면 '숨기기'(눈-사선).
+  const hideBtn = document.createElement('button');
+  hideBtn.className = 'card__hide';
+  hideBtn.type = 'button';
+  hideBtn.dataset.id = item.id;
+  hideBtn.title = item.hidden ? '다시 표시' : '현재 화면에서 숨기기';
+  hideBtn.setAttribute('aria-label', `${item.label || '타임카드'} ${item.hidden ? '다시 표시' : '숨기기'}`);
+  hideBtn.innerHTML = hideIcon(item.hidden);
+
+  // 우측 레일(상): 삭제(✕). (레일 하단은 추후 기능 확장용 빈 슬롯)
   const del = document.createElement('button');
   del.className = 'card__del';
   del.type = 'button';
@@ -237,7 +263,23 @@ function makeCard(item) {
   cols.className = 'card__cols';
   cols.append(left, right);
 
-  card.append(handle, del, cols);
+  // 4열 구조: [좌 레일] [본문(=2열 cols + 인라인 에디터)] [우 레일].
+  // 좌/우 레일은 상하 2등분 — 좌(핸들/숨기기), 우(✕/예비). 본문은 가운데 가변폭.
+  const railLeft = document.createElement('div');
+  railLeft.className = 'card__rail card__rail--left';
+  railLeft.append(handle, hideBtn);
+
+  const railRight = document.createElement('div');
+  railRight.className = 'card__rail card__rail--right';
+  const railSpare = document.createElement('div');
+  railSpare.className = 'card__railspare'; // 추후 기능(예: 고정·메뉴) 추가용 빈 슬롯
+  railRight.append(del, railSpare);
+
+  const body = document.createElement('div');
+  body.className = 'card__body';
+  body.append(cols);
+
+  card.append(railLeft, body, railRight);
 
   const refs = { card, timeEl, progressEl, barFillEl, pieEl, metaEl, lapsEl, item, dir: null };
   renderLaps(refs);
@@ -362,16 +404,22 @@ function rebuild() {
   } else if (viewFilter?.kind === 'item') {
     shown = list.filter((t) => t.id === viewFilter.id);
   }
+  // '현재 화면에서 숨기기'한 카드는 숨김 보기 모드가 아니면 목록에서 제외.
+  const hiddenCount = list.filter((t) => t.hidden).length;
+  if (!showHidden) shown = shown.filter((t) => !t.hidden);
+  updateHiddenBar(hiddenCount);
   // 빈 상태: 전체/필터 보기 모두 맥락에 맞는 안내를 보여준다(필터 빈 화면 공백 방지).
   emptyHint.hidden = shown.length > 0;
   if (shown.length === 0) {
-    emptyHint.textContent = !viewFilter
-      ? '아직 타임카드가 없습니다. 오른쪽 아래 ＋ 버튼으로 추가하세요.'
-      : viewFilter.kind === 'group'
+    emptyHint.textContent = viewFilter
+      ? viewFilter.kind === 'group'
         ? '이 태그에 속한 타임카드가 없습니다.'
         : viewFilter.kind === 'date'
           ? '이 날짜에 해당하는 타임카드가 없습니다.'
-          : '해당 타임카드가 없습니다.';
+          : '해당 타임카드가 없습니다.'
+      : hiddenCount > 0 && !showHidden
+        ? '모든 타임카드가 숨겨져 있습니다. 아래 “보기”로 다시 표시할 수 있습니다.'
+        : '아직 타임카드가 없습니다. 오른쪽 아래 ＋ 버튼으로 추가하세요.';
   }
   refsList = shown.map(makeCard);
   listEl.replaceChildren(...refsList.map((r) => r.card));
@@ -394,6 +442,23 @@ function clearViewFilter() {
   groupBanner.hidden = true;
   rebuild();
 }
+
+// 숨긴 카드 안내/토글 바: 숨긴 카드가 있을 때만 표시. 0개면 숨김 보기 모드도 해제.
+function updateHiddenBar(count) {
+  if (count <= 0) {
+    showHidden = false;
+    hiddenBar.hidden = true;
+    return;
+  }
+  hiddenBar.hidden = false;
+  hiddenBar.classList.toggle('hidden-bar--on', showHidden);
+  hiddenBarName.textContent = showHidden ? `숨긴 타임카드 ${count}개 표시 중` : `숨긴 타임카드 ${count}개`;
+  hiddenBarToggle.textContent = showHidden ? '숨기기' : '보기';
+}
+hiddenBarToggle.addEventListener('click', () => {
+  showHidden = !showHidden;
+  rebuild();
+});
 
 // 매초: 각 카드 시간/색만 갱신. 수동 순서이므로 경계 넘어도 재정렬하지 않음.
 function tick() {
@@ -469,6 +534,7 @@ function openDrawer(el, trigger, focusEl) {
   (focusEl || el.querySelector('input, select, button:not([data-close])'))?.focus();
 }
 function closeDrawer() {
+  if (fmtPopOpen) closeFmtPop(); // 드로어 닫히면 형식 팝오버도 닫음
   if (!openEl) return;
   openEl.hidden = true;
   openEl = null;
@@ -508,11 +574,33 @@ function fillNow(focusField = true) {
   }
 }
 nowBtn.addEventListener('click', () => fillNow(true));
-// '지원 형식' 버튼: 형식 도움말 패널을 따로 펼침/접음(평소 숨김).
-fmtBtn.addEventListener('click', () => {
-  const show = addFormatsEl.hidden;
-  addFormatsEl.hidden = !show;
-  fmtBtn.setAttribute('aria-expanded', String(show));
+// '지원 형식' 버튼: 형식 도움말을 버튼 옆 팝오버로 표시(인라인 아래 펼침 대신).
+// 드로어 패널은 transform 애니가 있어 내부 position:fixed가 어긋남 → 열 때 body로 옮겨 뷰포트 기준 배치.
+let fmtPopOpen = false;
+function openFmtPop() {
+  if (addFormatsEl.parentElement !== document.body) document.body.append(addFormatsEl);
+  addFormatsEl.hidden = false;
+  const r = fmtBtn.getBoundingClientRect();
+  const w = Math.min(320, window.innerWidth - 16);
+  addFormatsEl.style.width = `${w}px`;
+  addFormatsEl.style.left = `${Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8))}px`;
+  addFormatsEl.style.top = `${r.bottom + 6}px`;
+  fmtBtn.setAttribute('aria-expanded', 'true');
+  fmtPopOpen = true;
+}
+function closeFmtPop() {
+  addFormatsEl.hidden = true;
+  fmtBtn.setAttribute('aria-expanded', 'false');
+  fmtPopOpen = false;
+}
+fmtBtn.addEventListener('click', (e) => {
+  e.stopPropagation(); // 바깥-클릭 닫기로 전파 방지
+  if (fmtPopOpen) closeFmtPop();
+  else openFmtPop();
+});
+addFormatsEl.addEventListener('click', (e) => e.stopPropagation()); // 내부 클릭은 닫기 안 함
+document.addEventListener('click', () => {
+  if (fmtPopOpen) closeFmtPop();
 });
 // 추가: form submit(=PC Enter on 제목·모바일 완료/이동 액션키·＋추가 버튼) → 한 경로로 통일.
 addForm.addEventListener('submit', (e) => {
@@ -694,6 +782,11 @@ listEl.addEventListener('click', (e) => {
     removeItemFromGroups(localStorage, id); // 그룹 멤버에서도 제거(깨진 참조 방지)
     rebuild();
     srStatus.textContent = '타임카드 삭제됨';
+  } else if (e.target.closest('.card__hide')) {
+    const willHide = !itemById(id)?.hidden; // 현재 상태 반전(숨기기 ↔ 다시 표시)
+    list = setHidden(localStorage, id, willHide);
+    rebuild();
+    srStatus.textContent = willHide ? '타임카드 숨김' : '타임카드 다시 표시';
   } else if (lapDel) {
     removeLap(id, +lapDel.dataset.index);
   } else if (e.target.closest('.card__lap')) {
@@ -746,7 +839,8 @@ function isTyping(el) {
 }
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
-    if (selectMode) exitSelectMode();
+    if (fmtPopOpen) closeFmtPop(); // 팝오버 먼저 닫기(드로어는 유지)
+    else if (selectMode) exitSelectMode();
     else closeDrawer();
     return;
   }

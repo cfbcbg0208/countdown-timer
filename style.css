@@ -172,11 +172,18 @@ body {
 }
 .zone__apply:hover { filter: brightness(1.08); }
 
-/* 지원 형식 도움말: 평소 hidden, '지원 형식' 버튼으로만 펼침 */
+/* 지원 형식 도움말: '지원 형식' 버튼 옆에 뜨는 팝오버(평소 hidden, body로 옮겨 fixed 배치). */
 .add__formats {
-  font-size: 0.8rem; color: var(--muted);
-  border-top: 1px solid var(--line);
-  margin-top: 0.15rem; padding-top: 0.5rem;
+  position: fixed;
+  z-index: 70;
+  max-height: min(60vh, 22rem);
+  overflow: auto;
+  font-size: 0.78rem; color: var(--muted);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+  padding: 0.7rem 0.85rem;
 }
 .add__formats[hidden] { display: none; }
 .add__formats ul { margin: 0; padding-left: 1.1rem; line-height: 1.7; }
@@ -276,15 +283,56 @@ kbd {
 .list { display: flex; flex-direction: column; gap: var(--list-gap, 0.6rem); }
 
 /* 카드: 중립 얇은 테두리 + 부드러운 그림자(현대적). 방향색은 좌측 얇은 액센트 바로만. */
+/* 카드 = 4열 가로 구성: [좌 레일] [본문] [우 레일].
+   좌/우 레일은 상하 2등분(좌: 핸들/숨기기, 우: ✕/예비). 본문은 가운데 가변폭. */
 .card {
   position: relative;
+  display: flex;
+  align-items: stretch;
   background: var(--card);
   border: 1px solid var(--line);
   border-left: 3px solid var(--line);
   border-radius: 0.85rem;
-  padding: 0.55rem 0.7rem 0.6rem 2.3rem; /* 좌측=핸들 자리. 우측은 액션 레일이 채움 */
   box-shadow: var(--card-shadow);
+  overflow: hidden; /* 레일 호버 배경이 카드 라운드 밖으로 새지 않게 */
 }
+
+/* 좌/우 레일: 세로로 2등분된 액션 칸. 추후 버튼을 더 쌓을 수 있는 영역. */
+.card__rail {
+  flex: none;
+  width: 2.05rem;
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+}
+.card__rail--left { border-right: 1px solid var(--line); }
+.card__rail--right { border-left: 1px solid var(--line); }
+/* 레일 칸(버튼·예비 슬롯) 공통: 상하 2등분, 가운데 정렬 */
+.card__rail > * {
+  flex: 1 1 0;
+  min-height: 1.85rem;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+}
+/* 위/아래 칸 사이 옅은 구분선(2등분이 보이게) */
+.card__rail > * + * { border-top: 1px solid var(--line); }
+.card__railicon { width: 1.15rem; height: 1.15rem; }
+.card__railspare { cursor: default; } /* 추후 기능용 빈 슬롯 */
+
+/* 본문: 2열(cols) + 인라인 에디터가 들어가는 가운데 영역 */
+.card__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0.5rem 0.4rem 0.55rem;
+}
+
 /* 2열 구성: 좌(제목·일시·태그) / 우(큰 시간·기록). 둘 다 상단 정렬.
    grid + minmax(0,1fr): 콘텐츠가 트랙을 넘쳐 카드를 늘리지 못하게(blowout 방지). */
 .card__cols {
@@ -292,8 +340,11 @@ kbd {
   grid-template-columns: minmax(0, 1.22fr) minmax(0, 1fr);
   align-items: stretch; /* 두 열 높이를 같게 → 중앙 구분선이 카드 전체 높이를 채움(내용은 상단 정렬 유지) */
   gap: 0;
-  padding-right: 1.4rem; /* 우상단 ✕ 자리 비우기 */
 }
+
+/* 숨긴 카드(숨김 보기 모드에서만 표시): 흐리게 + 점선 테두리로 구분 */
+.card--hidden { opacity: 0.55; border-style: dashed; }
+.card--hidden:hover { opacity: 0.8; }
 .card__col { min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
 /* 좌측 열 오른쪽에 중앙 구분선. 진행률 바도 이 선을 넘지 않음. */
 .card__col--left { gap: 0.16rem; border-right: 1px solid var(--line); padding-right: 0.7rem; }
@@ -449,20 +500,18 @@ kbd {
 .chip--future { color: var(--future); border-color: var(--future); }
 .chip--past { color: var(--past); border-color: var(--past); }
 
+/* 우측 레일 상단: 삭제(✕) */
 .card__del {
-  position: absolute;
-  top: 0.45rem;
-  right: 0.5rem;
-  background: transparent;
-  border: none;
-  color: var(--muted);
   font-size: 1rem;
   line-height: 1;
-  padding: 0.25rem 0.4rem;
-  border-radius: 0.4rem;
   cursor: pointer;
 }
 .card__del:hover { color: var(--past); background: rgba(248, 113, 113, 0.14); }
+
+/* 좌측 레일 하단: 숨기기/보이기 */
+.card__hide { cursor: pointer; }
+.card__hide:hover { color: var(--accent); background: rgba(255, 255, 255, 0.06); }
+.card--hidden .card__hide { color: var(--accent); }
 
 /* 랩(기록) 알약 버튼(메타 아래) */
 .card__lap {
@@ -581,20 +630,9 @@ kbd {
 /* ── 드래그 핸들 / 드래그 중 카드 ─────────────── */
 
 /* 카드 왼쪽 전체 높이를 잡는 그립 → 터치 타깃 충분 */
+/* 좌측 레일 상단: 드래그 핸들 */
 .card__handle {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: 2.4rem;
-  display: grid;
-  place-items: center;
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  font-size: 1.25rem;
   line-height: 1;
-  border-radius: 0.85rem 0 0 0.85rem;
   cursor: grab;
   touch-action: none; /* 터치 드래그가 페이지 스크롤로 새지 않도록 */
 }
@@ -970,6 +1008,35 @@ body.dragging-active { cursor: grabbing; user-select: none; }
 }
 .group-banner__clear:hover { color: var(--fg); border-color: var(--muted); }
 
+/* 숨긴 타임카드 안내/토글 바(목록 아래). 평소엔 중립, 보기 모드면 강조. */
+.hidden-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-top: 0.6rem;
+  border: 1px dashed var(--line);
+  border-radius: 0.6rem;
+  background: var(--card-2);
+  color: var(--muted);
+}
+.hidden-bar[hidden] { display: none; }
+.hidden-bar--on { border-style: solid; border-color: var(--accent); }
+.hidden-bar__name { font-size: 0.85rem; font-weight: 600; }
+.hidden-bar__toggle {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.hidden-bar__toggle:hover { color: var(--accent); border-color: var(--accent); }
+
 /* ── 조합 만들기: 다중 선택 모드 ─────────────── */
 .select-bar {
   position: fixed;
@@ -1022,6 +1089,7 @@ body.select-mode .card { cursor: pointer; }
 body.select-mode .card__del { visibility: hidden; }
 body.select-mode .card__lap,
 body.select-mode .card__handle,
+body.select-mode .card__hide,
 body.select-mode .card__label,
 body.select-mode .card__meta,
 body.select-mode .card__progress,

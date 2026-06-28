@@ -170,6 +170,10 @@ async function main() {
        labelInLeft: !!document.querySelector('.card__col--left .card__label'),
        lapsInRight: !!document.querySelector('.card__col--right .card__laps'),
        actionsHasLap: !!document.querySelector('.card__actions .card__lap'),
+       railLeftHandle: !!document.querySelector('.card__rail--left .card__handle'),
+       railLeftHide: !!document.querySelector('.card__rail--left .card__hide'),
+       railRightDel: !!document.querySelector('.card__rail--right .card__del'),
+       bodyHasCols: !!document.querySelector('.card__body > .card__cols'),
        tagAddInGroups: !!document.querySelector('.card__groups .card__groupbtn'),
        tagAddText: document.querySelector('.card__groups .card__groupbtn')?.textContent,
        lapsShown: document.querySelectorAll('.card__laps .lap:not(.lap--more)').length,
@@ -193,6 +197,11 @@ async function main() {
   if (!checks.lapMore) fails.push('기록 더보기 토글(.lap__more)이 없음');
   if (!checks.tagAddInGroups) fails.push('＋태그 칩이 태그 줄(.card__groups)에 없음');
   if (checks.tagAddText !== '＋ 태그') fails.push(`＋태그 칩 텍스트="${checks.tagAddText}" (＋ 태그 기대)`);
+  // 4열 구조: 좌 레일(핸들/숨기기) · 본문(cols) · 우 레일(✕)
+  if (!checks.railLeftHandle) fails.push('드래그 핸들이 좌측 레일(.card__rail--left)에 없음');
+  if (!checks.railLeftHide) fails.push('숨기기 버튼(.card__hide)이 좌측 레일에 없음');
+  if (!checks.railRightDel) fails.push('삭제(✕)가 우측 레일(.card__rail--right)에 없음');
+  if (!checks.bodyHasCols) fails.push('본문(.card__body) 안에 2열(.card__cols)이 없음');
 
   // 6.6) 조합(재생목록식): 카드 ＋조합 → 팝오버 → 새 조합 생성·토글 → 칩 표시 + 영속
   if (!(await evalJS(browser, "!!document.querySelector('.card .card__groupbtn')")))
@@ -460,11 +469,21 @@ async function main() {
   if (!addPanel.noPickerDetails) fails.push('선택기가 아직 details(add-picker)로 접혀 있음');
   if (addPanel.zones !== 3) fails.push(`추가 패널 3영역 기대, 실제 ${addPanel.zones}`);
   if (!addPanel.fmtHidden) fails.push('지원 형식 패널이 평소 숨김이 아님');
-  // 지원 형식 버튼: 펼침/접음 토글
+  // 지원 형식 버튼: 인라인 아래 펼침이 아니라 팝오버(body로 옮겨 position:fixed)로 표시
   await evalJS(browser, "document.getElementById('fmt-btn').click()");
-  const fmtShown = await evalJS(browser, "!document.getElementById('add-formats').hidden");
-  if (!fmtShown) fails.push('지원 형식 버튼이 패널을 펼치지 못함');
-  await evalJS(browser, "document.getElementById('fmt-btn').click()");
+  const fmtPop = await evalJS(
+    browser,
+    `(() => { const f = document.getElementById('add-formats');
+       return { shown: !f.hidden, inBody: f.parentElement === document.body,
+                fixed: getComputedStyle(f).position === 'fixed' }; })()`,
+  );
+  if (!fmtPop.shown) fails.push('지원 형식 버튼이 팝오버를 열지 못함');
+  if (!fmtPop.inBody) fails.push('지원 형식 팝오버가 body로 이동하지 않음(드로어 transform 영향 위험)');
+  if (!fmtPop.fixed) fails.push('지원 형식 팝오버가 fixed 배치가 아님');
+  // 바깥 클릭으로 닫힘
+  await evalJS(browser, "document.body.click()");
+  if (await evalJS(browser, "!document.getElementById('add-formats').hidden"))
+    fails.push('지원 형식 팝오버가 바깥 클릭으로 닫히지 않음');
   await until(() => evalJS(browser, "document.querySelectorAll('#pick-days .pick__day').length >= 28"), {
     label: 'picker (year+month chips, day grid)',
   });
@@ -531,6 +550,42 @@ async function main() {
   });
   const pickAdded = await evalJS(browser, "document.querySelectorAll('.card').length");
   if (pickAdded !== 2) fails.push(`달력 선택기 추가 실패, 카드 ${pickAdded}`);
+
+  // 15) 현재 화면에서 숨기기: 숨기기 → 목록서 사라짐 + 숨김바 표시 → 보기 토글 → 다시 표시
+  await evalJS(browser, "document.querySelector('#drawer .drawer__backdrop')?.click()"); // 드로어 닫기
+  await until(() => evalJS(browser, "document.getElementById('drawer').hidden"), { label: 'drawer closed' });
+  if (!(await evalJS(browser, "document.getElementById('hidden-bar').hidden")))
+    fails.push('숨긴 카드 없는데 숨김 바가 보임');
+  await evalJS(browser, "document.querySelector('.card .card__hide').click()"); // 첫 카드 숨기기
+  await until(() => evalJS(browser, "document.querySelectorAll('.card').length === 1"), { label: 'card hidden' });
+  const afterHide = await evalJS(
+    browser,
+    `(() => ({
+       cards: document.querySelectorAll('.card').length,
+       barShown: !document.getElementById('hidden-bar').hidden,
+       toggleText: document.getElementById('hidden-bar-toggle').textContent,
+     }))()`,
+  );
+  if (afterHide.cards !== 1) fails.push(`숨기기 후 카드 1개 기대, 실제 ${afterHide.cards}`);
+  if (!afterHide.barShown) fails.push('숨기기 후 숨김 바가 표시되지 않음');
+  if (afterHide.toggleText !== '보기') fails.push(`숨김 바 토글="${afterHide.toggleText}" (보기 기대)`);
+  await evalJS(browser, "document.getElementById('hidden-bar-toggle').click()"); // 보기 토글
+  await until(() => evalJS(browser, "document.querySelectorAll('.card').length === 2"), { label: 'show hidden' });
+  const afterShow = await evalJS(
+    browser,
+    `(() => ({
+       cards: document.querySelectorAll('.card').length,
+       dimmed: !!document.querySelector('.card--hidden'),
+       toggleText: document.getElementById('hidden-bar-toggle').textContent,
+     }))()`,
+  );
+  if (afterShow.cards !== 2) fails.push(`숨김 보기 시 카드 2개 기대, 실제 ${afterShow.cards}`);
+  if (!afterShow.dimmed) fails.push('숨김 보기에서 숨긴 카드(.card--hidden)가 흐려지지 않음');
+  if (afterShow.toggleText !== '숨기기') fails.push(`숨김 보기 토글="${afterShow.toggleText}" (숨기기 기대)`);
+  await evalJS(browser, "document.querySelector('.card--hidden .card__hide').click()"); // 다시 표시(언하이드)
+  await until(() => evalJS(browser, "document.getElementById('hidden-bar').hidden"), { label: 'unhidden' });
+  if (await evalJS(browser, "!!document.querySelector('.card--hidden')"))
+    fails.push('언하이드 후에도 숨김 카드가 남음');
 
   console.log('카드 검증:', JSON.stringify(checks, null, 2));
   console.log('조합 검증:', JSON.stringify(combo));

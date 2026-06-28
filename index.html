@@ -218,6 +218,12 @@
       <section class="list" id="list"></section>
       <p class="hint" id="empty-hint">아직 타임카드가 없습니다. 오른쪽 아래 ＋ 버튼으로 추가하세요.</p>
 
+      <!-- 숨긴 타임카드 안내/토글: 숨긴 카드가 있을 때만 표시 -->
+      <div class="hidden-bar" id="hidden-bar" hidden>
+        <span class="hidden-bar__name" id="hidden-bar-name"></span>
+        <button type="button" class="hidden-bar__toggle" id="hidden-bar-toggle"></button>
+      </div>
+
       <!-- 태그(구 조합) 패널: 평소 숨김, 🏷 FAB로 열기 -->
       <div class="drawer" id="groups-drawer" hidden>
         <div class="drawer__backdrop" data-close></div>

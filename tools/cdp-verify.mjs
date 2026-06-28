@@ -191,6 +191,10 @@ async function main() {
        railLeftHide: !!document.querySelector('.card__rail--left .card__hide'),
        railRightDel: !!document.querySelector('.card__rail--right .card__del'),
        railRightLap: !!document.querySelector('.card__rail--right .card__lap svg'),
+       // 기록(랩) 아이콘 색이 삭제(✕)와 동일한 무채색이어야 함(혼자 강조색 X)
+       railLapNeutral: (() => { const l = document.querySelector('.card__rail--right .card__lap');
+         const x = document.querySelector('.card__rail--right .card__del');
+         return !!l && !!x && getComputedStyle(l).color === getComputedStyle(x).color; })(),
        lapEdits: document.querySelectorAll('.card__laps .lap__edit').length,
        bodyHasCols: !!document.querySelector('.card__body > .card__cols'),
        tagAddInGroups: !!document.querySelector('.card__groups .card__groupbtn'),
@@ -208,6 +212,7 @@ async function main() {
   if (checks.dirChip !== '남은시간') fails.push(`방향 칩="${checks.dirChip}" (남은시간 기대)`);
   if (checks.theme !== 'dark') fails.push(`기본 테마 dark 기대, 실제 ${checks.theme}`);
   if (!checks.railRightLap) fails.push('기록 버튼(아이콘)이 우측 레일 하단(.card__rail--right .card__lap)에 없음');
+  if (!checks.railLapNeutral) fails.push('기록 아이콘이 다른 레일 아이콘(✕)과 다른 색(혼자 강조색) — 무채색 기대');
   if (checks.lapEdits < 2) fails.push(`기록 행에 편집 버튼 2개(기준일시·기록시각) 기대, 실제 ${checks.lapEdits}`);
   if (!checks.timeInRight) fails.push('큰 시간이 우측 열(.card__col--right)에 없음');
   if (!checks.labelInLeft) fails.push('제목이 좌측 열(.card__col--left)에 없음');

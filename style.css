@@ -510,9 +510,9 @@ kbd {
 .card__hide:hover { color: var(--accent); background: rgba(255, 255, 255, 0.06); }
 .card--hidden .card__hide { color: var(--accent); }
 
-/* 우측 레일 하단: 기록(랩) 버튼 — 좁은 레일이라 아이콘. 주요 동작이라 강조색. */
-.card__lap { color: var(--accent); cursor: pointer; }
-.card__lap:hover { background: rgba(255, 255, 255, 0.06); }
+/* 우측 레일 하단: 기록(랩) 버튼 — 다른 레일 아이콘(≡·눈·✕)과 동일한 무채색(강조색 제거). */
+.card__lap { cursor: pointer; }
+.card__lap:hover { color: var(--fg); background: rgba(255, 255, 255, 0.06); }
 .card__lap:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* 기록(랩) 목록: 우측 열에서 좁으면 줄바꿈. 2개 이상이면 최근 1개만 + 더보기. */

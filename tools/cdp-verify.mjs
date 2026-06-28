@@ -203,7 +203,7 @@ async function main() {
   if (!checks.railRightDel) fails.push('삭제(✕)가 우측 레일(.card__rail--right)에 없음');
   if (!checks.bodyHasCols) fails.push('본문(.card__body) 안에 2열(.card__cols)이 없음');
 
-  // 6.5) 기록(랩) 편집: 기준일시 편집 버튼 클릭 → lap-target 에디터 → 값 변경·저장 → laps[0].target 갱신
+  // 6.5a) 기록(랩) 기준일시 편집 → laps[0].target 갱신(at은 숨은 기준점으로 유지)
   await evalJS(browser, "document.querySelector('.card__laps .lap__edit[data-which=\"target\"]').click()");
   await until(() => evalJS(browser, "!!document.querySelector('.card__editor[data-field=\"lap-target\"]')"), {
     label: 'lap-target editor',
@@ -218,12 +218,38 @@ async function main() {
     () => evalJS(browser, "/^2031-01-02/.test(JSON.parse(localStorage.getItem('countdowns'))[0].laps[0].target || '')"),
     { label: 'lap target saved' },
   );
-  const lapEdited = await evalJS(
-    browser,
-    "JSON.parse(localStorage.getItem('countdowns'))[0].laps[0]",
-  );
+  const lapEdited = await evalJS(browser, "JSON.parse(localStorage.getItem('countdowns'))[0].laps[0]");
   if (!(lapEdited && lapEdited.at && /^2031-01-02/.test(lapEdited.target)))
     fails.push(`기록 기준일시 편집 실패: ${JSON.stringify(lapEdited)}`);
+  // 기록 시각(at)은 더 이상 표시하지 않아야 함(편집 버튼 'at' 없음)
+  if (await evalJS(browser, "!!document.querySelector('.card__laps .lap__edit[data-which=\"at\"]')"))
+    fails.push('기록 시각(at) 표시/편집이 아직 남아 있음(제거 대상)');
+
+  // 6.5b) 상대시간 편집 → 기준일시 연동(round-trip): rel을 −02:00:00로 → lap__val이 02:00:00 반영
+  await evalJS(browser, "document.querySelector('.card__laps .lap__edit[data-which=\"rel\"]').click()");
+  await until(() => evalJS(browser, "!!document.querySelector('.card__editor[data-field=\"lap-rel\"]')"), {
+    label: 'lap-rel editor',
+  });
+  await evalJS(
+    browser,
+    `(() => { const i = document.querySelector('.card__editor .card__editinput');
+       i.value = '−02:00:00'; i.dispatchEvent(new Event('input', { bubbles: true }));
+       document.querySelector('.card__editor .card__save').click(); })()`,
+  );
+  await until(
+    () => evalJS(browser, "(document.querySelector('.card__laps .lap__val')?.textContent || '').includes('02:00:00')"),
+    { label: 'lap-rel linked to target' },
+  );
+  const relRoundtrip = await evalJS(
+    browser,
+    `(() => { const v = document.querySelector('.card__laps .lap__val')?.textContent || '';
+       const l = JSON.parse(localStorage.getItem('countdowns'))[0].laps[0];
+       return { val: v, atMs: new Date(l.at).getTime(), tgtMs: new Date(l.target).getTime() }; })()`,
+  );
+  if (!relRoundtrip.val.includes('02:00:00'))
+    fails.push(`상대시간 편집 round-trip 실패, lap__val="${relRoundtrip.val}"`);
+  if (Math.abs(relRoundtrip.tgtMs - relRoundtrip.atMs - 2 * 3600 * 1000) > 1500)
+    fails.push('상대시간 편집이 기준일시(target = at + 2h)에 연동되지 않음');
 
   // 6.6) 조합(재생목록식): 카드 ＋조합 → 팝오버 → 새 조합 생성·토글 → 칩 표시 + 영속
   if (!(await evalJS(browser, "!!document.querySelector('.card .card__groupbtn')")))

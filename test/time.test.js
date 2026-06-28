@@ -1,6 +1,14 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseTarget, diff, formatDuration, elapsedFraction, monthGrid, dateKeyOf } from '../src/time.js';
+import {
+  parseTarget,
+  diff,
+  formatDuration,
+  parseRelative,
+  elapsedFraction,
+  monthGrid,
+  dateKeyOf,
+} from '../src/time.js';
 
 test('parseTarget: 로컬 datetime 문자열을 기기 로컬 시각으로 해석', () => {
   const d = parseTarget('2026-12-31T09:00');
@@ -72,6 +80,19 @@ test('formatDuration: 일이 0이면 HH:MM:SS', () => {
 
 test('formatDuration: 일이 있으면 "D일 HH:MM:SS"', () => {
   assert.equal(formatDuration({ days: 12, hours: 3, minutes: 4, seconds: 5 }), '12일 03:04:05');
+});
+
+test('parseRelative: 부호+일+HH:MM:SS 역연산 + 부호별 방향', () => {
+  // −1일 16:48:15 = 40h48m15s 남은(future)
+  assert.deepEqual(parseRelative('−1일 16:48:15'), {
+    dir: 'future',
+    ms: (((1 * 24 + 16) * 60 + 48) * 60 + 15) * 1000,
+  });
+  assert.deepEqual(parseRelative('+2:00:00'), { dir: 'past', ms: 2 * 3600 * 1000 });
+  assert.deepEqual(parseRelative('00:30:00'), { dir: null, ms: 30 * 60 * 1000 });
+  assert.deepEqual(parseRelative('16:48:15'), { dir: null, ms: ((16 * 60 + 48) * 60 + 15) * 1000 });
+  assert.equal(parseRelative('아무거나'), null);
+  assert.equal(parseRelative('1:2:3:4'), null);
 });
 
 test('elapsedFraction: 중간 지점은 0.5', () => {

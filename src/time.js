@@ -77,6 +77,25 @@ export function formatDuration({ days, hours, minutes, seconds }) {
 }
 
 /**
+ * 기록(랩)의 상대시간 문자열 "[±][D일 ]HH:MM:SS"를 { dir, ms }로 해석(formatDuration 역연산).
+ *   dir: '−'(U+2212)/'-' → 'future'(남은), '+' → 'past'(지난), 부호 없으면 null(호출부가 결정).
+ *   ms: 크기(밀리초). 형식이 안 맞으면 null.
+ */
+export function parseRelative(input) {
+  const m = String(input)
+    .trim()
+    .match(/^([−+\-])?\s*(?:(\d+)\s*일\s*)?(\d{1,4}):([0-5]?\d)(?::([0-5]?\d))?$/);
+  if (!m) return null;
+  const days = m[2] ? parseInt(m[2], 10) : 0;
+  const hours = parseInt(m[3], 10);
+  const minutes = parseInt(m[4], 10);
+  const seconds = m[5] ? parseInt(m[5], 10) : 0;
+  const ms = (((days * 24 + hours) * 60 + minutes) * 60 + seconds) * 1000;
+  const dir = m[1] === '+' ? 'past' : m[1] ? 'future' : null;
+  return { dir, ms };
+}
+
+/**
  * start→target 구간에서 now가 얼마나 진행됐는지 0~1로 반환(진행률 바/파이용).
  * 범위를 벗어나면 0 또는 1로 클램프. 구간이 0 이하(target<=start)면 now가 target 이상일 때 1, 아니면 0.
  * 인자는 Date·ISO문자열·ms 무엇이든 허용(new Date로 해석).

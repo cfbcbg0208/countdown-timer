@@ -521,17 +521,16 @@ kbd {
 .card__laps[hidden] { display: none; }
 .lap {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.1rem 0.4rem;
+  align-items: flex-start;
+  gap: 0.2rem;
   font-size: var(--card-lap-size, 0.64rem);
   color: var(--muted);
   border-left: 2px solid var(--line);
   padding: 0.1rem 0 0.1rem 0.5rem;
 }
+/* 편집 가능한 두 값(상대시간·기준일시): 세로로 쌓고 각 줄에 연필 어포던스. */
+.lap__main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0.05rem; }
 .lap__val { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--fg); }
-/* 편집 가능한 두 값(기준일시·기록시각): 세로로 쌓고 각 줄에 연필 어포던스. */
-.lap__fields { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0.05rem; }
 .lap__edit {
   display: flex;
   align-items: center;
@@ -547,6 +546,8 @@ kbd {
   cursor: pointer;
   overflow: hidden;
 }
+/* 상대시간 줄: 값이 또렷하게(살짝 큼). */
+.lap__edit--rel { font-size: 1.05em; }
 .lap__edittext { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lap__edit::after {
   content: '';

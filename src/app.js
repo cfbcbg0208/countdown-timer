@@ -5,6 +5,7 @@ import {
   parseFlexible,
   diff,
   formatDuration,
+  parseRelative,
   formatLocal,
   elapsedFraction,
   monthGrid,
@@ -290,6 +291,17 @@ function normLap(lap, fallbackTarget) {
   return { at: lap?.at, target: lap?.target ?? fallbackTarget };
 }
 
+// 상대시간 문자열 → 연동되는 기준일시 Date. at(기록 순간)을 기준점으로 부호 방향만큼 ±. 무효면 null.
+// 부호가 없으면 그 기록의 현재 방향(남은/지난)을 유지한다.
+function lapRelTarget(lap, relStr) {
+  const p = parseRelative(relStr);
+  const atMs = new Date(lap.at).getTime();
+  if (!p || Number.isNaN(atMs)) return null;
+  let dir = p.dir;
+  if (!dir) dir = diff(new Date(lap.target), new Date(lap.at)).direction === 'past' ? 'past' : 'future';
+  return new Date(dir === 'past' ? atMs - p.ms : atMs + p.ms);
+}
+
 // 기록(랩) 목록 렌더: 각 랩은 '기록 시각'과 '기준일시'(둘 다 편집 가능) + 둘로 계산한 상대값.
 // 값은 데이터 변경 시에만 바뀌므로 매초 갱신(updateCard) 대신 여기서만 그린다.
 function renderLaps(refs) {
@@ -300,30 +312,36 @@ function renderLaps(refs) {
   const shown = laps.length > 1 && !expanded ? laps.slice(0, 1) : laps;
   const makeLi = (lap, i) => {
     const { at, target } = normLap(lap, refs.item.targetISO);
-    const r = diff(new Date(target), new Date(at));
+    const r = diff(new Date(target), new Date(at)); // 상대시간 = 기준일시 − 기록시각(at=숨은 기준점)
     const d = DIRS[r.direction];
     const li = document.createElement('li');
     li.className = 'lap';
+    // 편집 가능한 두 값(서로 연동): 상대시간 / 기준일시. 기록 시각(at)은 숨은 기준점이라 표시 안 함.
+    const main = document.createElement('div');
+    main.className = 'lap__main';
+    // ① 상대시간(부호 + 듀레이션). 클릭하면 lap-rel 에디터 → 수정 시 기준일시가 연동.
+    const relBtn = document.createElement('button');
+    relBtn.type = 'button';
+    relBtn.className = 'lap__edit lap__edit--rel';
+    relBtn.dataset.which = 'rel';
+    relBtn.dataset.index = String(i);
+    relBtn.title = '상대 시간 수정 (기준일시 연동)';
     const val = document.createElement('span');
     val.className = 'lap__val';
     val.textContent = (d.sign || '') + formatDuration(r);
-    // 편집 가능한 두 값: 기준일시 / 기록 시각(연필 어포던스).
-    const fields = document.createElement('div');
-    fields.className = 'lap__fields';
-    const mkEdit = (which, label, iso) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'lap__edit';
-      b.dataset.which = which;
-      b.dataset.index = String(i);
-      b.title = `${label} 수정`;
-      const t = document.createElement('span');
-      t.className = 'lap__edittext';
-      t.textContent = `${label} ${formatLocal(new Date(iso))}`;
-      b.append(t);
-      return b;
-    };
-    fields.append(mkEdit('target', '기준일시', target), mkEdit('at', '기록', at));
+    relBtn.append(val);
+    // ② 기준일시. 클릭하면 lap-target 에디터 → 수정 시 상대시간이 연동.
+    const targetBtn = document.createElement('button');
+    targetBtn.type = 'button';
+    targetBtn.className = 'lap__edit';
+    targetBtn.dataset.which = 'target';
+    targetBtn.dataset.index = String(i);
+    targetBtn.title = '기준일시 수정 (상대시간 연동)';
+    const tt = document.createElement('span');
+    tt.className = 'lap__edittext';
+    tt.textContent = `기준일시 ${formatLocal(new Date(target))}`;
+    targetBtn.append(tt);
+    main.append(relBtn, targetBtn);
     const del = document.createElement('button');
     del.className = 'lap__del';
     del.type = 'button';
@@ -332,7 +350,7 @@ function renderLaps(refs) {
     del.title = '기록 삭제';
     del.setAttribute('aria-label', '기록 삭제');
     del.textContent = '✕';
-    li.append(val, fields, del);
+    li.append(main, del);
     return li;
   };
   const kids = shown.map(makeLi);
@@ -658,8 +676,8 @@ const FIELD_LABELS = {
   title: '제목 수정',
   date: '기준일시 수정',
   start: '진행 시작 일시',
-  'lap-at': '기록 시각 수정',
-  'lap-target': '기록 기준일시 수정',
+  'lap-rel': '상대 시간 수정 (기준일시 연동)',
+  'lap-target': '기준일시 수정 (상대시간 연동)',
 };
 function openFieldEditor(card, id, field, lapIndex = null) {
   const lapKey = String(lapIndex ?? '');
@@ -690,9 +708,15 @@ function openFieldEditor(card, id, field, lapIndex = null) {
   input.type = 'text';
   input.className = 'card__editinput';
   input.autocomplete = 'off';
-  if (field === 'lap-at' || field === 'lap-target') {
-    // 기록의 기록시각/기준일시: 자유 텍스트 → 해석. 현재값을 파싱 가능한 형태로 채운다.
-    input.value = toLocalISO(new Date(field === 'lap-at' ? lap.at : lap.target)).replace('T', ' ');
+  if (field === 'lap-rel') {
+    // 상대 시간: 부호+듀레이션(formatDuration 형식). 현재 표시값을 그대로 프리필.
+    const rr = diff(new Date(lap.target), new Date(lap.at));
+    input.value = (DIRS[rr.direction].sign || '') + formatDuration(rr);
+    input.placeholder = '예: −1일 16:48:15  (− 남은 / + 지난)';
+    input.spellcheck = false;
+  } else if (field === 'lap-target') {
+    // 기록의 기준일시: 자유 텍스트 → 해석. 현재값을 파싱 가능한 형태로 채운다.
+    input.value = toLocalISO(new Date(lap.target)).replace('T', ' ');
     input.placeholder = '예: 260626금1800 · 2026-06-26 18:00 · 오후 6시';
     input.spellcheck = false;
   } else if (field === 'date') {
@@ -732,8 +756,26 @@ function openFieldEditor(card, id, field, lapIndex = null) {
   cancel.textContent = '취소';
   editor.append(editLabel, input, save, cancel);
 
-  // 기준일시/시작/랩: 입력하는 동안 해석 결과를 라이브 미리보기로 보여준다.
-  if (field === 'date' || field === 'start' || field === 'lap-at' || field === 'lap-target') {
+  // lap-rel: 상대시간을 입력하면 '연동될 기준일시'를 라이브 미리보기로 보여준다.
+  if (field === 'lap-rel') {
+    const preview = document.createElement('p');
+    preview.className = 'card__editpreview';
+    editor.append(preview);
+    const refresh = () => {
+      input.removeAttribute('aria-invalid');
+      const t = lapRelTarget(lap, input.value);
+      if (!t) {
+        preview.textContent = input.value.trim() ? '인식할 수 없는 형식' : '';
+        preview.dataset.ok = input.value.trim() ? 'no' : '';
+        return;
+      }
+      preview.textContent = `기준일시 → ${formatLocal(t)}`;
+      preview.dataset.ok = 'yes';
+    };
+    input.addEventListener('input', refresh);
+    refresh();
+  } else if (field === 'date' || field === 'start' || field === 'lap-target') {
+    // 기준일시/시작/랩 기준일시: 입력하는 동안 해석 결과를 라이브 미리보기로 보여준다.
     const preview = document.createElement('p');
     preview.className = 'card__editpreview';
     editor.append(preview);
@@ -774,22 +816,26 @@ function commitField(card, id, field) {
   const editor = card.querySelector('.card__editor');
   const input = editor?.querySelector('.card__editinput');
   if (!input) return;
-  if (field === 'lap-at' || field === 'lap-target') {
-    const date = parseFlexible(input.value);
-    if (!date) {
+  if (field === 'lap-rel' || field === 'lap-target') {
+    const item = itemById(id);
+    const idx = +editor.dataset.lap;
+    if (!item || !Array.isArray(item.laps) || item.laps[idx] == null) {
+      rebuild();
+      return;
+    }
+    const cur = normLap(item.laps[idx], item.targetISO);
+    // 상대시간/기준일시 둘 다 결국 '기준일시(target)'를 바꾼다. at(기록 순간)은 고정 기준점.
+    const target =
+      field === 'lap-rel' ? lapRelTarget(cur, input.value) : parseFlexible(input.value);
+    if (!target) {
       input.setAttribute('aria-invalid', 'true');
       return;
     }
-    const item = itemById(id);
-    const idx = +editor.dataset.lap;
-    if (item && Array.isArray(item.laps) && item.laps[idx] != null) {
-      const which = field === 'lap-at' ? 'at' : 'target';
-      const laps = item.laps.map((l, i) =>
-        i === idx ? { ...normLap(l, item.targetISO), [which]: toLocalISO(date) } : l,
-      );
-      list = updateItem(localStorage, id, { laps });
-      srStatus.textContent = which === 'at' ? '기록 시각 변경됨' : '기록 기준일시 변경됨';
-    }
+    const laps = item.laps.map((l, i) =>
+      i === idx ? { ...normLap(l, item.targetISO), target: toLocalISO(target) } : l,
+    );
+    list = updateItem(localStorage, id, { laps });
+    srStatus.textContent = field === 'lap-rel' ? '상대 시간 변경됨' : '기준일시 변경됨';
     rebuild();
     return;
   }
@@ -845,8 +891,8 @@ listEl.addEventListener('click', (e) => {
   } else if (lapDel) {
     removeLap(id, +lapDel.dataset.index);
   } else if (e.target.closest('.lap__edit')) {
-    const b = e.target.closest('.lap__edit'); // 기록의 기준일시/기록시각 인라인 수정
-    openFieldEditor(card, id, b.dataset.which === 'at' ? 'lap-at' : 'lap-target', +b.dataset.index);
+    const b = e.target.closest('.lap__edit'); // 기록의 상대시간/기준일시 인라인 수정(서로 연동)
+    openFieldEditor(card, id, b.dataset.which === 'rel' ? 'lap-rel' : 'lap-target', +b.dataset.index);
   } else if (e.target.closest('.card__lap')) {
     addLap(id);
   } else if (e.target.closest('.card__save')) {

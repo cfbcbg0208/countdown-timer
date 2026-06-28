@@ -167,9 +167,23 @@ async function main() {
        theme: document.documentElement.dataset.theme,
        timeInRight: !!document.querySelector('.card__col--right .card__time'),
        labelInLeft: !!document.querySelector('.card__col--left .card__label'),
-       lapsInBody: !!document.querySelector('.card__body > .card__laps'),
-       lapRelChip: document.querySelector('.card__laps .lap__edit--rel .chip')?.textContent,
+       lapsInRight: !!document.querySelector('.card__col--right .card__laps'),
        lapTargetChip: document.querySelector('.card__laps .lap__edit--target .chip')?.textContent,
+       lapValClipped: (() => { const v = document.querySelector('.lap__edit--rel .lap__val');
+         return !!v && v.scrollWidth > v.clientWidth + 1; })(),
+       // 무채색: 랩 상대시간 색이 메인 시간(방향색)과 달라야 함(= --fg 무채색)
+       lapMono: (() => {
+         const v = document.querySelector('.card__laps .lap__val');
+         const t = document.querySelector('.card__time .card__num');
+         return !!v && !!t && getComputedStyle(v).color !== getComputedStyle(t).color;
+       })(),
+       // zone2·zone3 가로폭 동일(grid 두 트랙 px 차이 1px 미만)
+       colsEqual: (() => {
+         const cols = document.querySelector('.card__cols');
+         if (!cols) return false;
+         const tc = getComputedStyle(cols).gridTemplateColumns.split(' ');
+         return tc.length === 2 && Math.abs(parseFloat(tc[0]) - parseFloat(tc[1])) < 1;
+       })(),
        railLeftHandle: !!document.querySelector('.card__rail--left .card__handle'),
        railLeftHide: !!document.querySelector('.card__rail--left .card__hide'),
        railRightDel: !!document.querySelector('.card__rail--right .card__del'),
@@ -194,11 +208,12 @@ async function main() {
   if (checks.lapEdits < 2) fails.push(`기록 행에 편집 버튼 2개(기준일시·기록시각) 기대, 실제 ${checks.lapEdits}`);
   if (!checks.timeInRight) fails.push('큰 시간이 우측 열(.card__col--right)에 없음');
   if (!checks.labelInLeft) fails.push('제목이 좌측 열(.card__col--left)에 없음');
-  if (!checks.lapsInBody) fails.push('기록(랩) 목록이 본문 전체폭(.card__body > .card__laps)에 없음');
-  if (checks.lapRelChip !== '남은시간' && checks.lapRelChip !== '지난시간')
-    fails.push(`기록 상대시간 방향 칩 기대(남은/지난시간), 실제 "${checks.lapRelChip}"`);
+  if (!checks.lapsInRight) fails.push('기록(랩) 목록이 우측 열(.card__col--right .card__laps)에 없음');
   if (checks.lapTargetChip !== '기준일시')
     fails.push(`기록 기준일시 칩 텍스트="${checks.lapTargetChip}" (기준일시 기대)`);
+  if (checks.lapValClipped) fails.push('기록 상대시간이 좁은 열에서 잘림(ellipsis) — 전체 표시 실패');
+  if (!checks.lapMono) fails.push('기록 상대시간이 무채색이 아님(메인 시간 방향색과 동일)');
+  if (!checks.colsEqual) fails.push('zone2·zone3(.card__cols) 가로폭이 동일하지 않음');
   if (checks.lapsShown !== 1) fails.push(`기록 접힘 시 최근 1개만 기대, 실제 ${checks.lapsShown}`);
   if (!checks.lapMore) fails.push('기록 더보기 토글(.lap__more)이 없음');
   if (!checks.tagAddInGroups) fails.push('＋태그 칩이 태그 줄(.card__groups)에 없음');

@@ -253,10 +253,10 @@ function makeCard(item) {
   left.className = 'card__col card__col--left';
   left.append(labelEl, metaEl, createdRow, updatedRow, progressEl, groupsRow);
 
-  // 우측 열: 큰 시간(상단·우측·자동축소). 기록(랩) 목록은 아래 전체폭으로(큰 상대시간 수용). 기록 버튼은 우측 레일.
+  // 우측 열(zone3): 큰 시간(상단·우측·자동축소) → 기록(랩) 목록(우측 하단). 기록 버튼은 우측 레일.
   const right = document.createElement('div');
   right.className = 'card__col card__col--right';
-  right.append(timeEl);
+  right.append(timeEl, lapsEl);
 
   const cols = document.createElement('div');
   cols.className = 'card__cols';
@@ -274,7 +274,7 @@ function makeCard(item) {
 
   const body = document.createElement('div');
   body.className = 'card__body';
-  body.append(cols, lapsEl); // 기록 목록은 2열 아래 전체폭
+  body.append(cols);
 
   card.append(railLeft, body, railRight);
 
@@ -325,11 +325,10 @@ function renderLaps(refs) {
     relBtn.className = 'lap__edit lap__edit--rel';
     relBtn.dataset.which = 'rel';
     relBtn.dataset.index = String(i);
-    relBtn.title = '상대 시간 수정 (기준일시 연동)';
+    relBtn.title = `상대 시간 수정 (기준일시 연동) · ${d.label}`;
     const sign = d.sign ? `<span class="display__sign">${d.sign}</span>` : '';
-    relBtn.innerHTML =
-      `<span class="lap__val display--${r.direction}">${sign}${formatDuration(r)}</span>` +
-      `<span class="chip chip--${r.direction}">${d.chip}</span>`;
+    // 무채색: 색 대신 부호(−/+)로 방향 표시. 좁은 열이라 시간 전체 표시를 위해 별도 칩은 생략.
+    relBtn.innerHTML = `<span class="lap__val">${sign}${formatDuration(r)}</span>`;
     // ② 기준일시: 값 + [기준일시] 칩(우측). 클릭→lap-target 연동.
     const targetBtn = document.createElement('button');
     targetBtn.type = 'button';
@@ -801,14 +800,8 @@ function openFieldEditor(card, id, field, lapIndex = null) {
   }
 
   // 편집기는 2열(.card__cols) 아래 전체폭으로 삽입(열 내부에 넣으면 레이아웃 깨짐).
-  // 랩 필드는 기록 목록(.card__laps, 전체폭) 바로 아래에 둔다.
-  const ANCHOR = {
-    date: '.card__meta',
-    start: '.card__progress',
-    title: '.card__label',
-    'lap-rel': '.card__laps',
-    'lap-target': '.card__laps',
-  };
+  // 랩 필드도 우측 열 내부가 아니라 2열 아래 전체폭으로(좁은 열 깨짐 방지).
+  const ANCHOR = { date: '.card__meta', start: '.card__progress', title: '.card__label' };
   const anchor = card.querySelector(ANCHOR[field] || '.card__cols');
   (anchor.closest('.card__cols, .card__row') || anchor).after(editor);
   card.dataset.editing = field; // 수정 중인 원본 필드를 CSS로 강조

@@ -253,10 +253,10 @@ function makeCard(item) {
   left.className = 'card__col card__col--left';
   left.append(labelEl, metaEl, createdRow, updatedRow, progressEl, groupsRow);
 
-  // 우측 열: 큰 시간(상단·우측·자동축소) → 기록(랩) 목록. 기록 버튼은 우측 레일로 이동.
+  // 우측 열: 큰 시간(상단·우측·자동축소). 기록(랩) 목록은 아래 전체폭으로(큰 상대시간 수용). 기록 버튼은 우측 레일.
   const right = document.createElement('div');
   right.className = 'card__col card__col--right';
-  right.append(timeEl, lapsEl);
+  right.append(timeEl);
 
   const cols = document.createElement('div');
   cols.className = 'card__cols';
@@ -274,7 +274,7 @@ function makeCard(item) {
 
   const body = document.createElement('div');
   body.className = 'card__body';
-  body.append(cols);
+  body.append(cols, lapsEl); // 기록 목록은 2열 아래 전체폭
 
   card.append(railLeft, body, railRight);
 
@@ -319,28 +319,26 @@ function renderLaps(refs) {
     // 편집 가능한 두 값(서로 연동): 상대시간 / 기준일시. 기록 시각(at)은 숨은 기준점이라 표시 안 함.
     const main = document.createElement('div');
     main.className = 'lap__main';
-    // ① 상대시간(부호 + 듀레이션). 클릭하면 lap-rel 에디터 → 수정 시 기준일시가 연동.
+    // ① 상대시간(부호 + 듀레이션): 메인 시간과 동일 크기·굵기·방향색 + 방향 칩. 클릭→lap-rel 연동.
     const relBtn = document.createElement('button');
     relBtn.type = 'button';
     relBtn.className = 'lap__edit lap__edit--rel';
     relBtn.dataset.which = 'rel';
     relBtn.dataset.index = String(i);
     relBtn.title = '상대 시간 수정 (기준일시 연동)';
-    const val = document.createElement('span');
-    val.className = 'lap__val';
-    val.textContent = (d.sign || '') + formatDuration(r);
-    relBtn.append(val);
-    // ② 기준일시. 클릭하면 lap-target 에디터 → 수정 시 상대시간이 연동.
+    const sign = d.sign ? `<span class="display__sign">${d.sign}</span>` : '';
+    relBtn.innerHTML =
+      `<span class="lap__val display--${r.direction}">${sign}${formatDuration(r)}</span>` +
+      `<span class="chip chip--${r.direction}">${d.chip}</span>`;
+    // ② 기준일시: 값 + [기준일시] 칩(우측). 클릭→lap-target 연동.
     const targetBtn = document.createElement('button');
     targetBtn.type = 'button';
-    targetBtn.className = 'lap__edit';
+    targetBtn.className = 'lap__edit lap__edit--target';
     targetBtn.dataset.which = 'target';
     targetBtn.dataset.index = String(i);
     targetBtn.title = '기준일시 수정 (상대시간 연동)';
-    const tt = document.createElement('span');
-    tt.className = 'lap__edittext';
-    tt.textContent = `기준일시 ${formatLocal(new Date(target))}`;
-    targetBtn.append(tt);
+    targetBtn.innerHTML =
+      `<span class="lap__edittext">${formatLocal(new Date(target))}</span><span class="chip">기준일시</span>`;
     main.append(relBtn, targetBtn);
     const del = document.createElement('button');
     del.className = 'lap__del';
@@ -803,8 +801,14 @@ function openFieldEditor(card, id, field, lapIndex = null) {
   }
 
   // 편집기는 2열(.card__cols) 아래 전체폭으로 삽입(열 내부에 넣으면 레이아웃 깨짐).
-  const ANCHOR = { date: '.card__meta', start: '.card__progress', title: '.card__label' };
-  // 랩 필드는 우측 열의 기록 목록 아래 → cols 다음에 전체폭으로.
+  // 랩 필드는 기록 목록(.card__laps, 전체폭) 바로 아래에 둔다.
+  const ANCHOR = {
+    date: '.card__meta',
+    start: '.card__progress',
+    title: '.card__label',
+    'lap-rel': '.card__laps',
+    'lap-target': '.card__laps',
+  };
   const anchor = card.querySelector(ANCHOR[field] || '.card__cols');
   (anchor.closest('.card__cols, .card__row') || anchor).after(editor);
   card.dataset.editing = field; // 수정 중인 원본 필드를 CSS로 강조

@@ -167,7 +167,9 @@ async function main() {
        theme: document.documentElement.dataset.theme,
        timeInRight: !!document.querySelector('.card__col--right .card__time'),
        labelInLeft: !!document.querySelector('.card__col--left .card__label'),
-       lapsInRight: !!document.querySelector('.card__col--right .card__laps'),
+       lapsInBody: !!document.querySelector('.card__body > .card__laps'),
+       lapRelChip: document.querySelector('.card__laps .lap__edit--rel .chip')?.textContent,
+       lapTargetChip: document.querySelector('.card__laps .lap__edit--target .chip')?.textContent,
        railLeftHandle: !!document.querySelector('.card__rail--left .card__handle'),
        railLeftHide: !!document.querySelector('.card__rail--left .card__hide'),
        railRightDel: !!document.querySelector('.card__rail--right .card__del'),
@@ -192,7 +194,11 @@ async function main() {
   if (checks.lapEdits < 2) fails.push(`기록 행에 편집 버튼 2개(기준일시·기록시각) 기대, 실제 ${checks.lapEdits}`);
   if (!checks.timeInRight) fails.push('큰 시간이 우측 열(.card__col--right)에 없음');
   if (!checks.labelInLeft) fails.push('제목이 좌측 열(.card__col--left)에 없음');
-  if (!checks.lapsInRight) fails.push('기록(랩)이 우측 열에 없음');
+  if (!checks.lapsInBody) fails.push('기록(랩) 목록이 본문 전체폭(.card__body > .card__laps)에 없음');
+  if (checks.lapRelChip !== '남은시간' && checks.lapRelChip !== '지난시간')
+    fails.push(`기록 상대시간 방향 칩 기대(남은/지난시간), 실제 "${checks.lapRelChip}"`);
+  if (checks.lapTargetChip !== '기준일시')
+    fails.push(`기록 기준일시 칩 텍스트="${checks.lapTargetChip}" (기준일시 기대)`);
   if (checks.lapsShown !== 1) fails.push(`기록 접힘 시 최근 1개만 기대, 실제 ${checks.lapsShown}`);
   if (!checks.lapMore) fails.push('기록 더보기 토글(.lap__more)이 없음');
   if (!checks.tagAddInGroups) fails.push('＋태그 칩이 태그 줄(.card__groups)에 없음');
@@ -230,6 +236,14 @@ async function main() {
   await until(() => evalJS(browser, "!!document.querySelector('.card__editor[data-field=\"lap-rel\"]')"), {
     label: 'lap-rel editor',
   });
+  // 형식 해석 보강: 'd'(일) 표기도 인식해야 함(−1d 17:48:15 → 미리보기 ok)
+  const dFmtOk = await evalJS(
+    browser,
+    `(() => { const i = document.querySelector('.card__editor .card__editinput');
+       i.value = '-1d 17:48:15'; i.dispatchEvent(new Event('input', { bubbles: true }));
+       return document.querySelector('.card__editpreview')?.dataset.ok; })()`,
+  );
+  if (dFmtOk !== 'yes') fails.push(`상대시간 'd'(일) 형식 해석 실패(미리보기 ok=${dFmtOk})`);
   await evalJS(
     browser,
     `(() => { const i = document.querySelector('.card__editor .card__editinput');

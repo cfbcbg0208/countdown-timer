@@ -82,15 +82,17 @@ test('formatDuration: 일이 있으면 "D일 HH:MM:SS"', () => {
   assert.equal(formatDuration({ days: 12, hours: 3, minutes: 4, seconds: 5 }), '12일 03:04:05');
 });
 
-test('parseRelative: 부호+일+HH:MM:SS 역연산 + 부호별 방향', () => {
+test('parseRelative: 부호 + 일(일/d/D) + HH:MM:SS 역연산 + 부호별 방향', () => {
+  const dhms = (d, h, m, s) => (((d * 24 + h) * 60 + m) * 60 + s) * 1000;
   // −1일 16:48:15 = 40h48m15s 남은(future)
-  assert.deepEqual(parseRelative('−1일 16:48:15'), {
-    dir: 'future',
-    ms: (((1 * 24 + 16) * 60 + 48) * 60 + 15) * 1000,
-  });
+  assert.deepEqual(parseRelative('−1일 16:48:15'), { dir: 'future', ms: dhms(1, 16, 48, 15) });
+  // 'd'/'D'도 일 단위로 해석(이미지의 -1d 17:48:15)
+  assert.deepEqual(parseRelative('-1d 17:48:15'), { dir: 'future', ms: dhms(1, 17, 48, 15) });
+  assert.deepEqual(parseRelative('1D3:00'), { dir: null, ms: dhms(1, 3, 0, 0) });
   assert.deepEqual(parseRelative('+2:00:00'), { dir: 'past', ms: 2 * 3600 * 1000 });
   assert.deepEqual(parseRelative('00:30:00'), { dir: null, ms: 30 * 60 * 1000 });
-  assert.deepEqual(parseRelative('16:48:15'), { dir: null, ms: ((16 * 60 + 48) * 60 + 15) * 1000 });
+  assert.deepEqual(parseRelative('16:48:15'), { dir: null, ms: dhms(0, 16, 48, 15) });
+  assert.deepEqual(parseRelative('-2d'), { dir: 'future', ms: dhms(2, 0, 0, 0) }); // 일만
   assert.equal(parseRelative('아무거나'), null);
   assert.equal(parseRelative('1:2:3:4'), null);
 });

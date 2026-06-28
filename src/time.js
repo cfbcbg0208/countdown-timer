@@ -77,21 +77,36 @@ export function formatDuration({ days, hours, minutes, seconds }) {
 }
 
 /**
- * 기록(랩)의 상대시간 문자열 "[±][D일 ]HH:MM:SS"를 { dir, ms }로 해석(formatDuration 역연산).
- *   dir: '−'(U+2212)/'-' → 'future'(남은), '+' → 'past'(지난), 부호 없으면 null(호출부가 결정).
- *   ms: 크기(밀리초). 형식이 안 맞으면 null.
+ * 기록(랩)의 상대시간 문자열을 { dir, ms }로 해석(formatDuration 역연산 + 관대한 입력).
+ *   허용: 부호(−/-/+) · 일 단위(N일 | Nd | ND, 공백 무관) · 시:분[:초]. 일/시간 중 하나만 있어도 OK.
+ *   예) "−1일 16:48:15", "-1d 17:48:15", "+2:00:00", "16:48:15", "-2d", "1d3:00".
+ *   dir: −/- → 'future'(남은), + → 'past'(지난), 부호 없으면 null(호출부가 결정). 형식 불가면 null.
  */
 export function parseRelative(input) {
-  const m = String(input)
-    .trim()
-    .match(/^([−+\-])?\s*(?:(\d+)\s*일\s*)?(\d{1,4}):([0-5]?\d)(?::([0-5]?\d))?$/);
-  if (!m) return null;
-  const days = m[2] ? parseInt(m[2], 10) : 0;
-  const hours = parseInt(m[3], 10);
-  const minutes = parseInt(m[4], 10);
-  const seconds = m[5] ? parseInt(m[5], 10) : 0;
+  let s = String(input).trim();
+  const signM = s.match(/^([−+\-])\s*/);
+  const sign = signM ? signM[1] : null;
+  if (signM) s = s.slice(signM[0].length);
+  // 일(days): "N일" | "Nd" | "ND"
+  const dayM = s.match(/^(\d+)\s*(?:일|d|D)\s*/);
+  const days = dayM ? parseInt(dayM[1], 10) : 0;
+  if (dayM) s = s.slice(dayM[0].length).trim();
+  // 시:분[:초] (남아 있으면)
+  let hours = 0;
+  let minutes = 0;
+  let seconds = 0;
+  let hasTime = false;
+  if (s !== '') {
+    const tm = s.match(/^(\d{1,4}):([0-5]?\d)(?::([0-5]?\d))?$/);
+    if (!tm) return null;
+    hours = parseInt(tm[1], 10);
+    minutes = parseInt(tm[2], 10);
+    seconds = tm[3] ? parseInt(tm[3], 10) : 0;
+    hasTime = true;
+  }
+  if (!dayM && !hasTime) return null; // 아무 단위도 못 읽음
   const ms = (((days * 24 + hours) * 60 + minutes) * 60 + seconds) * 1000;
-  const dir = m[1] === '+' ? 'past' : m[1] ? 'future' : null;
+  const dir = sign === '+' ? 'past' : sign ? 'future' : null;
   return { dir, ms };
 }
 

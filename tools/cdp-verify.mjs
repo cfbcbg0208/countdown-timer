@@ -165,14 +165,14 @@ async function main() {
        drawerTitle: document.getElementById('drawer-title')?.textContent.trim(),
        dirChip: document.querySelector('.card__time .chip')?.textContent,
        theme: document.documentElement.dataset.theme,
-       lapText: document.querySelector('.card__lap')?.textContent,
        timeInRight: !!document.querySelector('.card__col--right .card__time'),
        labelInLeft: !!document.querySelector('.card__col--left .card__label'),
        lapsInRight: !!document.querySelector('.card__col--right .card__laps'),
-       actionsHasLap: !!document.querySelector('.card__actions .card__lap'),
        railLeftHandle: !!document.querySelector('.card__rail--left .card__handle'),
        railLeftHide: !!document.querySelector('.card__rail--left .card__hide'),
        railRightDel: !!document.querySelector('.card__rail--right .card__del'),
+       railRightLap: !!document.querySelector('.card__rail--right .card__lap svg'),
+       lapEdits: document.querySelectorAll('.card__laps .lap__edit').length,
        bodyHasCols: !!document.querySelector('.card__body > .card__cols'),
        tagAddInGroups: !!document.querySelector('.card__groups .card__groupbtn'),
        tagAddText: document.querySelector('.card__groups .card__groupbtn')?.textContent,
@@ -188,11 +188,11 @@ async function main() {
   if (!String(checks.drawerTitle).includes('타임카드 추가')) fails.push(`드로어 제목="${checks.drawerTitle}"`);
   if (checks.dirChip !== '남은시간') fails.push(`방향 칩="${checks.dirChip}" (남은시간 기대)`);
   if (checks.theme !== 'dark') fails.push(`기본 테마 dark 기대, 실제 ${checks.theme}`);
-  if (checks.lapText !== '기록' || /📍/.test(checks.lapText)) fails.push(`기록 버튼 텍스트="${checks.lapText}" (빨간핀 제거·'기록' 기대)`);
+  if (!checks.railRightLap) fails.push('기록 버튼(아이콘)이 우측 레일 하단(.card__rail--right .card__lap)에 없음');
+  if (checks.lapEdits < 2) fails.push(`기록 행에 편집 버튼 2개(기준일시·기록시각) 기대, 실제 ${checks.lapEdits}`);
   if (!checks.timeInRight) fails.push('큰 시간이 우측 열(.card__col--right)에 없음');
   if (!checks.labelInLeft) fails.push('제목이 좌측 열(.card__col--left)에 없음');
   if (!checks.lapsInRight) fails.push('기록(랩)이 우측 열에 없음');
-  if (!checks.actionsHasLap) fails.push('기록 버튼이 액션(.card__actions)에 없음');
   if (checks.lapsShown !== 1) fails.push(`기록 접힘 시 최근 1개만 기대, 실제 ${checks.lapsShown}`);
   if (!checks.lapMore) fails.push('기록 더보기 토글(.lap__more)이 없음');
   if (!checks.tagAddInGroups) fails.push('＋태그 칩이 태그 줄(.card__groups)에 없음');
@@ -202,6 +202,28 @@ async function main() {
   if (!checks.railLeftHide) fails.push('숨기기 버튼(.card__hide)이 좌측 레일에 없음');
   if (!checks.railRightDel) fails.push('삭제(✕)가 우측 레일(.card__rail--right)에 없음');
   if (!checks.bodyHasCols) fails.push('본문(.card__body) 안에 2열(.card__cols)이 없음');
+
+  // 6.5) 기록(랩) 편집: 기준일시 편집 버튼 클릭 → lap-target 에디터 → 값 변경·저장 → laps[0].target 갱신
+  await evalJS(browser, "document.querySelector('.card__laps .lap__edit[data-which=\"target\"]').click()");
+  await until(() => evalJS(browser, "!!document.querySelector('.card__editor[data-field=\"lap-target\"]')"), {
+    label: 'lap-target editor',
+  });
+  await evalJS(
+    browser,
+    `(() => { const i = document.querySelector('.card__editor .card__editinput');
+       i.value = '2031-01-02 03:04:05'; i.dispatchEvent(new Event('input', { bubbles: true }));
+       document.querySelector('.card__editor .card__save').click(); })()`,
+  );
+  await until(
+    () => evalJS(browser, "/^2031-01-02/.test(JSON.parse(localStorage.getItem('countdowns'))[0].laps[0].target || '')"),
+    { label: 'lap target saved' },
+  );
+  const lapEdited = await evalJS(
+    browser,
+    "JSON.parse(localStorage.getItem('countdowns'))[0].laps[0]",
+  );
+  if (!(lapEdited && lapEdited.at && /^2031-01-02/.test(lapEdited.target)))
+    fails.push(`기록 기준일시 편집 실패: ${JSON.stringify(lapEdited)}`);
 
   // 6.6) 조합(재생목록식): 카드 ＋조합 → 팝오버 → 새 조합 생성·토글 → 칩 표시 + 영속
   if (!(await evalJS(browser, "!!document.querySelector('.card .card__groupbtn')")))

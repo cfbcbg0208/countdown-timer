@@ -349,10 +349,8 @@ kbd {
 /* 좌측 열 오른쪽에 중앙 구분선. 진행률 바도 이 선을 넘지 않음. */
 .card__col--left { gap: 0.16rem; border-right: 1px solid var(--line); padding-right: 0.7rem; }
 .card__col--right { gap: 0.28rem; padding-left: 0.7rem; }
-/* 우측 열: 시간은 우측 정렬, 기록(버튼·랩)은 좌측 정렬 */
-.card__col--right > .card__actions { align-self: flex-start; }
+/* 우측 열: 시간은 우측 정렬, 기록(랩) 목록은 전체폭(기록 버튼은 우측 레일로 이동) */
 .card__col--right > .card__laps { align-self: stretch; }
-.card__actions { display: flex; align-items: center; gap: 0.4rem; margin-top: 0.1rem; }
 .card.display--future { border-left-color: var(--future); }
 .card.display--past { border-left-color: var(--past); }
 
@@ -513,32 +511,10 @@ kbd {
 .card__hide:hover { color: var(--accent); background: rgba(255, 255, 255, 0.06); }
 .card--hidden .card__hide { color: var(--accent); }
 
-/* 랩(기록) 알약 버튼(메타 아래) */
-.card__lap {
-  flex: none;
-  margin: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4em;
-  padding: 0.3rem 0.7rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--card-2);
-  color: var(--muted);
-  font-size: 0.78rem;
-  white-space: nowrap;
-  cursor: pointer;
-}
-/* 빨간 핀 대신 녹색(강조색) 점 */
-.card__lap::before {
-  content: '';
-  width: 0.5em;
-  height: 0.5em;
-  border-radius: 50%;
-  background: var(--accent);
-}
-.card__lap:hover { color: var(--fg); border-color: var(--muted); }
-.card__lap:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* 우측 레일 하단: 기록(랩) 버튼 — 좁은 레일이라 아이콘. 주요 동작이라 강조색. */
+.card__lap { color: var(--accent); cursor: pointer; }
+.card__lap:hover { background: rgba(255, 255, 255, 0.06); }
+.card__lap:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 
 /* 기록(랩) 목록: 우측 열에서 좁으면 줄바꿈. 2개 이상이면 최근 1개만 + 더보기. */
 .card__laps { list-style: none; margin: 0.25rem 0 0; padding: 0; display: grid; gap: 0.25rem; }
@@ -554,7 +530,37 @@ kbd {
   padding: 0.1rem 0 0.1rem 0.5rem;
 }
 .lap__val { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--fg); }
-.lap__when { flex: 1 1 auto; min-width: 0; }
+/* 편집 가능한 두 값(기준일시·기록시각): 세로로 쌓고 각 줄에 연필 어포던스. */
+.lap__fields { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 0.05rem; }
+.lap__edit {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+.lap__edittext { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lap__edit::after {
+  content: '';
+  flex: none;
+  width: 0.7rem;
+  height: 0.7rem;
+  background: var(--muted);
+  -webkit-mask: var(--pencil) center / contain no-repeat;
+  mask: var(--pencil) center / contain no-repeat;
+  opacity: 0.4;
+  transition: opacity 0.12s, background 0.12s;
+}
+.lap__edit:hover { color: var(--fg); }
+.lap__edit:hover::after { background: var(--accent); opacity: 1; }
 .lap--more { border-left-color: transparent; padding-left: 0.5rem; }
 .lap__more {
   background: transparent;
@@ -841,14 +847,6 @@ body.dragging-active { cursor: grabbing; user-select: none; }
   cursor: pointer;
 }
 .card__groupbtn:hover { color: var(--accent); border-color: var(--accent); }
-
-/* 하단 줄 우측의 기록 버튼: 컴팩트 인라인 */
-.card__actions .card__lap {
-  margin: 0;
-  white-space: nowrap;
-  padding: 0.28rem 0.6rem;
-  font-size: 0.74rem;
-}
 
 /* 조합 선택기(카드 팝오버 + 추가 드로어 공용) */
 .combo-pop {

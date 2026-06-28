@@ -233,17 +233,15 @@ function makeCard(item) {
   groupsRow.className = 'card__groups';
   fillCardGroups(groupsRow, item.id);
 
-  // 기록 액션(우측 열). 태그와 시각적으로 구분: 녹색 점 = '지금 기록' 동작.
+  // 기록(랩) 버튼: 우측 레일 하단(예비 슬롯 자리). 좁은 레일이라 텍스트 대신 아이콘.
   const lapEl = document.createElement('button');
   lapEl.className = 'card__lap';
   lapEl.type = 'button';
   lapEl.dataset.id = item.id;
   lapEl.title = '지금 이 순간의 값을 기록(랩)';
   lapEl.setAttribute('aria-label', `${item.label || '타임카드'} 현재 값 기록`);
-  lapEl.textContent = '기록';
-  const actions = document.createElement('div');
-  actions.className = 'card__actions';
-  actions.append(lapEl);
+  lapEl.innerHTML =
+    '<svg class="card__railicon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 3a1 1 0 0 1 1 1v.5h9.2a.8.8 0 0 1 .66 1.25L14.4 9l1.46 3.25A.8.8 0 0 1 15.2 13.5H7v6.5a1 1 0 0 1-2 0V4a1 1 0 0 1 0-1Z"/></svg>';
 
   const lapsEl = document.createElement('ul');
   lapsEl.className = 'card__laps';
@@ -254,26 +252,24 @@ function makeCard(item) {
   left.className = 'card__col card__col--left';
   left.append(labelEl, metaEl, createdRow, updatedRow, progressEl, groupsRow);
 
-  // 우측 열: 큰 시간(상단·우측·자동축소) → 기록(버튼 + 랩, 최근 외 접기).
+  // 우측 열: 큰 시간(상단·우측·자동축소) → 기록(랩) 목록. 기록 버튼은 우측 레일로 이동.
   const right = document.createElement('div');
   right.className = 'card__col card__col--right';
-  right.append(timeEl, actions, lapsEl);
+  right.append(timeEl, lapsEl);
 
   const cols = document.createElement('div');
   cols.className = 'card__cols';
   cols.append(left, right);
 
   // 4열 구조: [좌 레일] [본문(=2열 cols + 인라인 에디터)] [우 레일].
-  // 좌/우 레일은 상하 2등분 — 좌(핸들/숨기기), 우(✕/예비). 본문은 가운데 가변폭.
+  // 좌/우 레일은 상하 2등분 — 좌(핸들/숨기기), 우(✕/기록). 본문은 가운데 가변폭.
   const railLeft = document.createElement('div');
   railLeft.className = 'card__rail card__rail--left';
   railLeft.append(handle, hideBtn);
 
   const railRight = document.createElement('div');
   railRight.className = 'card__rail card__rail--right';
-  const railSpare = document.createElement('div');
-  railSpare.className = 'card__railspare'; // 추후 기능(예: 고정·메뉴) 추가용 빈 슬롯
-  railRight.append(del, railSpare);
+  railRight.append(del, lapEl); // 우상=삭제, 우하=기록
 
   const body = document.createElement('div');
   body.className = 'card__body';
@@ -287,27 +283,47 @@ function makeCard(item) {
   return refs;
 }
 
-// 기록(랩) 목록 렌더: 각 랩은 '기록 당시의 상대값 + 기록 시각'. 기준일시·기록시각 모두
-// 불변이라 값이 변하지 않으므로 매초 갱신(updateCard) 대신 데이터 변경 시에만 그린다.
+// 랩(기록) 1건을 {at, target}로 정규화. 옛 형식(ISO 문자열)은 카드의 현재 기준일시를 기준으로 본다.
+//   at=기록 시각(스냅샷), target=그 기록이 향하던 기준일시(스냅샷). 둘 다 추후 수정 가능.
+function normLap(lap, fallbackTarget) {
+  if (typeof lap === 'string') return { at: lap, target: fallbackTarget };
+  return { at: lap?.at, target: lap?.target ?? fallbackTarget };
+}
+
+// 기록(랩) 목록 렌더: 각 랩은 '기록 시각'과 '기준일시'(둘 다 편집 가능) + 둘로 계산한 상대값.
+// 값은 데이터 변경 시에만 바뀌므로 매초 갱신(updateCard) 대신 여기서만 그린다.
 function renderLaps(refs) {
-  const target = new Date(refs.item.targetISO);
   const laps = Array.isArray(refs.item.laps) ? refs.item.laps : [];
   refs.lapsEl.hidden = laps.length === 0;
   // 기록 2개 이상이면 가장 최근(laps[0])만 보이고 나머지는 접기/펼치기.
   const expanded = refs.lapsEl.dataset.expanded === '1';
   const shown = laps.length > 1 && !expanded ? laps.slice(0, 1) : laps;
-  const makeLi = (iso, i) => {
-    const at = new Date(iso);
-    const r = diff(target, at);
+  const makeLi = (lap, i) => {
+    const { at, target } = normLap(lap, refs.item.targetISO);
+    const r = diff(new Date(target), new Date(at));
     const d = DIRS[r.direction];
     const li = document.createElement('li');
     li.className = 'lap';
     const val = document.createElement('span');
     val.className = 'lap__val';
     val.textContent = (d.sign || '') + formatDuration(r);
-    const when = document.createElement('span');
-    when.className = 'lap__when';
-    when.textContent = `기록 ${formatLocal(at)}`;
+    // 편집 가능한 두 값: 기준일시 / 기록 시각(연필 어포던스).
+    const fields = document.createElement('div');
+    fields.className = 'lap__fields';
+    const mkEdit = (which, label, iso) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'lap__edit';
+      b.dataset.which = which;
+      b.dataset.index = String(i);
+      b.title = `${label} 수정`;
+      const t = document.createElement('span');
+      t.className = 'lap__edittext';
+      t.textContent = `${label} ${formatLocal(new Date(iso))}`;
+      b.append(t);
+      return b;
+    };
+    fields.append(mkEdit('target', '기준일시', target), mkEdit('at', '기록', at));
     const del = document.createElement('button');
     del.className = 'lap__del';
     del.type = 'button';
@@ -316,7 +332,7 @@ function renderLaps(refs) {
     del.title = '기록 삭제';
     del.setAttribute('aria-label', '기록 삭제');
     del.textContent = '✕';
-    li.append(val, when, del);
+    li.append(val, fields, del);
     return li;
   };
   const kids = shown.map(makeLi);
@@ -616,11 +632,13 @@ function itemById(id) {
   return list.find((t) => t.id === id);
 }
 
-// 랩(스냅샷) 기록: 기준일시는 건드리지 않고 '지금 이 순간'을 목록에 남긴다(최신 먼저).
+// 랩(스냅샷) 기록: '지금 이 순간'(at)과 그때의 기준일시(target)를 함께 남긴다(최신 먼저).
+// 둘 다 추후 수정 가능 → 기록 후 기준일시가 바뀌어도 이 기록은 독립적으로 유지된다.
 function addLap(id) {
   const item = itemById(id);
   if (!item) return;
-  const laps = [new Date().toISOString(), ...(Array.isArray(item.laps) ? item.laps : [])];
+  const snap = { at: new Date().toISOString(), target: item.targetISO };
+  const laps = [snap, ...(Array.isArray(item.laps) ? item.laps : [])];
   list = updateItem(localStorage, id, { laps });
   rebuild();
   srStatus.textContent = '현재 값 기록됨';
@@ -636,12 +654,19 @@ function removeLap(id, index) {
 
 // ── 인라인 필드 편집: 제목/기준일시를 클릭하면 그 자리(필드 바로 아래)에 입력창이 열린다 ──
 // field: 'title'(텍스트) | 'date'(자유 텍스트→해석). 한 카드에 하나만. 같은 필드 재클릭 시 닫힘(토글).
-const FIELD_LABELS = { title: '제목 수정', date: '기준일시 수정', start: '진행 시작 일시' };
-function openFieldEditor(card, id, field) {
+const FIELD_LABELS = {
+  title: '제목 수정',
+  date: '기준일시 수정',
+  start: '진행 시작 일시',
+  'lap-at': '기록 시각 수정',
+  'lap-target': '기록 기준일시 수정',
+};
+function openFieldEditor(card, id, field, lapIndex = null) {
+  const lapKey = String(lapIndex ?? '');
   const existing = card.querySelector('.card__editor');
   if (existing) {
-    const sameField = existing.dataset.field === field;
-    existing.remove(); // 다른 필드면 닫고 새로, 같은 필드면 토글로 닫기만
+    const sameField = existing.dataset.field === field && existing.dataset.lap === lapKey;
+    existing.remove(); // 다른 필드면 닫고 새로, 같은 필드(같은 기록)면 토글로 닫기만
     if (sameField) {
       card.removeAttribute('data-editing');
       return;
@@ -649,9 +674,13 @@ function openFieldEditor(card, id, field) {
   }
   const item = itemById(id);
   if (!item) return;
+  // 랩 필드: 해당 기록의 at/target ISO를 프리필 값으로.
+  const lap =
+    lapIndex != null ? normLap((item.laps || [])[lapIndex], item.targetISO) : null;
   const editor = document.createElement('div');
   editor.className = 'card__editor';
   editor.dataset.field = field;
+  editor.dataset.lap = lapKey;
   // 무엇을 수정하는지 명시하는 라벨(전체폭 첫 줄).
   const editLabel = document.createElement('span');
   editLabel.className = 'card__editlabel';
@@ -661,7 +690,12 @@ function openFieldEditor(card, id, field) {
   input.type = 'text';
   input.className = 'card__editinput';
   input.autocomplete = 'off';
-  if (field === 'date') {
+  if (field === 'lap-at' || field === 'lap-target') {
+    // 기록의 기록시각/기준일시: 자유 텍스트 → 해석. 현재값을 파싱 가능한 형태로 채운다.
+    input.value = toLocalISO(new Date(field === 'lap-at' ? lap.at : lap.target)).replace('T', ' ');
+    input.placeholder = '예: 260626금1800 · 2026-06-26 18:00 · 오후 6시';
+    input.spellcheck = false;
+  } else if (field === 'date') {
     // 기준일시도 추가영역처럼 '자유 텍스트 → 해석' 방식. 현재값을 파싱 가능한 형태로 채운다.
     input.value = toLocalISO(new Date(item.targetISO)).replace('T', ' ');
     input.placeholder = '예: 260626금1800 · 2026-06-26 18:00 · 오후 6시';
@@ -698,8 +732,8 @@ function openFieldEditor(card, id, field) {
   cancel.textContent = '취소';
   editor.append(editLabel, input, save, cancel);
 
-  // 기준일시/시작: 입력하는 동안 해석 결과를 라이브 미리보기로 보여준다.
-  if (field === 'date' || field === 'start') {
+  // 기준일시/시작/랩: 입력하는 동안 해석 결과를 라이브 미리보기로 보여준다.
+  if (field === 'date' || field === 'start' || field === 'lap-at' || field === 'lap-target') {
     const preview = document.createElement('p');
     preview.className = 'card__editpreview';
     editor.append(preview);
@@ -726,9 +760,10 @@ function openFieldEditor(card, id, field) {
     refresh();
   }
 
-  // 편집기는 2열(.card__cols) 또는 진행률 아래 전체폭으로 삽입(열 내부에 넣으면 레이아웃 깨짐).
+  // 편집기는 2열(.card__cols) 아래 전체폭으로 삽입(열 내부에 넣으면 레이아웃 깨짐).
   const ANCHOR = { date: '.card__meta', start: '.card__progress', title: '.card__label' };
-  const anchor = card.querySelector(ANCHOR[field]);
+  // 랩 필드는 우측 열의 기록 목록 아래 → cols 다음에 전체폭으로.
+  const anchor = card.querySelector(ANCHOR[field] || '.card__cols');
   (anchor.closest('.card__cols, .card__row') || anchor).after(editor);
   card.dataset.editing = field; // 수정 중인 원본 필드를 CSS로 강조
   input.focus();
@@ -736,8 +771,28 @@ function openFieldEditor(card, id, field) {
 }
 
 function commitField(card, id, field) {
-  const input = card.querySelector('.card__editor .card__editinput');
+  const editor = card.querySelector('.card__editor');
+  const input = editor?.querySelector('.card__editinput');
   if (!input) return;
+  if (field === 'lap-at' || field === 'lap-target') {
+    const date = parseFlexible(input.value);
+    if (!date) {
+      input.setAttribute('aria-invalid', 'true');
+      return;
+    }
+    const item = itemById(id);
+    const idx = +editor.dataset.lap;
+    if (item && Array.isArray(item.laps) && item.laps[idx] != null) {
+      const which = field === 'lap-at' ? 'at' : 'target';
+      const laps = item.laps.map((l, i) =>
+        i === idx ? { ...normLap(l, item.targetISO), [which]: toLocalISO(date) } : l,
+      );
+      list = updateItem(localStorage, id, { laps });
+      srStatus.textContent = which === 'at' ? '기록 시각 변경됨' : '기록 기준일시 변경됨';
+    }
+    rebuild();
+    return;
+  }
   if (field === 'date') {
     const date = parseFlexible(input.value);
     if (!date) {
@@ -789,6 +844,9 @@ listEl.addEventListener('click', (e) => {
     srStatus.textContent = willHide ? '타임카드 숨김' : '타임카드 다시 표시';
   } else if (lapDel) {
     removeLap(id, +lapDel.dataset.index);
+  } else if (e.target.closest('.lap__edit')) {
+    const b = e.target.closest('.lap__edit'); // 기록의 기준일시/기록시각 인라인 수정
+    openFieldEditor(card, id, b.dataset.which === 'at' ? 'lap-at' : 'lap-target', +b.dataset.index);
   } else if (e.target.closest('.card__lap')) {
     addLap(id);
   } else if (e.target.closest('.card__save')) {

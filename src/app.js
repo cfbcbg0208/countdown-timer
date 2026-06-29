@@ -488,12 +488,21 @@ function renderViz(refs, item, direction) {
   refs.vizEl.classList.toggle('card__viz--past', !future); // 과거 = 적색 채움
   // 라벨(카테고리명만) 위치는 px로 충돌 회피(밴드 폭 기준). 삽입 전(0)이면 근사폭.
   const W = refs.vizEl.clientWidth || 240;
-  const ROW_H = 12;
+  const ROW_H = 26; // 라벨 묶음(이름+날짜+시간 3줄) 한 단 높이(px)
   const GAP = 5;
   const items = pts.map((p) => {
     const f = elapsedFraction(min, max, p.ms);
     const xPct = 8 + f * 84; // 8~92%: 가장자리 라벨 잘림 방지
-    return { ...p, xPct, xPx: (xPct / 100) * W, w: p.label.length * 9 + 6, date: formatCompact(new Date(p.ms)) };
+    const c = formatCompact(new Date(p.ms)); // "YYMMDD요일HHMMSS"(13자)
+    return {
+      ...p,
+      xPct,
+      xPx: (xPct / 100) * W,
+      w: Math.max(p.label.length, 7) * 6 + 8, // 날짜줄(7자)이 가장 넓음
+      full: c,
+      datePart: c.slice(0, 7), // 260630화
+      timePart: c.slice(7), // 032559
+    };
   });
   const sorted = [...items].sort((a, b) => a.xPx - b.xPx);
   const rowRight = [];
@@ -507,14 +516,16 @@ function renderViz(refs, item, direction) {
   const marks = items
     .map(
       (it) =>
-        `<span class="card__vizmark ${it.cls}" style="left:${it.xPct.toFixed(1)}%" title="${esc(it.label)} ${it.date}"></span>`,
+        `<span class="card__vizmark ${it.cls}" style="left:${it.xPct.toFixed(1)}%" title="${esc(it.label)} ${it.full}"></span>`,
     )
     .join('');
+  // 각 노드 아래: 이름 + 컴팩트 타임스탬프 2줄(날짜 / 시간).
   const labels = items
     .map(
       (it) =>
         `<span class="card__vizlabel ${it.cls}" style="left:${it.xPct.toFixed(1)}%;top:${it.row * ROW_H}px" ` +
-        `title="${esc(it.label)} ${it.date}">${esc(it.label)}</span>`,
+        `title="${esc(it.label)} ${it.full}"><b>${esc(it.label)}</b>` +
+        `<i>${esc(it.datePart)}</i><i>${esc(it.timePart)}</i></span>`,
     )
     .join('');
   refs.vizEl.innerHTML =

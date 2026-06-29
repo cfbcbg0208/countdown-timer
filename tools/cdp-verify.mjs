@@ -639,8 +639,9 @@ async function main() {
        bandInBody: !!document.querySelector('.card__body > .card__viz'),
        progressHidden: document.querySelector('.card__progress')?.hidden,
        marks: document.querySelectorAll('.card__viz-bar .card__vizmark').length,
-       labels: [...document.querySelectorAll('.card__viz-labels .card__vizlabel')].map((e) => e.textContent),
-       labelNoDate: ![...document.querySelectorAll('.card__viz-labels .card__vizlabel')].some((e) => /\\d/.test(e.textContent)),
+       labels: [...document.querySelectorAll('.card__viz-labels .card__vizlabel b')].map((e) => e.textContent),
+       tsLines: document.querySelectorAll('.card__viz-labels .tl--target i').length, // 날짜/시간 2줄
+       tsDate: document.querySelector('.card__viz-labels .tl--target i')?.textContent, // 260620…
        labelHasTooltip: /\\d{6}/.test(document.querySelector('.card__viz-labels .tl--target')?.title || ''),
        pastFillW: parseFloat(document.querySelector('.card__viz--past .card__viz-fill')?.style.width || '0'),
        labelsPositioned: [...document.querySelectorAll('.card__viz-labels .card__vizlabel')].every((e) => e.style.left),
@@ -654,8 +655,9 @@ async function main() {
   if (!tl.progressHidden) fails.push('과거 카드에서 zone2 진행률(도넛)이 숨겨지지 않음');
   if (tl.marks !== 4) fails.push(`타임라인 마커 4개(등록·수정·기준·현재) 기대, 실제 ${tl.marks}`);
   if (tl.labels.slice().sort().join() !== ['기준', '등록', '수정', '현재'].sort().join())
-    fails.push(`타임라인 라벨 [등록,수정,기준,현재] 기대, 실제 [${tl.labels}]`);
-  if (!tl.labelNoDate) fails.push('타임라인 라벨에 일시가 노출됨(라벨만 표기 기대)');
+    fails.push(`타임라인 라벨(이름) [등록,수정,기준,현재] 기대, 실제 [${tl.labels}]`);
+  if (tl.tsLines !== 2) fails.push(`각 노드 아래 타임스탬프 2줄(날짜/시간) 기대, 실제 ${tl.tsLines}줄`);
+  if (!/^\d{6}/.test(tl.tsDate || '')) fails.push(`노드 날짜줄(예 260620화) 형식 실패: "${tl.tsDate}"`);
   if (!tl.labelHasTooltip) fails.push('타임라인 라벨 툴팁(title)에 컴팩트 일시 없음');
   if (!(tl.pastFillW > 0)) fails.push(`과거 밴드 적색 채움(기준→현재) 없음(width=${tl.pastFillW})`);
   if (!tl.labelsPositioned) fails.push('타임라인 라벨이 점 위치(left)로 배치되지 않음');

@@ -215,7 +215,7 @@ function makeCard(item) {
   const timeEl = document.createElement('div');
   timeEl.className = 'card__time';
 
-  // 진행률(미래 카드): 바 / 도넛파이(가운데 %) / 퍼센트 텍스트. 클릭하면 진행 시작점 지정.
+  // 진행률 도넛+퍼센트(zone2, 미래 카드만). 클릭하면 진행 시작점 지정. 바·마커는 아래 전체폭 밴드로.
   const progressEl = document.createElement('div');
   progressEl.className = 'card__progress';
   progressEl.title = '클릭하여 진행 시작점 지정 (일시 · N% · 기간)';
@@ -224,19 +224,15 @@ function makeCard(item) {
   const pieLabelEl = document.createElement('span');
   pieLabelEl.className = 'card__pielabel';
   pieEl.append(pieLabelEl);
-  const barEl = document.createElement('div');
-  barEl.className = 'card__bar';
-  const barFillEl = document.createElement('div');
-  barFillEl.className = 'card__bar-fill';
-  barEl.append(barFillEl);
   const pctEl = document.createElement('span');
   pctEl.className = 'card__pct'; // 독립 퍼센트 텍스트(도넛과 별개 토글)
-  progressEl.append(pieEl, barEl, pctEl);
+  progressEl.append(pieEl, pctEl);
 
-  // 과거 카드: 등록/수정/기준/현재 일시를 타임라인 바에 마커로 표시(updateProgress가 채움).
-  const timelineEl = document.createElement('div');
-  timelineEl.className = 'card__timeline';
-  timelineEl.hidden = true;
+  // 전체폭 시각화 밴드(2열 아래, zone2+zone3 폭): 미래=진행바+시작/현재/기준 마커,
+  // 과거=등록/수정/기준/현재 타임라인. renderViz가 innerHTML로 채움.
+  const vizEl = document.createElement('div');
+  vizEl.className = 'card__viz';
+  vizEl.hidden = true;
 
   // 기준일시(클릭 편집). 값 + [기준일시] 칩은 updateCard가 갱신. showTarget로 표시 토글.
   const metaEl = document.createElement('button');
@@ -271,7 +267,7 @@ function makeCard(item) {
   // 진행률을 좌측 열에 둬서 파이·바가 중앙 구분선을 넘어 우측 열을 침범하지 않게 한다.
   const left = document.createElement('div');
   left.className = 'card__col card__col--left';
-  left.append(labelEl, metaEl, createdRow, updatedRow, progressEl, timelineEl, groupsRow);
+  left.append(labelEl, metaEl, createdRow, updatedRow, progressEl, groupsRow);
 
   // 우측 열(zone3): 큰 시간(상단·우측·자동축소) → 기록(랩) 목록(우측 하단). 기록 버튼은 우측 레일.
   const right = document.createElement('div');
@@ -294,11 +290,11 @@ function makeCard(item) {
 
   const body = document.createElement('div');
   body.className = 'card__body';
-  body.append(cols);
+  body.append(cols, vizEl); // 밴드는 2열 아래 전체폭
 
   card.append(railLeft, body, railRight);
 
-  const refs = { card, timeEl, progressEl, barEl, barFillEl, pieEl, pieLabelEl, pctEl, timelineEl, metaEl, lapsEl, item, dir: null };
+  const refs = { card, timeEl, progressEl, pieEl, pieLabelEl, pctEl, vizEl, metaEl, lapsEl, item, dir: null };
   renderLaps(refs);
   updateCard(refs);
   return refs;
@@ -434,60 +430,76 @@ const TL_POINTS = [
 ];
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-// 진행률 시각화: 미래=바·도넛·퍼센트(설정 순서/표시), 과거=등록/수정/기준/현재 타임라인 바.
+// 진행률 시각화: zone2 도넛/%(미래) + 전체폭 밴드(미래=진행바+시작/현재/기준, 과거=등록/수정/기준/현재).
 function updateProgress(refs, item, target, direction) {
-  const order = settings.progressOrder;
   const show = settings.progressShow;
+  const order = settings.progressOrder;
   const future = direction === 'future';
-  // 미래 진행률(바/도넛/퍼센트)
-  if (future && order.some((p) => show[p])) {
+  // zone2: 도넛 + 독립 % (미래 + pie/percent 토글)
+  if (future && (show.pie || show.percent)) {
     const start =
       item.startISO || (settings.progressBase === 'updated' ? item.updatedAt : item.createdAt) || item.createdAt;
     const f = elapsedFraction(start, target);
-    const pct = (f * 100).toFixed(1);
     const pctRound = Math.round(f * 100);
     refs.progressEl.hidden = false;
-    refs.barFillEl.style.width = `${pct}%`;
-    refs.pieEl.style.background = `conic-gradient(var(--future) ${pct}%, var(--track) 0)`;
-    refs.pieLabelEl.textContent = `${pctRound}%`; // 도넛 가운데 %
+    refs.pieEl.style.background = `conic-gradient(var(--future) ${(f * 100).toFixed(1)}%, var(--track) 0)`;
+    refs.pieLabelEl.textContent = `${pctRound}%`;
     refs.pctEl.textContent = `${pctRound}%`;
-    const els = { bar: refs.barEl, pie: refs.pieEl, percent: refs.pctEl };
-    order.forEach((p, i) => {
-      els[p].style.order = String(i);
-      els[p].hidden = !show[p];
-    });
+    refs.pieEl.hidden = !show.pie;
+    refs.pctEl.hidden = !show.percent;
+    refs.pieEl.style.order = order.indexOf('pie'); // 도넛↔% 순서(설정)
+    refs.pctEl.style.order = order.indexOf('percent');
     refs.progressEl.setAttribute('aria-label', `진행률 ${pctRound}%`);
   } else {
     refs.progressEl.hidden = true;
   }
-  // 과거(또는 지금) 카드: 등록/수정/기준/현재 일시 타임라인
-  if (!future) renderTimeline(refs, item);
-  else refs.timelineEl.hidden = true;
+  // 전체폭 밴드: 미래는 bar 토글 시, 과거는 항상.
+  if (future && !show.bar) refs.vizEl.hidden = true;
+  else renderViz(refs, item, direction);
 }
 
-// 과거 카드 타임라인: 등록·수정·기준·현재 일시를 [최소~현재] 구간에 점으로,
-// 라벨은 점 아래(x축 아래)에 두되 겹치지 않게 최소 행(stagger)으로 배치. 일시는 툴팁에만.
-function renderTimeline(refs, item) {
+// 전체폭 밴드(미래/과거 공통): 트랙(+미래 채움) + ▲마커 + 충돌회피 라벨('현재'는 일시 생략).
+function renderViz(refs, item, direction) {
+  const future = direction === 'future';
   const now = Date.now();
-  const pts = TL_POINTS.map((p) => ({ ...p, ms: new Date(p.isoOf(item)).getTime() }))
-    .filter((p) => Number.isFinite(p.ms))
-    .concat([{ key: 'now', label: '현재', ms: now, cls: 'tl--now' }])
-    .sort((a, b) => a.ms - b.ms);
-  const min = pts[0].ms;
-  const max = pts[pts.length - 1].ms;
-  refs.timelineEl.hidden = false;
-  // 라벨 폭/위치는 px로 계산해 충돌 회피(열 폭 기준). DOM 삽입 전(0)이면 근사폭.
-  const W = refs.timelineEl.clientWidth || 140;
-  const ROW_H = 11; // 라벨 한 줄 높이(px)
-  const GAP = 5; // 같은 행 라벨 사이 최소 간격(px)
+  let pts;
+  let fillF = 0;
+  if (future) {
+    const start = item.startISO || (settings.progressBase === 'updated' ? item.updatedAt : item.createdAt) || item.createdAt;
+    const sMs = new Date(start).getTime();
+    const tMs = new Date(item.targetISO).getTime();
+    fillF = elapsedFraction(sMs, tMs, now); // 시작→현재 채움
+    pts = [
+      { cls: 'tl--start', label: '시작', ms: sMs },
+      { cls: 'tl--now', label: '현재', ms: now },
+      { cls: 'tl--target', label: '기준', ms: tMs },
+    ];
+  } else {
+    pts = TL_POINTS.map((p) => ({ cls: p.cls, label: p.label, ms: new Date(p.isoOf(item)).getTime() }))
+      .filter((p) => Number.isFinite(p.ms))
+      .concat([{ cls: 'tl--now', label: '현재', ms: now }])
+      .sort((a, b) => a.ms - b.ms);
+  }
+  const min = Math.min(...pts.map((p) => p.ms));
+  const max = Math.max(...pts.map((p) => p.ms));
+  refs.vizEl.hidden = false;
+  refs.vizEl.classList.toggle('card__viz--editable', future); // 미래 바 클릭 → 시작점 편집
+  // 라벨 폭/위치는 px로(밴드 폭 기준). 삽입 전(0)이면 근사폭.
+  const W = refs.vizEl.clientWidth || 240;
+  const ROW_H = 19; // 라벨 묶음(라벨+일시 2줄) 한 줄 높이(px)
+  const GAP = 6;
   const items = pts.map((p) => {
     const f = elapsedFraction(min, max, p.ms);
-    const xPct = 8 + f * 84; // 8~92%: 가장자리 라벨이 열 밖으로 잘리지 않게
-    return { ...p, xPct, xPx: (xPct / 100) * W, w: p.label.length * 9 + 4 };
+    const xPct = 8 + f * 84; // 8~92%: 가장자리 라벨 잘림 방지
+    const noDate = p.cls === 'tl--now';
+    const date = noDate ? '' : formatCompact(new Date(p.ms));
+    const chars = noDate ? p.label.length : Math.max(p.label.length, date.length);
+    return { ...p, xPct, xPx: (xPct / 100) * W, w: chars * 5 + 8, date, noDate };
   });
-  // 행 배정: x 오름차순 그리디 — 겹치면 다음 행으로(최소 행 수).
+  // 행 배정: x 오름차순 그리디 → 겹치면 다음 행(최소 행).
+  const sorted = [...items].sort((a, b) => a.xPx - b.xPx);
   const rowRight = [];
-  for (const it of items) {
+  for (const it of sorted) {
     let r = 0;
     while (r < rowRight.length && it.xPx - it.w / 2 < rowRight[r] + GAP) r++;
     it.row = r;
@@ -497,20 +509,22 @@ function renderTimeline(refs, item) {
   const marks = items
     .map(
       (it) =>
-        `<span class="card__tlmark ${it.cls}" style="left:${it.xPct.toFixed(1)}%" title="${esc(it.label)} ${formatCompact(new Date(it.ms))}"></span>`,
+        `<span class="card__vizmark ${it.cls}" style="left:${it.xPct.toFixed(1)}%" title="${esc(it.label)}${it.date ? ' ' + it.date : ''}"></span>`,
     )
     .join('');
   const labels = items
     .map(
       (it) =>
-        `<span class="card__tlleg ${it.cls}" style="left:${it.xPct.toFixed(1)}%;top:${it.row * ROW_H}px" ` +
-        `title="${esc(it.label)} ${formatCompact(new Date(it.ms))}">${esc(it.label)}</span>`,
+        `<span class="card__vizlabel ${it.cls}" style="left:${it.xPct.toFixed(1)}%;top:${it.row * ROW_H}px" ` +
+        `title="${esc(it.label)}${it.date ? ' ' + it.date : ''}"><b>${esc(it.label)}</b>` +
+        `${it.noDate ? '' : `<i>${esc(it.date)}</i>`}</span>`,
     )
     .join('');
-  refs.timelineEl.innerHTML =
-    `<div class="card__tlbar"><div class="card__tltrack"></div>${marks}</div>` +
-    `<div class="card__tllabels" style="height:${rows * ROW_H}px">${labels}</div>`;
-  refs.timelineEl.setAttribute('aria-label', '등록·수정·기준·현재 일시 타임라인');
+  refs.vizEl.innerHTML =
+    `<div class="card__viz-bar"><div class="card__viz-track">` +
+    `<div class="card__viz-fill" style="width:${future ? (fillF * 100).toFixed(1) : 0}%"></div></div>${marks}</div>` +
+    `<div class="card__viz-labels" style="height:${rows * ROW_H}px">${labels}</div>`;
+  refs.vizEl.setAttribute('aria-label', future ? '진행률 타임라인' : '등록·수정·기준·현재 일시 타임라인');
 }
 
 // 데이터 변경 시: 저장된(수동) 순서 그대로 목록 DOM 재구성.
@@ -1058,8 +1072,8 @@ listEl.addEventListener('click', (e) => {
     openFieldEditor(card, id, 'title');
   } else if (e.target.closest('.card__meta')) {
     openFieldEditor(card, id, 'date');
-  } else if (e.target.closest('.card__progress')) {
-    openFieldEditor(card, id, 'start'); // 진행률 바/파이 클릭 → 진행 시작 일시 지정
+  } else if (e.target.closest('.card__progress, .card__viz--editable')) {
+    openFieldEditor(card, id, 'start'); // 도넛/% 또는 미래 진행바 클릭 → 진행 시작점 지정
   } else if (e.target.closest('.card__group')) {
     viewGroup(e.target.closest('.card__group').dataset.gid); // 소속 조합 칩 → 그 조합 보기
   } else if (e.target.closest('.card__groupbtn')) {

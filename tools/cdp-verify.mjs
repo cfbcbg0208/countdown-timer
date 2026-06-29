@@ -161,8 +161,14 @@ async function main() {
     `(() => ({
        cards: document.querySelectorAll('.card').length,
        chips: document.querySelectorAll('.card .chip').length,
-       hasBar: !!document.querySelector('.card__bar-fill'),
+       hasBar: !!document.querySelector('.card__viz-fill'),
        hasPie: !!document.querySelector('.card__pie'),
+       // 미래 카드: 전체폭 밴드가 cols 아래(.card__body>.card__viz) + 시작/현재/기준 마커 3 + 채움>0 + 도넛 zone2
+       bandInBody: !!document.querySelector('.card__body > .card__viz'),
+       bandMarks: document.querySelectorAll('.card__viz .card__vizmark').length,
+       bandStart: !!document.querySelector('.card__viz .tl--start'),
+       bandFillW: parseFloat(document.querySelector('.card__viz-fill')?.style.width || '0'),
+       pieInZone2: !!document.querySelector('.card__col--left .card__progress .card__pie'),
        drawerTitle: document.getElementById('drawer-title')?.textContent.trim(),
        dirChip: document.querySelector('.card__time .chip')?.textContent,
        theme: document.documentElement.dataset.theme,
@@ -209,7 +215,12 @@ async function main() {
   const fails = [];
   if (checks.cards !== 1) fails.push(`카드 1개 기대, 실제 ${checks.cards}`);
   if (checks.chips < 3) fails.push(`칩 3개 이상 기대, 실제 ${checks.chips}`);
-  if (!checks.hasBar) fails.push('진행률 바 없음');
+  if (!checks.hasBar) fails.push('진행률 바(전체폭 밴드 채움) 없음');
+  if (!checks.bandInBody) fails.push('전체폭 밴드가 본문(.card__body > .card__viz) 아래에 없음');
+  if (checks.bandMarks !== 3) fails.push(`미래 밴드 마커 3개(시작·현재·기준) 기대, 실제 ${checks.bandMarks}`);
+  if (!checks.bandStart) fails.push('미래 밴드에 시작 마커(.tl--start) 없음');
+  if (!(checks.bandFillW > 0)) fails.push(`미래 밴드 진행 채움(시작→현재) 없음(width=${checks.bandFillW})`);
+  if (!checks.pieInZone2) fails.push('도넛(.card__pie)이 zone2(좌측 열)에 없음');
   if (!checks.hasPie) fails.push('진행률 파이 없음');
   if (!String(checks.drawerTitle).includes('타임카드 추가')) fails.push(`드로어 제목="${checks.drawerTitle}"`);
   if (checks.dirChip !== '남은시간') fails.push(`방향 칩="${checks.dirChip}" (남은시간 기대)`);
@@ -499,7 +510,7 @@ async function main() {
     `(() => ({
        chips: [...document.querySelectorAll('#set-progress-parts .ppart')].map((b) => b.dataset.part),
        pressed: [...document.querySelectorAll('#set-progress-parts .ppart')].map((b) => b.getAttribute('aria-pressed')),
-       barShown: !document.querySelector('.card__bar')?.hidden,
+       barShown: !document.querySelector('.card__viz')?.hidden,
        pieShown: !document.querySelector('.card__pie')?.hidden,
        pctShown: !document.querySelector('.card__pct')?.hidden,
        pieLabel: document.querySelector('.card__pielabel')?.textContent,
@@ -617,25 +628,27 @@ async function main() {
   const tl = await evalJS(
     browser,
     `(() => ({
-       timelineShown: !document.querySelector('.card__timeline')?.hidden,
+       vizShown: !document.querySelector('.card__viz')?.hidden,
+       bandInBody: !!document.querySelector('.card__body > .card__viz'),
        progressHidden: document.querySelector('.card__progress')?.hidden,
-       marks: document.querySelectorAll('.card__tlbar .card__tlmark').length,
-       labels: [...document.querySelectorAll('.card__tllabels .card__tlleg')].map((e) => e.textContent),
-       labelNoDate: !/\\d/.test(document.querySelector('.card__tllabels .card__tlleg')?.textContent || ''),
-       labelHasTooltip: /\\d{6}/.test(document.querySelector('.card__tllabels .card__tlleg')?.title || ''),
-       labelsPositioned: [...document.querySelectorAll('.card__tllabels .card__tlleg')].every((e) => e.style.left),
-       hasNow: !!document.querySelector('.card__timeline .tl--now'),
-       hasTarget: !!document.querySelector('.card__timeline .tl--target'),
-       nowLeft: parseFloat(document.querySelector('.card__tlbar .tl--now')?.style.left || '0'),
+       marks: document.querySelectorAll('.card__viz-bar .card__vizmark').length,
+       labels: [...document.querySelectorAll('.card__viz-labels .card__vizlabel b')].map((e) => e.textContent),
+       nowNoDate: !document.querySelector('.card__viz-labels .tl--now i'),
+       targetHasDate: !!document.querySelector('.card__viz-labels .tl--target i'),
+       labelsPositioned: [...document.querySelectorAll('.card__viz-labels .card__vizlabel')].every((e) => e.style.left),
+       hasNow: !!document.querySelector('.card__viz .tl--now'),
+       hasTarget: !!document.querySelector('.card__viz .tl--target'),
+       nowLeft: parseFloat(document.querySelector('.card__viz-bar .tl--now')?.style.left || '0'),
      }))()`,
   );
-  if (!tl.timelineShown) fails.push('과거 카드 타임라인이 표시되지 않음');
-  if (!tl.progressHidden) fails.push('과거 카드에서 미래용 진행률이 숨겨지지 않음');
+  if (!tl.vizShown) fails.push('과거 카드 타임라인 밴드가 표시되지 않음');
+  if (!tl.bandInBody) fails.push('과거 밴드가 본문 전체폭(.card__body > .card__viz)에 없음');
+  if (!tl.progressHidden) fails.push('과거 카드에서 zone2 진행률(도넛)이 숨겨지지 않음');
   if (tl.marks !== 4) fails.push(`타임라인 마커 4개(등록·수정·기준·현재) 기대, 실제 ${tl.marks}`);
   if (tl.labels.slice().sort().join() !== ['기준', '등록', '수정', '현재'].sort().join())
     fails.push(`타임라인 라벨 [등록,수정,기준,현재] 기대, 실제 [${tl.labels}]`);
-  if (!tl.labelNoDate) fails.push('타임라인 라벨에 일시가 노출됨(라벨만 표기 기대)');
-  if (!tl.labelHasTooltip) fails.push('타임라인 라벨 툴팁(title)에 컴팩트 일시 없음');
+  if (!tl.nowNoDate) fails.push("'현재' 라벨에 일시가 표기됨(비워두기 기대)");
+  if (!tl.targetHasDate) fails.push("'기준' 라벨에 컴팩트 일시가 없음(현재 외 마커는 일시 표기 기대)");
   if (!tl.labelsPositioned) fails.push('타임라인 라벨이 점 위치(left)로 배치되지 않음');
   if (!(tl.hasNow && tl.hasTarget)) fails.push('타임라인에 현재/기준 마커 누락');
   if (tl.nowLeft < 88) fails.push(`현재 마커가 우측 끝(~92%) 아님: ${tl.nowLeft}`);

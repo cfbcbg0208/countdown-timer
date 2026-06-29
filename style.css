@@ -427,19 +427,6 @@ kbd {
 /* 바·파이·퍼센트의 순서(flex order)·표시(hidden)는 updateProgress가 설정대로 제어.
    연필 어포던스(::after)는 항상 맨 끝에 오도록 큰 order. */
 .card__progress::after { order: 9; }
-.card__bar {
-  flex: 1;
-  height: 6px;
-  background: var(--track);
-  border-radius: 999px;
-  overflow: hidden;
-}
-.card__bar-fill {
-  height: 100%;
-  background: var(--future); /* 진행률은 미래 카드 전용 → 미래색(청색) */
-  border-radius: 999px;
-  transition: width 0.25s linear;
-}
 /* 도넛 파이: 원 테두리=진행, 가운데 구멍에 % 표시(파이+퍼센트 합침). */
 .card__pie {
   position: relative;
@@ -474,50 +461,58 @@ kbd {
   color: var(--future);
   line-height: 1.1;
 }
-.card__pct[hidden], .card__bar[hidden], .card__pie[hidden] { display: none; }
+.card__pct[hidden], .card__pie[hidden] { display: none; }
 
-/* 과거 카드 타임라인: 색별 점(바) + 하단 색별 범례(라벨 잘림·겹침 없이 항상 식별). */
-.card__timeline { margin-top: 0.4rem; }
-.card__timeline[hidden] { display: none; }
-.card__tlbar { position: relative; height: 0.8rem; }
-.card__tltrack {
+/* 전체폭 시각화 밴드(2열 아래, zone2+zone3): 트랙(+미래 채움) + ▲마커 + 충돌회피 라벨.
+   미래=진행바+시작/현재/기준, 과거=등록/수정/기준/현재 타임라인. */
+.card__viz { margin-top: 0.4rem; }
+.card__viz[hidden] { display: none; }
+.card__viz--editable { cursor: pointer; }
+.card__viz-bar { position: relative; height: 0.95rem; }
+.card__viz-track {
   position: absolute;
   left: 8%;
   right: 8%;
-  top: 0.36rem;
-  height: 4px;
+  top: 0.15rem;
+  height: 6px;
   background: var(--track);
   border-radius: 999px;
+  overflow: hidden;
 }
-.card__tlmark {
+.card__viz-fill { height: 100%; background: var(--future); border-radius: 999px; }
+/* ▲ 마커: 트랙 아래에서 위(트랙)를 가리키는 삼각형, 점 위치(left%)에 */
+.card__vizmark {
   position: absolute;
-  top: 0.24rem;
+  top: 0.5rem;
   transform: translateX(-50%);
-  width: 0.55rem;
-  height: 0.55rem;
-  border-radius: 50%;
-  border: 1.5px solid var(--card);
-  box-sizing: border-box;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 6px solid var(--muted);
 }
-/* 라벨: 점 아래(x축 아래)에 점 위치대로 절대배치. 겹치면 renderTimeline이 top으로 단을 내림. */
-.card__tllabels { position: relative; margin-top: 0.08rem; }
-.card__tlleg {
+/* 라벨(라벨+일시 2줄): 점 아래에 점 위치대로 절대배치, 겹치면 renderViz가 top으로 단을 내림. */
+.card__viz-labels { position: relative; margin-top: 0.05rem; }
+.card__vizlabel {
   position: absolute;
   transform: translateX(-50%);
-  font-size: 0.56rem;
-  font-weight: 700;
-  line-height: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.05;
   white-space: nowrap;
-  font-variant-numeric: tabular-nums;
 }
-.tl--created.card__tlmark { background: var(--accent); }
-.tl--created.card__tlleg { color: var(--accent); }
-.tl--updated.card__tlmark { background: var(--muted); }
-.tl--updated.card__tlleg { color: var(--fg); }
-.tl--target.card__tlmark { background: var(--past); }
-.tl--target.card__tlleg { color: var(--past); }
-.tl--now.card__tlmark { background: var(--future); }
-.tl--now.card__tlleg { color: var(--future); }
+.card__vizlabel b { font-size: 0.56rem; font-weight: 800; }
+.card__vizlabel i { font-size: 0.46rem; font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* 색: 시작/등록=accent · 수정=fg · 기준=past · 현재=future */
+.tl--start.card__vizmark, .tl--created.card__vizmark { border-bottom-color: var(--accent); }
+.tl--start.card__vizlabel b, .tl--created.card__vizlabel b { color: var(--accent); }
+.tl--updated.card__vizmark { border-bottom-color: var(--muted); }
+.tl--updated.card__vizlabel b { color: var(--fg); }
+.tl--target.card__vizmark { border-bottom-color: var(--past); }
+.tl--target.card__vizlabel b { color: var(--past); }
+.tl--now.card__vizmark { border-bottom-color: var(--future); }
+.tl--now.card__vizlabel b { color: var(--future); }
 
 /* 기준일시: 값(자르기) + [기준일시] 칩(고정). 칩이 항상 보이도록 날짜만 줄어든다. */
 .card__meta {

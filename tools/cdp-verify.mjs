@@ -538,6 +538,13 @@ async function main() {
     "document.querySelector('#set-progress-parts .ppart[data-part=\"percent\"]')?.getAttribute('aria-pressed')",
   );
   if (pctOn !== 'true') fails.push(`퍼센트 칩 켜기 후 aria-pressed=true 기대, 실제 ${pctOn}`);
+  // %중복 수정: 도넛+독립% 둘 다 켜지면 독립%만 보이고 도넛 가운데 %는 빈다(두 번 안 나옴).
+  const dbl = await evalJS(
+    browser,
+    `(() => ({ pctShown: !document.querySelector('.card__pct')?.hidden, pieLabel: document.querySelector('.card__pielabel')?.textContent }))()`,
+  );
+  if (!dbl.pctShown) fails.push('퍼센트 켜기 후 독립 %가 표시되지 않음');
+  if (dbl.pieLabel !== '') fails.push(`퍼센트+도넛 동시 켜짐 시 도넛 가운데 %는 비어야 함(중복 방지), 실제 "${dbl.pieLabel}"`);
   // 다시 꺼서 원복
   await evalJS(
     browser,
@@ -632,9 +639,10 @@ async function main() {
        bandInBody: !!document.querySelector('.card__body > .card__viz'),
        progressHidden: document.querySelector('.card__progress')?.hidden,
        marks: document.querySelectorAll('.card__viz-bar .card__vizmark').length,
-       labels: [...document.querySelectorAll('.card__viz-labels .card__vizlabel b')].map((e) => e.textContent),
-       nowNoDate: !document.querySelector('.card__viz-labels .tl--now i'),
-       targetHasDate: !!document.querySelector('.card__viz-labels .tl--target i'),
+       labels: [...document.querySelectorAll('.card__viz-labels .card__vizlabel')].map((e) => e.textContent),
+       labelNoDate: ![...document.querySelectorAll('.card__viz-labels .card__vizlabel')].some((e) => /\\d/.test(e.textContent)),
+       labelHasTooltip: /\\d{6}/.test(document.querySelector('.card__viz-labels .tl--target')?.title || ''),
+       pastFillW: parseFloat(document.querySelector('.card__viz--past .card__viz-fill')?.style.width || '0'),
        labelsPositioned: [...document.querySelectorAll('.card__viz-labels .card__vizlabel')].every((e) => e.style.left),
        hasNow: !!document.querySelector('.card__viz .tl--now'),
        hasTarget: !!document.querySelector('.card__viz .tl--target'),
@@ -647,8 +655,9 @@ async function main() {
   if (tl.marks !== 4) fails.push(`타임라인 마커 4개(등록·수정·기준·현재) 기대, 실제 ${tl.marks}`);
   if (tl.labels.slice().sort().join() !== ['기준', '등록', '수정', '현재'].sort().join())
     fails.push(`타임라인 라벨 [등록,수정,기준,현재] 기대, 실제 [${tl.labels}]`);
-  if (!tl.nowNoDate) fails.push("'현재' 라벨에 일시가 표기됨(비워두기 기대)");
-  if (!tl.targetHasDate) fails.push("'기준' 라벨에 컴팩트 일시가 없음(현재 외 마커는 일시 표기 기대)");
+  if (!tl.labelNoDate) fails.push('타임라인 라벨에 일시가 노출됨(라벨만 표기 기대)');
+  if (!tl.labelHasTooltip) fails.push('타임라인 라벨 툴팁(title)에 컴팩트 일시 없음');
+  if (!(tl.pastFillW > 0)) fails.push(`과거 밴드 적색 채움(기준→현재) 없음(width=${tl.pastFillW})`);
   if (!tl.labelsPositioned) fails.push('타임라인 라벨이 점 위치(left)로 배치되지 않음');
   if (!(tl.hasNow && tl.hasTarget)) fails.push('타임라인에 현재/기준 마커 누락');
   if (tl.nowLeft < 88) fails.push(`현재 마커가 우측 끝(~92%) 아님: ${tl.nowLeft}`);

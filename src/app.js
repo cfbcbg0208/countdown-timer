@@ -443,7 +443,8 @@ function updateProgress(refs, item, target, direction) {
     const pctRound = Math.round(f * 100);
     refs.progressEl.hidden = false;
     refs.pieEl.style.background = `conic-gradient(var(--future) ${(f * 100).toFixed(1)}%, var(--track) 0)`;
-    refs.pieLabelEl.textContent = `${pctRound}%`;
+    // 도넛 가운데 %는 독립 퍼센트가 꺼졌을 때만(둘 다 켜면 %가 두 번 나오던 문제 수정 → 도넛은 링만).
+    refs.pieLabelEl.textContent = show.percent ? '' : `${pctRound}%`;
     refs.pctEl.textContent = `${pctRound}%`;
     refs.pieEl.hidden = !show.pie;
     refs.pctEl.hidden = !show.percent;
@@ -458,21 +459,18 @@ function updateProgress(refs, item, target, direction) {
   else renderViz(refs, item, direction);
 }
 
-// 전체폭 밴드(미래/과거 공통): 트랙(+미래 채움) + ▲마커 + 충돌회피 라벨('현재'는 일시 생략).
+// 전체폭 밴드(미래/과거 공통): 트랙 + 채움(미래=시작→현재 청색 / 과거=기준→현재 적색) + ▲마커 + 라벨.
+// 라벨은 카테고리명만(컴팩트 일시는 마커·라벨 hover 툴팁에만). 겹치면 최소 행 stagger.
 function renderViz(refs, item, direction) {
   const future = direction === 'future';
   const now = Date.now();
   let pts;
-  let fillF = 0;
   if (future) {
     const start = item.startISO || (settings.progressBase === 'updated' ? item.updatedAt : item.createdAt) || item.createdAt;
-    const sMs = new Date(start).getTime();
-    const tMs = new Date(item.targetISO).getTime();
-    fillF = elapsedFraction(sMs, tMs, now); // 시작→현재 채움
     pts = [
-      { cls: 'tl--start', label: '시작', ms: sMs },
+      { cls: 'tl--start', label: '시작', ms: new Date(start).getTime() },
       { cls: 'tl--now', label: '현재', ms: now },
-      { cls: 'tl--target', label: '기준', ms: tMs },
+      { cls: 'tl--target', label: '기준', ms: new Date(item.targetISO).getTime() },
     ];
   } else {
     pts = TL_POINTS.map((p) => ({ cls: p.cls, label: p.label, ms: new Date(p.isoOf(item)).getTime() }))
@@ -482,21 +480,21 @@ function renderViz(refs, item, direction) {
   }
   const min = Math.min(...pts.map((p) => p.ms));
   const max = Math.max(...pts.map((p) => p.ms));
+  // 채움 구간(트랙 0~1): 미래=시작(0)→현재 / 과거=기준→현재(=1).
+  const fillA = future ? 0 : elapsedFraction(min, max, new Date(item.targetISO).getTime());
+  const fillB = future ? elapsedFraction(min, max, now) : 1;
   refs.vizEl.hidden = false;
   refs.vizEl.classList.toggle('card__viz--editable', future); // 미래 바 클릭 → 시작점 편집
-  // 라벨 폭/위치는 px로(밴드 폭 기준). 삽입 전(0)이면 근사폭.
+  refs.vizEl.classList.toggle('card__viz--past', !future); // 과거 = 적색 채움
+  // 라벨(카테고리명만) 위치는 px로 충돌 회피(밴드 폭 기준). 삽입 전(0)이면 근사폭.
   const W = refs.vizEl.clientWidth || 240;
-  const ROW_H = 19; // 라벨 묶음(라벨+일시 2줄) 한 줄 높이(px)
-  const GAP = 6;
+  const ROW_H = 12;
+  const GAP = 5;
   const items = pts.map((p) => {
     const f = elapsedFraction(min, max, p.ms);
     const xPct = 8 + f * 84; // 8~92%: 가장자리 라벨 잘림 방지
-    const noDate = p.cls === 'tl--now';
-    const date = noDate ? '' : formatCompact(new Date(p.ms));
-    const chars = noDate ? p.label.length : Math.max(p.label.length, date.length);
-    return { ...p, xPct, xPx: (xPct / 100) * W, w: chars * 5 + 8, date, noDate };
+    return { ...p, xPct, xPx: (xPct / 100) * W, w: p.label.length * 9 + 6, date: formatCompact(new Date(p.ms)) };
   });
-  // 행 배정: x 오름차순 그리디 → 겹치면 다음 행(최소 행).
   const sorted = [...items].sort((a, b) => a.xPx - b.xPx);
   const rowRight = [];
   for (const it of sorted) {
@@ -509,20 +507,20 @@ function renderViz(refs, item, direction) {
   const marks = items
     .map(
       (it) =>
-        `<span class="card__vizmark ${it.cls}" style="left:${it.xPct.toFixed(1)}%" title="${esc(it.label)}${it.date ? ' ' + it.date : ''}"></span>`,
+        `<span class="card__vizmark ${it.cls}" style="left:${it.xPct.toFixed(1)}%" title="${esc(it.label)} ${it.date}"></span>`,
     )
     .join('');
   const labels = items
     .map(
       (it) =>
         `<span class="card__vizlabel ${it.cls}" style="left:${it.xPct.toFixed(1)}%;top:${it.row * ROW_H}px" ` +
-        `title="${esc(it.label)}${it.date ? ' ' + it.date : ''}"><b>${esc(it.label)}</b>` +
-        `${it.noDate ? '' : `<i>${esc(it.date)}</i>`}</span>`,
+        `title="${esc(it.label)} ${it.date}">${esc(it.label)}</span>`,
     )
     .join('');
   refs.vizEl.innerHTML =
     `<div class="card__viz-bar"><div class="card__viz-track">` +
-    `<div class="card__viz-fill" style="width:${future ? (fillF * 100).toFixed(1) : 0}%"></div></div>${marks}</div>` +
+    `<div class="card__viz-fill" style="left:${(fillA * 100).toFixed(1)}%;width:${((fillB - fillA) * 100).toFixed(1)}%"></div>` +
+    `</div>${marks}</div>` +
     `<div class="card__viz-labels" style="height:${rows * ROW_H}px">${labels}</div>`;
   refs.vizEl.setAttribute('aria-label', future ? '진행률 타임라인' : '등록·수정·기준·현재 일시 타임라인');
 }
@@ -1797,7 +1795,7 @@ function applySettings(s) {
   if (themeColorMeta) themeColorMeta.content = s.theme === 'light' ? '#eef4f0' : '#0e1512';
 }
 
-const PART_LABEL = { bar: '바', pie: '파이', percent: '퍼센트' };
+const PART_LABEL = { bar: '타임라인', pie: '도넛', percent: '퍼센트' };
 // 진행률 파트 칩(바/파이/퍼센트): progressOrder 순서로 렌더, progressShow로 켜짐(aria-pressed) 표시.
 function renderProgressParts(s) {
   setProgressParts.innerHTML = '';

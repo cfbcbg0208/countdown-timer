@@ -465,31 +465,30 @@ function updateProgress(refs, item, target, direction) {
   else refs.timelineEl.hidden = true;
 }
 
-// 과거 카드 타임라인: 등록·수정·기준·현재 일시를 [최소~현재] 구간에 마커로 배치.
+// 과거 카드 타임라인: 등록·수정·기준·현재 일시를 [최소~현재] 구간에 마커로 + 시간순 범례.
 function renderTimeline(refs, item) {
   const now = Date.now();
+  // 유효한 일시만, 시간순 정렬(범례·마커 순서를 바 좌→우와 일치시켜 식별성↑).
   const pts = TL_POINTS.map((p) => ({ ...p, ms: new Date(p.isoOf(item)).getTime() }))
     .filter((p) => Number.isFinite(p.ms))
-    .concat([{ key: 'now', label: '현재', ms: now, cls: 'tl--now' }]);
-  const min = Math.min(...pts.map((p) => p.ms));
-  const max = Math.max(...pts.map((p) => p.ms));
+    .concat([{ key: 'now', label: '현재', ms: now, cls: 'tl--now' }])
+    .sort((a, b) => a.ms - b.ms);
+  const min = pts[0].ms;
+  const max = pts[pts.length - 1].ms;
   refs.timelineEl.hidden = false;
-  // 바: 색별 점(라벨 없음, 좁은 열에서 겹쳐도 OK). 식별은 아래 범례 + 호버 툴팁.
+  // 바: 색별 점(라벨 없음). 식별은 아래 범례 + 호버 툴팁.
   const marks = pts
     .map((p) => {
       const f = elapsedFraction(min, max, p.ms);
       const left = (5 + f * 90).toFixed(1); // 5~95%: 가장자리 점이 열 밖으로 잘리지 않게 여백
-      return (
-        `<span class="card__tlmark ${p.cls}" style="left:${left}%" ` +
-        `title="${esc(p.label)} ${formatCompact(new Date(p.ms))}"></span>`
-      );
+      return `<span class="card__tlmark ${p.cls}" style="left:${left}%" title="${esc(p.label)} ${formatCompact(new Date(p.ms))}"></span>`;
     })
     .join('');
-  // 범례: 색 = 카테고리. 잘림/겹침 없이 항상 읽히게 하단 고정 표기(라벨 + 컴팩트 일시).
+  // 범례: 시간순 한 줄씩 '라벨 + 컴팩트일시'. 라벨은 색, 일시는 무채색 → 잘림·겹침 없이 항상 식별.
   const legend = pts
     .map(
       (p) =>
-        `<span class="card__tlleg ${p.cls}" title="${esc(formatCompact(new Date(p.ms)))}">${esc(p.label)}</span>`,
+        `<span class="card__tlleg ${p.cls}"><b>${esc(p.label)}</b> ${esc(formatCompact(new Date(p.ms)))}</span>`,
     )
     .join('');
   refs.timelineEl.innerHTML =
@@ -1094,10 +1093,6 @@ document.addEventListener('keydown', (e) => {
   } else if (e.code === 'KeyS') {
     e.preventDefault();
     openSettings();
-  } else if (e.code === 'KeyT') {
-    e.preventDefault();
-    renderGroups();
-    openDrawer(groupsDrawer, groupsFab);
   } else if (e.code === 'KeyC') {
     e.preventDefault();
     openCalendar();

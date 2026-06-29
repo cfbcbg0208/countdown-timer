@@ -200,6 +200,8 @@ async function main() {
        bodyHasCols: !!document.querySelector('.card__body > .card__cols'),
        tagAddInGroups: !!document.querySelector('.card__groups .card__groupbtn'),
        tagAddText: document.querySelector('.card__groups .card__groupbtn')?.textContent,
+       cardGroupsHidden: getComputedStyle(document.querySelector('.card__groups')).display === 'none',
+       groupsFabHidden: getComputedStyle(document.getElementById('groups-fab')).display === 'none',
        lapsShown: document.querySelectorAll('.card__laps .lap:not(.lap--more)').length,
        lapMore: !!document.querySelector('.card__laps .lap__more'),
      }))()`,
@@ -228,8 +230,11 @@ async function main() {
   if (!checks.colsEqual) fails.push('zone2·zone3(.card__cols) 가로폭이 동일하지 않음');
   if (checks.lapsShown !== 1) fails.push(`기록 접힘 시 최근 1개만 기대, 실제 ${checks.lapsShown}`);
   if (!checks.lapMore) fails.push('기록 더보기 토글(.lap__more)이 없음');
-  if (!checks.tagAddInGroups) fails.push('＋태그 칩이 태그 줄(.card__groups)에 없음');
+  if (!checks.tagAddInGroups) fails.push('＋태그 칩이 태그 줄(.card__groups)에 없음(코드는 유지)');
   if (checks.tagAddText !== '＋ 태그') fails.push(`＋태그 칩 텍스트="${checks.tagAddText}" (＋ 태그 기대)`);
+  // 태그 기능 숨김(M78): 카드 태그 줄·태그 FAB는 display:none(코드/데이터는 유지)
+  if (!checks.cardGroupsHidden) fails.push('태그 줄(.card__groups)이 숨겨지지 않음(M78 hide)');
+  if (!checks.groupsFabHidden) fails.push('태그 FAB(#groups-fab)가 숨겨지지 않음(M78 hide)');
   // 4열 구조: 좌 레일(핸들/숨기기) · 본문(cols) · 우 레일(✕)
   if (!checks.railLeftHandle) fails.push('드래그 핸들이 좌측 레일(.card__rail--left)에 없음');
   if (!checks.railLeftHide) fails.push('숨기기 버튼(.card__hide)이 좌측 레일에 없음');
@@ -615,7 +620,8 @@ async function main() {
        timelineShown: !document.querySelector('.card__timeline')?.hidden,
        progressHidden: document.querySelector('.card__progress')?.hidden,
        marks: document.querySelectorAll('.card__tlbar .card__tlmark').length,
-       legends: [...document.querySelectorAll('.card__tllegend .card__tlleg')].map((e) => e.textContent),
+       legends: [...document.querySelectorAll('.card__tllegend .card__tlleg b')].map((e) => e.textContent),
+       legendHasDate: /\\d{6}/.test(document.querySelector('.card__tllegend .card__tlleg')?.textContent || ''),
        hasNow: !!document.querySelector('.card__timeline .tl--now'),
        hasTarget: !!document.querySelector('.card__timeline .tl--target'),
        nowLeft: parseFloat(document.querySelector('.card__tlbar .tl--now')?.style.left || '0'),
@@ -625,7 +631,8 @@ async function main() {
   if (!tl.progressHidden) fails.push('과거 카드에서 미래용 진행률이 숨겨지지 않음');
   if (tl.marks !== 4) fails.push(`타임라인 마커 4개(등록·수정·기준·현재) 기대, 실제 ${tl.marks}`);
   if (tl.legends.join(',') !== '등록,수정,기준,현재')
-    fails.push(`타임라인 범례 [등록,수정,기준,현재] 기대, 실제 [${tl.legends}]`);
+    fails.push(`타임라인 범례(시간순) [등록,수정,기준,현재] 기대, 실제 [${tl.legends}]`);
+  if (!tl.legendHasDate) fails.push('타임라인 범례에 컴팩트 일시가 표시되지 않음');
   if (!(tl.hasNow && tl.hasTarget)) fails.push('타임라인에 현재/기준 마커 누락');
   if (tl.nowLeft < 90) fails.push(`현재 마커가 우측 끝(~95%) 아님: ${tl.nowLeft}`);
   const tlShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });

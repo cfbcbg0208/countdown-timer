@@ -489,7 +489,7 @@ function renderViz(refs, item, direction) {
   // 라벨 위치는 px로 충돌 회피(밴드 폭 기준).
   const W = refs.vizEl.clientWidth || 240;
   const ROW_H = 26; // 라벨 묶음(이름+날짜+시간 3줄) 한 단 높이(px)
-  const GAP = 4; // 인접 라벨 최소 간격(px) — 폭을 실측하므로 작게
+  const GAP = 2; // 같은 행 허용 임계값(px): 두 라벨이 이만큼만 떨어져도 같은 행에 둠(좁은 밴드 밀집 대응)
   const items = pts.map((p) => {
     const f = elapsedFraction(min, max, p.ms);
     const xPct = 8 + f * 84; // 8~92%: 가장자리 라벨 잘림 방지

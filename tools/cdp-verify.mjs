@@ -680,7 +680,7 @@ async function main() {
     `(() => {
        const labs = [...document.querySelectorAll('.card__viz-labels .card__vizlabel')];
        const band = document.querySelector('.card__viz-labels').getBoundingClientRect();
-       const GAP = 4; // renderViz와 동일
+       const GAP = 2; // renderViz와 동일
        // 그리디와 동일한 구간 [중심±offsetWidth/2] + GAP 로 최대 동시 겹침 깊이(=최소 행) 계산.
        const ev = [];
        for (const e of labs) {

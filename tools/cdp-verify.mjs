@@ -666,6 +666,40 @@ async function main() {
   const tlShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-timeline.png'), Buffer.from(tlShot.data, 'base64'));
 
+  // 11.6) 클러스터 과거 카드: 등록/수정/기준이 좌측에 몰림 → 라벨 행 수가 이론적 최소(겹침깊이)와 일치해야.
+  //       (실측 폭 대신 과대추정폭을 쓰면 인접 라벨이 거짓 충돌해 불필요한 행을 씀 — M83 회귀 방지.)
+  await evalJS(
+    browser,
+    `localStorage.setItem('countdowns', JSON.stringify([{ id: 'clu', label: '클러스터',
+       targetISO: '2026-06-27T06:00:00', createdAt: '2026-06-27T00:30:00.000Z', updatedAt: '2026-06-27T07:30:00.000Z' }]));
+     location.reload();`,
+  );
+  await until(() => evalJS(browser, "document.querySelectorAll('.card').length === 1"), { label: 'cluster card' });
+  const clu = await evalJS(
+    browser,
+    `(() => {
+       const labs = [...document.querySelectorAll('.card__viz-labels .card__vizlabel')];
+       const band = document.querySelector('.card__viz-labels').getBoundingClientRect();
+       const GAP = 4; // renderViz와 동일
+       // 그리디와 동일한 구간 [중심±offsetWidth/2] + GAP 로 최대 동시 겹침 깊이(=최소 행) 계산.
+       const ev = [];
+       for (const e of labs) {
+         const r = e.getBoundingClientRect();
+         const c = (r.left + r.right) / 2 - band.left;
+         const w = e.offsetWidth;
+         ev.push([c - w / 2, 1]);
+         ev.push([c + w / 2 + GAP, -1]);
+       }
+       ev.sort((a, b) => a[0] - b[0] || a[1] - b[1]); // 접점은 끝(-1) 먼저 → 비겹침 처리
+       let cur = 0, depth = 0;
+       for (const [, d] of ev) { cur += d; depth = Math.max(depth, cur); }
+       const rows = new Set(labs.map((e) => e.style.top)).size;
+       return { rows, minRows: Math.max(1, depth), n: labs.length };
+     })()`,
+  );
+  if (clu.n !== 4) fails.push(`클러스터 카드 라벨 4개 기대, 실제 ${clu.n}`);
+  if (clu.rows !== clu.minRows) fails.push(`클러스터 라벨 행이 최소(${clu.minRows})와 불일치 → 실제 ${clu.rows}행(과다 stagger)`);
+
   // 12) 빈 상태: 카드 0개 → 안내 문구 표시
   await evalJS(browser, "localStorage.setItem('countdowns', '[]'); location.reload();");
   await until(() => evalJS(browser, "document.readyState === 'complete' && document.querySelectorAll('.card').length === 0"), {

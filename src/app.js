@@ -486,10 +486,10 @@ function renderViz(refs, item, direction) {
   refs.vizEl.hidden = false;
   refs.vizEl.classList.toggle('card__viz--editable', future); // 미래 바 클릭 → 시작점 편집
   refs.vizEl.classList.toggle('card__viz--past', !future); // 과거 = 적색 채움
-  // 라벨(카테고리명만) 위치는 px로 충돌 회피(밴드 폭 기준). 삽입 전(0)이면 근사폭.
+  // 라벨 위치는 px로 충돌 회피(밴드 폭 기준).
   const W = refs.vizEl.clientWidth || 240;
   const ROW_H = 26; // 라벨 묶음(이름+날짜+시간 3줄) 한 단 높이(px)
-  const GAP = 5;
+  const GAP = 4; // 인접 라벨 최소 간격(px) — 폭을 실측하므로 작게
   const items = pts.map((p) => {
     const f = elapsedFraction(min, max, p.ms);
     const xPct = 8 + f * 84; // 8~92%: 가장자리 라벨 잘림 방지
@@ -498,32 +498,23 @@ function renderViz(refs, item, direction) {
       ...p,
       xPct,
       xPx: (xPct / 100) * W,
-      w: Math.max(p.label.length, 7) * 6 + 8, // 날짜줄(7자)이 가장 넓음
+      estW: Math.max(p.label.length, 7) * 6 + 8, // 미부착(측정 0)일 때만 쓰는 폴백 추정폭
       full: c,
       datePart: c.slice(0, 7), // 260630화
       timePart: c.slice(7), // 032559
     };
   });
-  const sorted = [...items].sort((a, b) => a.xPx - b.xPx);
-  const rowRight = [];
-  for (const it of sorted) {
-    let r = 0;
-    while (r < rowRight.length && it.xPx - it.w / 2 < rowRight[r] + GAP) r++;
-    it.row = r;
-    rowRight[r] = it.xPx + it.w / 2;
-  }
-  const rows = Math.max(1, rowRight.length);
   const marks = items
     .map(
       (it) =>
         `<span class="card__vizmark ${it.cls}" style="left:${it.xPct.toFixed(1)}%" title="${esc(it.label)} ${it.full}"></span>`,
     )
     .join('');
-  // 각 노드 아래: 이름 + 컴팩트 타임스탬프 2줄(날짜 / 시간).
+  // 각 노드 아래: 이름 + 컴팩트 타임스탬프 2줄(날짜 / 시간). top은 실측 후 부여.
   const labels = items
     .map(
       (it) =>
-        `<span class="card__vizlabel ${it.cls}" style="left:${it.xPct.toFixed(1)}%;top:${it.row * ROW_H}px" ` +
+        `<span class="card__vizlabel ${it.cls}" style="left:${it.xPct.toFixed(1)}%" ` +
         `title="${esc(it.label)} ${it.full}"><b>${esc(it.label)}</b>` +
         `<i>${esc(it.datePart)}</i><i>${esc(it.timePart)}</i></span>`,
     )
@@ -532,7 +523,21 @@ function renderViz(refs, item, direction) {
     `<div class="card__viz-bar"><div class="card__viz-track">` +
     `<div class="card__viz-fill" style="left:${(fillA * 100).toFixed(1)}%;width:${((fillB - fillA) * 100).toFixed(1)}%"></div>` +
     `</div>${marks}</div>` +
-    `<div class="card__viz-labels" style="height:${rows * ROW_H}px">${labels}</div>`;
+    `<div class="card__viz-labels"></div>`;
+  // 실측 폭으로 최소-행 배정: 그리디 first-fit(정확한 폭이면 행수 = 최대 겹침깊이 = 최소).
+  // 추정폭은 실제보다 넓어 인접 라벨이 거짓 충돌 → 불필요한 3번째 행을 썼었음(M83 수정).
+  const labelsEl = refs.vizEl.querySelector('.card__viz-labels');
+  labelsEl.innerHTML = labels;
+  const labelEls = [...labelsEl.querySelectorAll('.card__vizlabel')];
+  const placed = items.map((it, i) => ({ x: it.xPx, w: labelEls[i].offsetWidth || it.estW, el: labelEls[i] }));
+  const rowRight = []; // 각 행에 마지막으로 놓인(=가장 오른쪽) 라벨의 우측 끝
+  for (const m of [...placed].sort((a, b) => a.x - b.x)) {
+    let r = 0;
+    while (r < rowRight.length && m.x - m.w / 2 < rowRight[r] + GAP) r++;
+    m.el.style.top = `${r * ROW_H}px`;
+    rowRight[r] = m.x + m.w / 2;
+  }
+  labelsEl.style.height = `${Math.max(1, rowRight.length) * ROW_H}px`;
   refs.vizEl.setAttribute('aria-label', future ? '진행률 타임라인' : '등록·수정·기준·현재 일시 타임라인');
 }
 
@@ -569,6 +574,8 @@ function rebuild() {
   refsList = shown.map(makeCard);
   listEl.replaceChildren(...refsList.map((r) => r.card));
   for (const r of refsList) fitTime(r.timeEl); // DOM 삽입 후 폭 확정 → 시간 자동 축소
+  // 부착 후엔 라벨 폭 실측이 가능 → viz 행배정 재계산(미부착 첫 렌더의 과다 행/플래시 방지).
+  for (const r of refsList) if (r.vizEl && !r.vizEl.hidden) renderViz(r, r.item, r.dir);
   if (selectMode) {
     for (const r of refsList) r.card.classList.toggle('card--selected', selectedIds.has(r.item.id));
   }

@@ -614,17 +614,20 @@ async function main() {
     `(() => ({
        timelineShown: !document.querySelector('.card__timeline')?.hidden,
        progressHidden: document.querySelector('.card__progress')?.hidden,
-       marks: document.querySelectorAll('.card__timeline .card__tlmark').length,
+       marks: document.querySelectorAll('.card__tlbar .card__tlmark').length,
+       legends: [...document.querySelectorAll('.card__tllegend .card__tlleg')].map((e) => e.textContent),
        hasNow: !!document.querySelector('.card__timeline .tl--now'),
        hasTarget: !!document.querySelector('.card__timeline .tl--target'),
-       nowLeft: document.querySelector('.card__timeline .tl--now')?.style.left,
+       nowLeft: parseFloat(document.querySelector('.card__tlbar .tl--now')?.style.left || '0'),
      }))()`,
   );
   if (!tl.timelineShown) fails.push('과거 카드 타임라인이 표시되지 않음');
   if (!tl.progressHidden) fails.push('과거 카드에서 미래용 진행률이 숨겨지지 않음');
   if (tl.marks !== 4) fails.push(`타임라인 마커 4개(등록·수정·기준·현재) 기대, 실제 ${tl.marks}`);
+  if (tl.legends.join(',') !== '등록,수정,기준,현재')
+    fails.push(`타임라인 범례 [등록,수정,기준,현재] 기대, 실제 [${tl.legends}]`);
   if (!(tl.hasNow && tl.hasTarget)) fails.push('타임라인에 현재/기준 마커 누락');
-  if (!/100/.test(tl.nowLeft || '')) fails.push(`현재 마커가 우측 끝(100%) 아님: ${tl.nowLeft}`);
+  if (tl.nowLeft < 90) fails.push(`현재 마커가 우측 끝(~95%) 아님: ${tl.nowLeft}`);
   const tlShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-timeline.png'), Buffer.from(tlShot.data, 'base64'));
 

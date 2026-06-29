@@ -432,6 +432,7 @@ const TL_POINTS = [
   { key: 'updated', label: '수정', isoOf: (it) => it.updatedAt, cls: 'tl--updated' },
   { key: 'target', label: '기준', isoOf: (it) => it.targetISO, cls: 'tl--target' },
 ];
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
 // 진행률 시각화: 미래=바·도넛·퍼센트(설정 순서/표시), 과거=등록/수정/기준/현재 타임라인 바.
 function updateProgress(refs, item, target, direction) {
@@ -473,19 +474,27 @@ function renderTimeline(refs, item) {
   const min = Math.min(...pts.map((p) => p.ms));
   const max = Math.max(...pts.map((p) => p.ms));
   refs.timelineEl.hidden = false;
+  // 바: 색별 점(라벨 없음, 좁은 열에서 겹쳐도 OK). 식별은 아래 범례 + 호버 툴팁.
+  const marks = pts
+    .map((p) => {
+      const f = elapsedFraction(min, max, p.ms);
+      const left = (5 + f * 90).toFixed(1); // 5~95%: 가장자리 점이 열 밖으로 잘리지 않게 여백
+      return (
+        `<span class="card__tlmark ${p.cls}" style="left:${left}%" ` +
+        `title="${esc(p.label)} ${formatCompact(new Date(p.ms))}"></span>`
+      );
+    })
+    .join('');
+  // 범례: 색 = 카테고리. 잘림/겹침 없이 항상 읽히게 하단 고정 표기(라벨 + 컴팩트 일시).
+  const legend = pts
+    .map(
+      (p) =>
+        `<span class="card__tlleg ${p.cls}" title="${esc(formatCompact(new Date(p.ms)))}">${esc(p.label)}</span>`,
+    )
+    .join('');
   refs.timelineEl.innerHTML =
-    '<div class="card__tltrack"></div>' +
-    pts
-      .map((p) => {
-        const f = elapsedFraction(min, max, p.ms); // (ms-min)/(max-min) 클램프
-        const date = new Date(p.ms);
-        return (
-          `<span class="card__tlmark ${p.cls}" style="left:${(f * 100).toFixed(1)}%" ` +
-          `title="${p.label} ${formatCompact(date)}"><i class="card__tldot"></i>` +
-          `<b class="card__tllabel">${p.label[0]}</b></span>`
-        );
-      })
-      .join('');
+    `<div class="card__tlbar"><div class="card__tltrack"></div>${marks}</div>` +
+    `<div class="card__tllegend">${legend}</div>`;
   refs.timelineEl.setAttribute('aria-label', '등록·수정·기준·현재 일시 타임라인');
 }
 

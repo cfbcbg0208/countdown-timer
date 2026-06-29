@@ -454,13 +454,13 @@ kbd {
 .card__pie::before {
   content: '';
   position: absolute;
-  inset: 21%; /* 가운데 구멍(카드 배경색으로 펀치) */
+  inset: 13%; /* 구멍 키워 링을 얇게 + 가운데 % 공간 확보 */
   border-radius: 50%;
   background: var(--card);
 }
 .card__pielabel {
   position: relative; /* 구멍 위에 % */
-  font-size: 0.46rem;
+  font-size: 0.62rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--future);
@@ -476,42 +476,39 @@ kbd {
 }
 .card__pct[hidden], .card__bar[hidden], .card__pie[hidden] { display: none; }
 
-/* 과거 카드 타임라인: 등록·수정·기준·현재 일시를 [최소~현재] 구간에 마커로 배치 */
-.card__timeline { position: relative; height: 1.5rem; margin-top: 0.4rem; }
+/* 과거 카드 타임라인: 색별 점(바) + 하단 색별 범례(라벨 잘림·겹침 없이 항상 식별). */
+.card__timeline { margin-top: 0.4rem; }
 .card__timeline[hidden] { display: none; }
+.card__tlbar { position: relative; height: 0.8rem; }
 .card__tltrack {
   position: absolute;
-  left: 0.25rem;
-  right: 0.25rem;
-  top: 0.55rem;
+  left: 5%;
+  right: 5%;
+  top: 0.36rem;
   height: 4px;
   background: var(--track);
   border-radius: 999px;
 }
 .card__tlmark {
   position: absolute;
-  top: 0.36rem;
+  top: 0.24rem;
   transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.card__tldot {
-  width: 0.5rem;
-  height: 0.5rem;
+  width: 0.55rem;
+  height: 0.55rem;
   border-radius: 50%;
   border: 1.5px solid var(--card);
   box-sizing: border-box;
 }
-.card__tllabel { font-size: 0.5rem; font-weight: 700; line-height: 1; margin-top: 0.15rem; }
-.tl--created .card__tldot { background: var(--accent); }
-.tl--created .card__tllabel { color: var(--accent); }
-.tl--updated .card__tldot { background: var(--muted); }
-.tl--updated .card__tllabel { color: var(--muted); }
-.tl--target .card__tldot { background: var(--past); }
-.tl--target .card__tllabel { color: var(--past); }
-.tl--now .card__tldot { background: var(--future); }
-.tl--now .card__tllabel { color: var(--future); }
+.card__tllegend { display: flex; flex-wrap: wrap; gap: 0.1rem 0.6rem; margin-top: 0.1rem; }
+.card__tlleg { font-size: 0.56rem; font-weight: 700; line-height: 1.2; }
+.tl--created.card__tlmark { background: var(--accent); }
+.tl--created.card__tlleg { color: var(--accent); }
+.tl--updated.card__tlmark { background: var(--muted); }
+.tl--updated.card__tlleg { color: var(--muted); }
+.tl--target.card__tlmark { background: var(--past); }
+.tl--target.card__tlleg { color: var(--past); }
+.tl--now.card__tlmark { background: var(--future); }
+.tl--now.card__tlleg { color: var(--future); }
 
 /* 기준일시: 값(자르기) + [기준일시] 칩(고정). 칩이 항상 보이도록 날짜만 줄어든다. */
 .card__meta {

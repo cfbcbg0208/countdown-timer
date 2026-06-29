@@ -488,7 +488,7 @@ async function main() {
   if (theme !== 'light') fails.push(`세그먼트로 라이트 전환 실패: ${theme}`);
   if (segPressed !== 'true') fails.push('세그먼트 선택 표시(aria-pressed) 실패');
 
-  // 10.4) 진행률 파트(바·파이·퍼센트): 기본 전부 표시 + 파트 칩 3개 + 퍼센트 토글 끄기 동작
+  // 10.4) 진행률 파트(바·도넛파이·독립%): 기본=바·도넛 on, 독립% off(도넛이 %를 품음) + 도넛 % 표시
   const pp0 = await evalJS(
     browser,
     `(() => ({
@@ -497,16 +497,17 @@ async function main() {
        barShown: !document.querySelector('.card__bar')?.hidden,
        pieShown: !document.querySelector('.card__pie')?.hidden,
        pctShown: !document.querySelector('.card__pct')?.hidden,
-       pctText: document.querySelector('.card__pct')?.textContent,
+       pieLabel: document.querySelector('.card__pielabel')?.textContent,
      }))()`,
   );
   if (pp0.chips.join() !== 'bar,pie,percent')
     fails.push(`진행률 파트 칩 기대 [bar,pie,percent], 실제 [${pp0.chips}]`);
-  if (pp0.pressed.some((p) => p !== 'true')) fails.push('진행률 파트 기본 전부 켜짐(aria-pressed) 아님');
-  if (!(pp0.barShown && pp0.pieShown && pp0.pctShown))
-    fails.push(`진행률 기본 전부 표시 아님(bar=${pp0.barShown} pie=${pp0.pieShown} pct=${pp0.pctShown})`);
-  if (!/^\d+%$/.test(pp0.pctText || '')) fails.push(`퍼센트 텍스트 형식 실패: "${pp0.pctText}"`);
-  // 퍼센트 칩 탭(클릭=pointerdown+up, 이동 없음 → 토글) → 카드 퍼센트 숨김
+  if (pp0.pressed.join() !== 'true,true,false')
+    fails.push(`진행률 파트 기본 [바on·파이on·%off] 기대, 실제 [${pp0.pressed}]`);
+  if (!(pp0.barShown && pp0.pieShown)) fails.push(`기본 바·도넛 표시 아님(bar=${pp0.barShown} pie=${pp0.pieShown})`);
+  if (pp0.pctShown) fails.push('독립 퍼센트가 기본 off여야 함(도넛이 %를 품음)');
+  if (!/^\d+%$/.test(pp0.pieLabel || '')) fails.push(`도넛 가운데 % 형식 실패: "${pp0.pieLabel}"`);
+  // 퍼센트 칩 탭(클릭) → 독립 % 켜짐
   await evalJS(
     browser,
     `(() => { const c = document.querySelector('#set-progress-parts .ppart[data-part="percent"]');
@@ -515,13 +516,13 @@ async function main() {
        c.dispatchEvent(new PointerEvent('pointerdown', o));
        c.dispatchEvent(new PointerEvent('pointerup', o)); })()`,
   );
-  await until(() => evalJS(browser, "document.querySelector('.card__pct')?.hidden === true"), { label: 'pct toggled off' });
-  const pctOff = await evalJS(
+  await until(() => evalJS(browser, "document.querySelector('.card__pct')?.hidden === false"), { label: 'pct toggled on' });
+  const pctOn = await evalJS(
     browser,
     "document.querySelector('#set-progress-parts .ppart[data-part=\"percent\"]')?.getAttribute('aria-pressed')",
   );
-  if (pctOff !== 'false') fails.push(`퍼센트 칩 끄기 후 aria-pressed=false 기대, 실제 ${pctOff}`);
-  // 다시 켜서 원복
+  if (pctOn !== 'true') fails.push(`퍼센트 칩 켜기 후 aria-pressed=true 기대, 실제 ${pctOn}`);
+  // 다시 꺼서 원복
   await evalJS(
     browser,
     `(() => { const c = document.querySelector('#set-progress-parts .ppart[data-part="percent"]');
@@ -599,6 +600,33 @@ async function main() {
   await until(() => evalJS(browser, 'document.querySelectorAll(".card").length >= 4'), { label: 'list cards' });
   const listShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-list.png'), Buffer.from(listShot.data, 'base64'));
+
+  // 11.5) 과거 카드 타임라인: 기준일시 과거 → 진행률(미래용) 숨김 + 등록/수정/기준/현재 마커 바
+  await evalJS(
+    browser,
+    `localStorage.setItem('countdowns', JSON.stringify([{ id: 'past1', label: '과거카드',
+       targetISO: '2026-06-20T00:00:00', createdAt: '2026-06-10T00:00:00.000Z', updatedAt: '2026-06-15T00:00:00.000Z' }]));
+     location.reload();`,
+  );
+  await until(() => evalJS(browser, "document.querySelectorAll('.card').length === 1"), { label: 'past card' });
+  const tl = await evalJS(
+    browser,
+    `(() => ({
+       timelineShown: !document.querySelector('.card__timeline')?.hidden,
+       progressHidden: document.querySelector('.card__progress')?.hidden,
+       marks: document.querySelectorAll('.card__timeline .card__tlmark').length,
+       hasNow: !!document.querySelector('.card__timeline .tl--now'),
+       hasTarget: !!document.querySelector('.card__timeline .tl--target'),
+       nowLeft: document.querySelector('.card__timeline .tl--now')?.style.left,
+     }))()`,
+  );
+  if (!tl.timelineShown) fails.push('과거 카드 타임라인이 표시되지 않음');
+  if (!tl.progressHidden) fails.push('과거 카드에서 미래용 진행률이 숨겨지지 않음');
+  if (tl.marks !== 4) fails.push(`타임라인 마커 4개(등록·수정·기준·현재) 기대, 실제 ${tl.marks}`);
+  if (!(tl.hasNow && tl.hasTarget)) fails.push('타임라인에 현재/기준 마커 누락');
+  if (!/100/.test(tl.nowLeft || '')) fails.push(`현재 마커가 우측 끝(100%) 아님: ${tl.nowLeft}`);
+  const tlShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  await writeFile(join(ARTIFACTS, 'verify-timeline.png'), Buffer.from(tlShot.data, 'base64'));
 
   // 12) 빈 상태: 카드 0개 → 안내 문구 표시
   await evalJS(browser, "localStorage.setItem('countdowns', '[]'); location.reload();");

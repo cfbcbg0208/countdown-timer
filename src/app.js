@@ -215,20 +215,28 @@ function makeCard(item) {
   const timeEl = document.createElement('div');
   timeEl.className = 'card__time';
 
-  // 진행률(미래 카드만): 바/파이/퍼센트/둘다. 클릭하면 진행 시작 일시 지정.
+  // 진행률(미래 카드): 바 / 도넛파이(가운데 %) / 퍼센트 텍스트. 클릭하면 진행 시작점 지정.
   const progressEl = document.createElement('div');
   progressEl.className = 'card__progress';
   progressEl.title = '클릭하여 진행 시작점 지정 (일시 · N% · 기간)';
   const pieEl = document.createElement('div');
-  pieEl.className = 'card__pie';
+  pieEl.className = 'card__pie'; // 도넛(원 테두리=진행, 가운데=%) — updateProgress가 갱신
+  const pieLabelEl = document.createElement('span');
+  pieLabelEl.className = 'card__pielabel';
+  pieEl.append(pieLabelEl);
   const barEl = document.createElement('div');
   barEl.className = 'card__bar';
   const barFillEl = document.createElement('div');
   barFillEl.className = 'card__bar-fill';
   barEl.append(barFillEl);
   const pctEl = document.createElement('span');
-  pctEl.className = 'card__pct'; // 퍼센트 텍스트(updateProgress가 갱신, data-style로 표시 제어)
+  pctEl.className = 'card__pct'; // 독립 퍼센트 텍스트(도넛과 별개 토글)
   progressEl.append(pieEl, barEl, pctEl);
+
+  // 과거 카드: 등록/수정/기준/현재 일시를 타임라인 바에 마커로 표시(updateProgress가 채움).
+  const timelineEl = document.createElement('div');
+  timelineEl.className = 'card__timeline';
+  timelineEl.hidden = true;
 
   // 기준일시(클릭 편집). 값 + [기준일시] 칩은 updateCard가 갱신. showTarget로 표시 토글.
   const metaEl = document.createElement('button');
@@ -263,7 +271,7 @@ function makeCard(item) {
   // 진행률을 좌측 열에 둬서 파이·바가 중앙 구분선을 넘어 우측 열을 침범하지 않게 한다.
   const left = document.createElement('div');
   left.className = 'card__col card__col--left';
-  left.append(labelEl, metaEl, createdRow, updatedRow, progressEl, groupsRow);
+  left.append(labelEl, metaEl, createdRow, updatedRow, progressEl, timelineEl, groupsRow);
 
   // 우측 열(zone3): 큰 시간(상단·우측·자동축소) → 기록(랩) 목록(우측 하단). 기록 버튼은 우측 레일.
   const right = document.createElement('div');
@@ -290,7 +298,7 @@ function makeCard(item) {
 
   card.append(railLeft, body, railRight);
 
-  const refs = { card, timeEl, progressEl, barEl, barFillEl, pieEl, pctEl, metaEl, lapsEl, item, dir: null };
+  const refs = { card, timeEl, progressEl, barEl, barFillEl, pieEl, pieLabelEl, pctEl, timelineEl, metaEl, lapsEl, item, dir: null };
   renderLaps(refs);
   updateCard(refs);
   return refs;
@@ -418,31 +426,67 @@ function fitTime(el) {
   }
 }
 
-// 진행률(미래 카드만): 바·파이·퍼센트를 설정 순서(progressOrder)·표시(progressShow)대로 그린다.
-// 과거이거나 표시할 요소가 하나도 없으면 숨김.
+// 과거 카드 타임라인에 표시할 일시들(등록·수정·기준·현재). 같은 시각은 색만 다르게 겹쳐 표시.
+const TL_POINTS = [
+  { key: 'created', label: '등록', isoOf: (it) => it.createdAt, cls: 'tl--created' },
+  { key: 'updated', label: '수정', isoOf: (it) => it.updatedAt, cls: 'tl--updated' },
+  { key: 'target', label: '기준', isoOf: (it) => it.targetISO, cls: 'tl--target' },
+];
+
+// 진행률 시각화: 미래=바·도넛·퍼센트(설정 순서/표시), 과거=등록/수정/기준/현재 타임라인 바.
 function updateProgress(refs, item, target, direction) {
   const order = settings.progressOrder;
   const show = settings.progressShow;
-  if (direction !== 'future' || !order.some((p) => show[p])) {
+  const future = direction === 'future';
+  // 미래 진행률(바/도넛/퍼센트)
+  if (future && order.some((p) => show[p])) {
+    const start =
+      item.startISO || (settings.progressBase === 'updated' ? item.updatedAt : item.createdAt) || item.createdAt;
+    const f = elapsedFraction(start, target);
+    const pct = (f * 100).toFixed(1);
+    const pctRound = Math.round(f * 100);
+    refs.progressEl.hidden = false;
+    refs.barFillEl.style.width = `${pct}%`;
+    refs.pieEl.style.background = `conic-gradient(var(--future) ${pct}%, var(--track) 0)`;
+    refs.pieLabelEl.textContent = `${pctRound}%`; // 도넛 가운데 %
+    refs.pctEl.textContent = `${pctRound}%`;
+    const els = { bar: refs.barEl, pie: refs.pieEl, percent: refs.pctEl };
+    order.forEach((p, i) => {
+      els[p].style.order = String(i);
+      els[p].hidden = !show[p];
+    });
+    refs.progressEl.setAttribute('aria-label', `진행률 ${pctRound}%`);
+  } else {
     refs.progressEl.hidden = true;
-    return;
   }
-  const start =
-    item.startISO || (settings.progressBase === 'updated' ? item.updatedAt : item.createdAt) || item.createdAt;
-  const f = elapsedFraction(start, target);
-  const pct = (f * 100).toFixed(1);
-  const pctRound = Math.round(f * 100);
-  refs.progressEl.hidden = false;
-  refs.barFillEl.style.width = `${pct}%`;
-  refs.pieEl.style.background = `conic-gradient(var(--future) ${pct}%, var(--track) 0)`;
-  refs.pctEl.textContent = `${pctRound}%`;
-  // 순서(flex order)·표시(hidden)를 설정대로: order 인덱스 → flex order, show → 표시
-  const els = { bar: refs.barEl, pie: refs.pieEl, percent: refs.pctEl };
-  order.forEach((p, i) => {
-    els[p].style.order = String(i);
-    els[p].hidden = !show[p];
-  });
-  refs.progressEl.setAttribute('aria-label', `진행률 ${pctRound}%`);
+  // 과거(또는 지금) 카드: 등록/수정/기준/현재 일시 타임라인
+  if (!future) renderTimeline(refs, item);
+  else refs.timelineEl.hidden = true;
+}
+
+// 과거 카드 타임라인: 등록·수정·기준·현재 일시를 [최소~현재] 구간에 마커로 배치.
+function renderTimeline(refs, item) {
+  const now = Date.now();
+  const pts = TL_POINTS.map((p) => ({ ...p, ms: new Date(p.isoOf(item)).getTime() }))
+    .filter((p) => Number.isFinite(p.ms))
+    .concat([{ key: 'now', label: '현재', ms: now, cls: 'tl--now' }]);
+  const min = Math.min(...pts.map((p) => p.ms));
+  const max = Math.max(...pts.map((p) => p.ms));
+  refs.timelineEl.hidden = false;
+  refs.timelineEl.innerHTML =
+    '<div class="card__tltrack"></div>' +
+    pts
+      .map((p) => {
+        const f = elapsedFraction(min, max, p.ms); // (ms-min)/(max-min) 클램프
+        const date = new Date(p.ms);
+        return (
+          `<span class="card__tlmark ${p.cls}" style="left:${(f * 100).toFixed(1)}%" ` +
+          `title="${p.label} ${formatCompact(date)}"><i class="card__tldot"></i>` +
+          `<b class="card__tllabel">${p.label[0]}</b></span>`
+        );
+      })
+      .join('');
+  refs.timelineEl.setAttribute('aria-label', '등록·수정·기준·현재 일시 타임라인');
 }
 
 // 데이터 변경 시: 저장된(수동) 순서 그대로 목록 DOM 재구성.

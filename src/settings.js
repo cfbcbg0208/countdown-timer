@@ -9,7 +9,7 @@ export const PROGRESS_PARTS = ['bar', 'pie', 'percent'];
 export const DEFAULTS = {
   addPosition: 'top', // 새 카드는 기본적으로 목록 맨 앞에 추가
   progressOrder: ['bar', 'pie', 'percent'], // 진행률 구성요소 순서(설정에서 재배치)
-  progressShow: { bar: true, pie: true, percent: true }, // 각 요소 표시 여부(기본 전부)
+  progressShow: { bar: true, pie: true, percent: false }, // 바·도넛파이 기본 표시(도넛이 %를 품으므로 독립 %는 기본 off)
   progressBase: 'created', // 진행률 0% 기준: 'created'(등록일시) | 'updated'(수정일시)
   dateFormat: 'compact', // 카드 날짜 표시: 'compact'(260628일210436) | 'full'(2026-06-28 일 …)
   showTarget: true, // 카드에 기준일시 표시(기본 보임)

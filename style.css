@@ -440,14 +440,33 @@ kbd {
   border-radius: 999px;
   transition: width 0.25s linear;
 }
+/* 도넛 파이: 원 테두리=진행, 가운데 구멍에 % 표시(파이+퍼센트 합침). */
 .card__pie {
+  position: relative;
   flex: none;
-  width: 1.4rem;
-  height: 1.4rem;
+  width: 2rem;
+  height: 2rem;
   border-radius: 50%;
-  background: conic-gradient(var(--accent) 0%, var(--track) 0);
+  background: conic-gradient(var(--future) 0%, var(--track) 0);
+  display: grid;
+  place-items: center;
 }
-/* 진행률 퍼센트 텍스트(표시 여부는 updateProgress가 hidden으로 제어) */
+.card__pie::before {
+  content: '';
+  position: absolute;
+  inset: 21%; /* 가운데 구멍(카드 배경색으로 펀치) */
+  border-radius: 50%;
+  background: var(--card);
+}
+.card__pielabel {
+  position: relative; /* 구멍 위에 % */
+  font-size: 0.46rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--future);
+  line-height: 1;
+}
+/* 독립 퍼센트 텍스트(도넛과 별개 토글, 기본 off) */
 .card__pct {
   font-size: 0.82rem;
   font-weight: 800;
@@ -456,6 +475,43 @@ kbd {
   line-height: 1.1;
 }
 .card__pct[hidden], .card__bar[hidden], .card__pie[hidden] { display: none; }
+
+/* 과거 카드 타임라인: 등록·수정·기준·현재 일시를 [최소~현재] 구간에 마커로 배치 */
+.card__timeline { position: relative; height: 1.5rem; margin-top: 0.4rem; }
+.card__timeline[hidden] { display: none; }
+.card__tltrack {
+  position: absolute;
+  left: 0.25rem;
+  right: 0.25rem;
+  top: 0.55rem;
+  height: 4px;
+  background: var(--track);
+  border-radius: 999px;
+}
+.card__tlmark {
+  position: absolute;
+  top: 0.36rem;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.card__tldot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--card);
+  box-sizing: border-box;
+}
+.card__tllabel { font-size: 0.5rem; font-weight: 700; line-height: 1; margin-top: 0.15rem; }
+.tl--created .card__tldot { background: var(--accent); }
+.tl--created .card__tllabel { color: var(--accent); }
+.tl--updated .card__tldot { background: var(--muted); }
+.tl--updated .card__tllabel { color: var(--muted); }
+.tl--target .card__tldot { background: var(--past); }
+.tl--target .card__tllabel { color: var(--past); }
+.tl--now .card__tldot { background: var(--future); }
+.tl--now .card__tllabel { color: var(--future); }
 
 /* 기준일시: 값(자르기) + [기준일시] 칩(고정). 칩이 항상 보이도록 날짜만 줄어든다. */
 .card__meta {

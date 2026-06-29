@@ -620,8 +620,10 @@ async function main() {
        timelineShown: !document.querySelector('.card__timeline')?.hidden,
        progressHidden: document.querySelector('.card__progress')?.hidden,
        marks: document.querySelectorAll('.card__tlbar .card__tlmark').length,
-       legends: [...document.querySelectorAll('.card__tllegend .card__tlleg b')].map((e) => e.textContent),
-       legendHasDate: /\\d{6}/.test(document.querySelector('.card__tllegend .card__tlleg')?.textContent || ''),
+       labels: [...document.querySelectorAll('.card__tllabels .card__tlleg')].map((e) => e.textContent),
+       labelNoDate: !/\\d/.test(document.querySelector('.card__tllabels .card__tlleg')?.textContent || ''),
+       labelHasTooltip: /\\d{6}/.test(document.querySelector('.card__tllabels .card__tlleg')?.title || ''),
+       labelsPositioned: [...document.querySelectorAll('.card__tllabels .card__tlleg')].every((e) => e.style.left),
        hasNow: !!document.querySelector('.card__timeline .tl--now'),
        hasTarget: !!document.querySelector('.card__timeline .tl--target'),
        nowLeft: parseFloat(document.querySelector('.card__tlbar .tl--now')?.style.left || '0'),
@@ -630,11 +632,13 @@ async function main() {
   if (!tl.timelineShown) fails.push('과거 카드 타임라인이 표시되지 않음');
   if (!tl.progressHidden) fails.push('과거 카드에서 미래용 진행률이 숨겨지지 않음');
   if (tl.marks !== 4) fails.push(`타임라인 마커 4개(등록·수정·기준·현재) 기대, 실제 ${tl.marks}`);
-  if (tl.legends.join(',') !== '등록,수정,기준,현재')
-    fails.push(`타임라인 범례(시간순) [등록,수정,기준,현재] 기대, 실제 [${tl.legends}]`);
-  if (!tl.legendHasDate) fails.push('타임라인 범례에 컴팩트 일시가 표시되지 않음');
+  if (tl.labels.slice().sort().join() !== ['기준', '등록', '수정', '현재'].sort().join())
+    fails.push(`타임라인 라벨 [등록,수정,기준,현재] 기대, 실제 [${tl.labels}]`);
+  if (!tl.labelNoDate) fails.push('타임라인 라벨에 일시가 노출됨(라벨만 표기 기대)');
+  if (!tl.labelHasTooltip) fails.push('타임라인 라벨 툴팁(title)에 컴팩트 일시 없음');
+  if (!tl.labelsPositioned) fails.push('타임라인 라벨이 점 위치(left)로 배치되지 않음');
   if (!(tl.hasNow && tl.hasTarget)) fails.push('타임라인에 현재/기준 마커 누락');
-  if (tl.nowLeft < 90) fails.push(`현재 마커가 우측 끝(~95%) 아님: ${tl.nowLeft}`);
+  if (tl.nowLeft < 88) fails.push(`현재 마커가 우측 끝(~92%) 아님: ${tl.nowLeft}`);
   const tlShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-timeline.png'), Buffer.from(tlShot.data, 'base64'));
 

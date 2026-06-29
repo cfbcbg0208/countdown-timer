@@ -465,10 +465,10 @@ function updateProgress(refs, item, target, direction) {
   else refs.timelineEl.hidden = true;
 }
 
-// 과거 카드 타임라인: 등록·수정·기준·현재 일시를 [최소~현재] 구간에 마커로 + 시간순 범례.
+// 과거 카드 타임라인: 등록·수정·기준·현재 일시를 [최소~현재] 구간에 점으로,
+// 라벨은 점 아래(x축 아래)에 두되 겹치지 않게 최소 행(stagger)으로 배치. 일시는 툴팁에만.
 function renderTimeline(refs, item) {
   const now = Date.now();
-  // 유효한 일시만, 시간순 정렬(범례·마커 순서를 바 좌→우와 일치시켜 식별성↑).
   const pts = TL_POINTS.map((p) => ({ ...p, ms: new Date(p.isoOf(item)).getTime() }))
     .filter((p) => Number.isFinite(p.ms))
     .concat([{ key: 'now', label: '현재', ms: now, cls: 'tl--now' }])
@@ -476,24 +476,40 @@ function renderTimeline(refs, item) {
   const min = pts[0].ms;
   const max = pts[pts.length - 1].ms;
   refs.timelineEl.hidden = false;
-  // 바: 색별 점(라벨 없음). 식별은 아래 범례 + 호버 툴팁.
-  const marks = pts
-    .map((p) => {
-      const f = elapsedFraction(min, max, p.ms);
-      const left = (5 + f * 90).toFixed(1); // 5~95%: 가장자리 점이 열 밖으로 잘리지 않게 여백
-      return `<span class="card__tlmark ${p.cls}" style="left:${left}%" title="${esc(p.label)} ${formatCompact(new Date(p.ms))}"></span>`;
-    })
-    .join('');
-  // 범례: 시간순 한 줄씩 '라벨 + 컴팩트일시'. 라벨은 색, 일시는 무채색 → 잘림·겹침 없이 항상 식별.
-  const legend = pts
+  // 라벨 폭/위치는 px로 계산해 충돌 회피(열 폭 기준). DOM 삽입 전(0)이면 근사폭.
+  const W = refs.timelineEl.clientWidth || 140;
+  const ROW_H = 11; // 라벨 한 줄 높이(px)
+  const GAP = 5; // 같은 행 라벨 사이 최소 간격(px)
+  const items = pts.map((p) => {
+    const f = elapsedFraction(min, max, p.ms);
+    const xPct = 8 + f * 84; // 8~92%: 가장자리 라벨이 열 밖으로 잘리지 않게
+    return { ...p, xPct, xPx: (xPct / 100) * W, w: p.label.length * 9 + 4 };
+  });
+  // 행 배정: x 오름차순 그리디 — 겹치면 다음 행으로(최소 행 수).
+  const rowRight = [];
+  for (const it of items) {
+    let r = 0;
+    while (r < rowRight.length && it.xPx - it.w / 2 < rowRight[r] + GAP) r++;
+    it.row = r;
+    rowRight[r] = it.xPx + it.w / 2;
+  }
+  const rows = Math.max(1, rowRight.length);
+  const marks = items
     .map(
-      (p) =>
-        `<span class="card__tlleg ${p.cls}"><b>${esc(p.label)}</b> ${esc(formatCompact(new Date(p.ms)))}</span>`,
+      (it) =>
+        `<span class="card__tlmark ${it.cls}" style="left:${it.xPct.toFixed(1)}%" title="${esc(it.label)} ${formatCompact(new Date(it.ms))}"></span>`,
+    )
+    .join('');
+  const labels = items
+    .map(
+      (it) =>
+        `<span class="card__tlleg ${it.cls}" style="left:${it.xPct.toFixed(1)}%;top:${it.row * ROW_H}px" ` +
+        `title="${esc(it.label)} ${formatCompact(new Date(it.ms))}">${esc(it.label)}</span>`,
     )
     .join('');
   refs.timelineEl.innerHTML =
     `<div class="card__tlbar"><div class="card__tltrack"></div>${marks}</div>` +
-    `<div class="card__tllegend">${legend}</div>`;
+    `<div class="card__tllabels" style="height:${rows * ROW_H}px">${labels}</div>`;
   refs.timelineEl.setAttribute('aria-label', '등록·수정·기준·현재 일시 타임라인');
 }
 

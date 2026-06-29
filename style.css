@@ -482,8 +482,8 @@ kbd {
 .card__tlbar { position: relative; height: 0.8rem; }
 .card__tltrack {
   position: absolute;
-  left: 5%;
-  right: 5%;
+  left: 8%;
+  right: 8%;
   top: 0.36rem;
   height: 4px;
   background: var(--track);
@@ -499,24 +499,25 @@ kbd {
   border: 1.5px solid var(--card);
   box-sizing: border-box;
 }
-/* 범례: 시간순 한 줄씩 '라벨(색) 컴팩트일시(무채색)' */
-.card__tllegend { display: flex; flex-direction: column; gap: 0.02rem; margin-top: 0.15rem; }
+/* 라벨: 점 아래(x축 아래)에 점 위치대로 절대배치. 겹치면 renderTimeline이 top으로 단을 내림. */
+.card__tllabels { position: relative; margin-top: 0.08rem; }
 .card__tlleg {
+  position: absolute;
+  transform: translateX(-50%);
   font-size: 0.56rem;
-  line-height: 1.3;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 1;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
-.card__tlleg b { font-weight: 800; margin-right: 0.2rem; }
 .tl--created.card__tlmark { background: var(--accent); }
-.tl--created.card__tlleg b { color: var(--accent); }
+.tl--created.card__tlleg { color: var(--accent); }
 .tl--updated.card__tlmark { background: var(--muted); }
-.tl--updated.card__tlleg b { color: var(--fg); }
+.tl--updated.card__tlleg { color: var(--fg); }
 .tl--target.card__tlmark { background: var(--past); }
-.tl--target.card__tlleg b { color: var(--past); }
+.tl--target.card__tlleg { color: var(--past); }
 .tl--now.card__tlmark { background: var(--future); }
-.tl--now.card__tlleg b { color: var(--future); }
+.tl--now.card__tlleg { color: var(--future); }
 
 /* 기준일시: 값(자르기) + [기준일시] 칩(고정). 칩이 항상 보이도록 날짜만 줄어든다. */
 .card__meta {

@@ -519,10 +519,15 @@ function renderViz(refs, item, direction) {
         `<i>${esc(it.datePart)}</i><i>${esc(it.timePart)}</i></span>`,
     )
     .join('');
+  // 미래는 '남은 시간'(현재→기준=fillB→1)을 흐린 파랑으로 덧칠해 진한 채움(경과)과 2색 대비.
+  const restFill =
+    future && fillB < 1
+      ? `<div class="card__viz-fill card__viz-fill--rest" style="left:${(fillB * 100).toFixed(1)}%;width:${((1 - fillB) * 100).toFixed(1)}%"></div>`
+      : '';
   refs.vizEl.innerHTML =
     `<div class="card__viz-bar"><div class="card__viz-track">` +
     `<div class="card__viz-fill" style="left:${(fillA * 100).toFixed(1)}%;width:${((fillB - fillA) * 100).toFixed(1)}%"></div>` +
-    `</div>${marks}</div>` +
+    `${restFill}</div>${marks}</div>` +
     `<div class="card__viz-labels"></div>`;
   // 실측 폭으로 최소-행 배정: 그리디 first-fit(정확한 폭이면 행수 = 최대 겹침깊이 = 최소).
   // 추정폭은 실제보다 넓어 인접 라벨이 거짓 충돌 → 불필요한 3번째 행을 썼었음(M83 수정).

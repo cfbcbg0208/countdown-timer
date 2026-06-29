@@ -168,6 +168,11 @@ async function main() {
        bandMarks: document.querySelectorAll('.card__viz .card__vizmark').length,
        bandStart: !!document.querySelector('.card__viz .tl--start'),
        bandFillW: parseFloat(document.querySelector('.card__viz-fill')?.style.width || '0'),
+       // 미래 '남은 시간'(현재→기준) 흐린 파랑 둘째 채움 + 현재 노드=무채색(파랑 아님)
+       restFillW: parseFloat(document.querySelector('.card__viz-fill--rest')?.style.width || '0'),
+       nowNeutralF: (() => { const e = document.querySelector('.tl--now.card__vizlabel b'); if (!e) return false;
+         const c = (getComputedStyle(e).color.match(/\\d+/g) || []).slice(0, 3).map(Number);
+         return Math.max(...c) - Math.min(...c) <= 6; })(),
        pieInZone2: !!document.querySelector('.card__col--left .card__progress .card__pie'),
        drawerTitle: document.getElementById('drawer-title')?.textContent.trim(),
        dirChip: document.querySelector('.card__time .chip')?.textContent,
@@ -220,6 +225,8 @@ async function main() {
   if (checks.bandMarks !== 3) fails.push(`미래 밴드 마커 3개(시작·현재·기준) 기대, 실제 ${checks.bandMarks}`);
   if (!checks.bandStart) fails.push('미래 밴드에 시작 마커(.tl--start) 없음');
   if (!(checks.bandFillW > 0)) fails.push(`미래 밴드 진행 채움(시작→현재) 없음(width=${checks.bandFillW})`);
+  if (!(checks.restFillW > 0)) fails.push(`미래 '남은 시간' 흐린 채움(.card__viz-fill--rest) 없음(width=${checks.restFillW})`);
+  if (!checks.nowNeutralF) fails.push('미래 현재 노드색이 무채색이 아님(파랑 잔존?)');
   if (!checks.pieInZone2) fails.push('도넛(.card__pie)이 zone2(좌측 열)에 없음');
   if (!checks.hasPie) fails.push('진행률 파이 없음');
   if (!String(checks.drawerTitle).includes('타임카드 추가')) fails.push(`드로어 제목="${checks.drawerTitle}"`);
@@ -648,6 +655,23 @@ async function main() {
        hasNow: !!document.querySelector('.card__viz .tl--now'),
        hasTarget: !!document.querySelector('.card__viz .tl--target'),
        nowLeft: parseFloat(document.querySelector('.card__viz-bar .tl--now')?.style.left || '0'),
+       // 과거 카드엔 미래용 흐린 채움(--rest) 없어야 함(대칭 미적용)
+       restFillPast: !!document.querySelector('.card__viz--past .card__viz-fill--rest'),
+       // 노드 팔레트: 등록/수정/기준/현재 색 vs 카드배경 명암비 ≈7:1, 현재=무채색, 나머지 유채·상이.
+       nodeC: (() => {
+         const parse = (s) => (s.match(/\\d+/g) || []).slice(0, 3).map(Number);
+         const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+         const lum = (g) => 0.2126 * lin(g[0]) + 0.7152 * lin(g[1]) + 0.0722 * lin(g[2]);
+         const ct = (a, b) => { const la = lum(a), lb = lum(b), hi = Math.max(la, lb), lo = Math.min(la, lb); return (hi + 0.05) / (lo + 0.05); };
+         const bgL = parse(getComputedStyle(document.querySelector('.card')).backgroundColor);
+         const col = (sel) => parse(getComputedStyle(document.querySelector(sel)).color);
+         const neutral = (c) => Math.max(...c) - Math.min(...c) <= 6;
+         const o = col('.tl--created.card__vizlabel b'), u = col('.tl--updated.card__vizlabel b'),
+           t = col('.tl--target.card__vizlabel b'), n = col('.tl--now.card__vizlabel b');
+         return { origin: +ct(o, bgL).toFixed(2), updated: +ct(u, bgL).toFixed(2), target: +ct(t, bgL).toFixed(2), now: +ct(n, bgL).toFixed(2),
+           nowNeutral: neutral(n), chroma: !neutral(o) && !neutral(u) && !neutral(t),
+           distinct: new Set([o, u, t].map((c) => c.join(','))).size === 3 };
+       })(),
      }))()`,
   );
   if (!tl.vizShown) fails.push('과거 카드 타임라인 밴드가 표시되지 않음');
@@ -663,6 +687,16 @@ async function main() {
   if (!tl.labelsPositioned) fails.push('타임라인 라벨이 점 위치(left)로 배치되지 않음');
   if (!(tl.hasNow && tl.hasTarget)) fails.push('타임라인에 현재/기준 마커 누락');
   if (tl.nowLeft < 88) fails.push(`현재 마커가 우측 끝(~92%) 아님: ${tl.nowLeft}`);
+  if (tl.restFillPast) fails.push('과거 카드에 미래용 흐린 채움(.card__viz-fill--rest)이 잘못 존재');
+  {
+    const nc = tl.nodeC;
+    const near7 = (v) => Math.abs(v - 7) <= 0.6; // 같은 공식이라 ≈7.0, sRGB 반올림 여유
+    if (![nc.origin, nc.updated, nc.target, nc.now].every(near7))
+      fails.push(`노드 명암비 7:1 벗어남: ${JSON.stringify(nc)}`);
+    if (!nc.nowNeutral) fails.push('현재 노드색이 무채색(R≈G≈B) 아님');
+    if (!nc.chroma) fails.push('등록/수정/기준 노드색이 유채색 아님(무채색 잔존?)');
+    if (!nc.distinct) fails.push('등록/수정/기준 노드색이 서로 다르지 않음');
+  }
   const tlShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-timeline.png'), Buffer.from(tlShot.data, 'base64'));
 

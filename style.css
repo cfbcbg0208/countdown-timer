@@ -12,6 +12,12 @@
   --ok: #16a34a;
   --err: #f87171;
   --track: #2a3a32;  /* 진행률 바/파이의 빈(미진행) 부분 */
+  /* 타임라인 노드 팔레트(방향색과 분리·tools/gen-palette.mjs 산출). 다크 카드 대비 모두 ≈7:1(AAA). */
+  --node-origin: #e69900;  /* 등록·시작 앰버 40° */
+  --node-updated: #00bf9f; /* 수정 청록 170° */
+  --node-target: #ff6cff;  /* 기준 마젠타 300° */
+  --node-now: #a8a8a8;     /* 현재 무채색 */
+  --future-dim: #005ac2;   /* 미래 '남은 시간'(현재→기준) 흐린 파랑, ≈2.5:1 */
   --glow: #1a2b22;   /* 상단 은은한 글로우(녹색-중립, 남색 아님) */
   --fab2: #2b3036;   /* 보조 FAB: 무채색·불투명 */
   --fab2-fg: #d7dde2;
@@ -35,6 +41,12 @@
   --ok: #16a34a;
   --err: #dc4446;
   --track: #d8e3dc;
+  /* 노드 팔레트(라이트): 흰 카드 대비 모두 ≈7:1. gen-palette.mjs 산출(어두운 채색). */
+  --node-origin: #795100;  /* 등록·시작 앰버 40° */
+  --node-updated: #006554; /* 수정 청록 170° */
+  --node-target: #9f009f;  /* 기준 마젠타 300° */
+  --node-now: #595959;     /* 현재 무채색 */
+  --future-dim: #67a3ff;   /* 미래 '남은 시간' 흐린 파랑, ≈2.5:1 */
   --glow: #ffffff;
   --fab2: #eceef2;
   --fab2-fg: #3a414a;
@@ -482,6 +494,8 @@ kbd {
 /* 채움: 미래=청색(시작→현재), 과거=적색(기준→현재). left/width는 renderViz가 인라인. */
 .card__viz-fill { position: absolute; top: 0; height: 100%; background: var(--future); border-radius: 999px; }
 .card__viz--past .card__viz-fill { background: var(--past); }
+/* 미래 '남은 시간'(현재→기준): 흐린 파랑(낮은 명암비)으로 채워 남은 양을 표현 */
+.card__viz-fill--rest { background: var(--future-dim); }
 /* ▲ 마커: 트랙 아래에서 위(트랙)를 가리키는 삼각형, 점 위치(left%)에 */
 .card__vizmark {
   position: absolute;
@@ -512,15 +526,15 @@ kbd {
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
 }
-/* 색(이름): 시작/등록=accent · 수정=fg · 기준=past · 현재=future */
-.tl--start.card__vizmark, .tl--created.card__vizmark { border-bottom-color: var(--accent); }
-.tl--start.card__vizlabel b, .tl--created.card__vizlabel b { color: var(--accent); }
-.tl--updated.card__vizmark { border-bottom-color: var(--muted); }
-.tl--updated.card__vizlabel b { color: var(--fg); }
-.tl--target.card__vizmark { border-bottom-color: var(--past); }
-.tl--target.card__vizlabel b { color: var(--past); }
-.tl--now.card__vizmark { border-bottom-color: var(--future); }
-.tl--now.card__vizlabel b { color: var(--future); }
+/* 색(이름): 방향색(빨/파)과 분리된 노드 팔레트. 시작/등록=앰버 · 수정=청록 · 기준=마젠타 · 현재=무채색. 모두 ≈7:1 */
+.tl--start.card__vizmark, .tl--created.card__vizmark { border-bottom-color: var(--node-origin); }
+.tl--start.card__vizlabel b, .tl--created.card__vizlabel b { color: var(--node-origin); }
+.tl--updated.card__vizmark { border-bottom-color: var(--node-updated); }
+.tl--updated.card__vizlabel b { color: var(--node-updated); }
+.tl--target.card__vizmark { border-bottom-color: var(--node-target); }
+.tl--target.card__vizlabel b { color: var(--node-target); }
+.tl--now.card__vizmark { border-bottom-color: var(--node-now); }
+.tl--now.card__vizlabel b { color: var(--node-now); }
 
 /* 기준일시: 값(자르기) + [기준일시] 칩(고정). 칩이 항상 보이도록 날짜만 줄어든다. */
 .card__meta {

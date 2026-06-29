@@ -7,6 +7,7 @@ import {
   parseRelative,
   formatCompact,
   elapsedFraction,
+  startForFraction,
   monthGrid,
   dateKeyOf,
 } from '../src/time.js';
@@ -102,6 +103,19 @@ test('parseRelative: 부호 + 일(일/d/D) + HH:MM:SS 역연산 + 부호별 방�
   assert.deepEqual(parseRelative('-2d'), { dir: 'future', ms: dhms(2, 0, 0, 0) }); // 일만
   assert.equal(parseRelative('아무거나'), null);
   assert.equal(parseRelative('1:2:3:4'), null);
+});
+
+test('startForFraction: 지금이 f%가 되는 시작 시각(elapsedFraction 역연산)', () => {
+  const now = 1000;
+  const target = 2000;
+  // f=0.5 → start=0 → elapsedFraction(0,2000,1000)=0.5
+  const s = startForFraction(now, target, 0.5);
+  assert.equal(s, 0);
+  assert.equal(elapsedFraction(s, target, now), 0.5);
+  // f=0 → start=now(0%)
+  assert.equal(startForFraction(now, target, 0), now);
+  // 클램프: f≥1은 0.999로 → 분모 0 회피(유한값)
+  assert.ok(Number.isFinite(startForFraction(now, target, 1)));
 });
 
 test('elapsedFraction: 중간 지점은 0.5', () => {

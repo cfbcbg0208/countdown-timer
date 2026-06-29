@@ -3,12 +3,14 @@
 // 추가 영역은 우하단 FAB로 열리는 드로어(오버레이)에 들어 있다.
 import {
   parseFlexible,
+  parseDuration,
   diff,
   formatDuration,
   parseRelative,
   formatLocal,
   formatCompact,
   elapsedFraction,
+  startForFraction,
   monthGrid,
   dateKeyOf,
 } from './time.js';
@@ -216,7 +218,7 @@ function makeCard(item) {
   // 진행률(미래 카드만): 바/파이/퍼센트/둘다. 클릭하면 진행 시작 일시 지정.
   const progressEl = document.createElement('div');
   progressEl.className = 'card__progress';
-  progressEl.title = '클릭하여 진행 시작 일시 지정';
+  progressEl.title = '클릭하여 진행 시작점 지정 (일시 · N% · 기간)';
   const pieEl = document.createElement('div');
   pieEl.className = 'card__pie';
   const barEl = document.createElement('div');
@@ -698,12 +700,52 @@ function removeLap(id, index) {
   srStatus.textContent = '기록 삭제됨';
 }
 
+// 진행 시작 입력의 'duration' 판별: d접두(d5h) 또는 무접두+명시적 단위(5시간/30분/5h).
+// '시'(정각)·순수 숫자·날짜는 제외(= 일시로 해석) → '시간'만 시(hour) 단위로 본다.
+const BARE_DUR = /^\d+\s*(?:[a-zA-Z]+|시간|분|초|일|개월|월|년)$/;
+function asDuration(s) {
+  let dur = parseDuration(s); // d 접두 형식
+  if (!dur && BARE_DUR.test(s)) dur = parseDuration('d' + s); // 무접두 + 단위
+  if (!dur) return null;
+  const total = dur.years + dur.months + dur.days + dur.hours + dur.minutes + dur.seconds;
+  return total > 0 ? dur : null;
+}
+
+// 진행 시작점 입력을 3가지 방식으로 해석 → 시작 Date(또는 기본=null).
+//   ① 빈칸 → 기본(등록/수정일시)  ② 'N%' → 지금이 N%가 되는 시작 역산
+//   ③ duration(5시간 등) → 기준일시 − 기간  ④ 일시 → 그 일시
+function resolveProgressStart(raw, item) {
+  const s = String(raw).trim();
+  if (s === '') return { kind: 'default', date: null };
+  const target = new Date(item.targetISO);
+  const pm = s.match(/^(\d+(?:\.\d+)?)\s*%$/);
+  if (pm) {
+    const pct = parseFloat(pm[1]);
+    const date = new Date(startForFraction(Date.now(), target, pct / 100));
+    return { kind: 'percent', date, pct };
+  }
+  const dur = asDuration(s);
+  if (dur) {
+    const d = new Date(target);
+    d.setFullYear(d.getFullYear() - dur.years);
+    d.setMonth(d.getMonth() - dur.months);
+    d.setDate(d.getDate() - dur.days);
+    d.setHours(d.getHours() - dur.hours);
+    d.setMinutes(d.getMinutes() - dur.minutes);
+    d.setSeconds(d.getSeconds() - dur.seconds);
+    return { kind: 'duration', date: d };
+  }
+  const dt = parseFlexible(s);
+  if (dt) return { kind: 'datetime', date: dt };
+  return { kind: 'invalid' };
+}
+
 // ── 인라인 필드 편집: 제목/기준일시를 클릭하면 그 자리(필드 바로 아래)에 입력창이 열린다 ──
 // field: 'title'(텍스트) | 'date'(자유 텍스트→해석). 한 카드에 하나만. 같은 필드 재클릭 시 닫힘(토글).
 const FIELD_LABELS = {
   title: '제목 수정',
   date: '기준일시 수정',
-  start: '진행 시작 일시',
+  start: '진행 시작점 (일시 · N% · 기간)',
   'lap-rel': '상대 시간 수정 (기준일시 연동)',
   'lap-target': '기준일시 수정 (상대시간 연동)',
 };
@@ -753,9 +795,9 @@ function openFieldEditor(card, id, field, lapIndex = null) {
     input.placeholder = '예: 260626금1800 · 2026-06-26 18:00 · 오후 6시';
     input.spellcheck = false;
   } else if (field === 'start') {
-    // 진행률 0% 기준을 이 카드만 따로 지정(비우면 설정 기본=등록/수정일시).
+    // 진행률 0% 기준을 이 카드만 따로 지정. 세 방식: 일시 · N%(지금이 그 %) · 기간(5시간).
     input.value = item.startISO ? toLocalISO(new Date(item.startISO)).replace('T', ' ') : '';
-    input.placeholder = '진행 시작 일시 · 비우면 기본(등록/수정일시)';
+    input.placeholder = '일시 · 50%(지금이 그 %) · 5시간(기간) · 비우면 기본';
     input.spellcheck = false;
   } else {
     input.value = item.label || '';
@@ -802,8 +844,30 @@ function openFieldEditor(card, id, field, lapIndex = null) {
     };
     input.addEventListener('input', refresh);
     refresh();
-  } else if (field === 'date' || field === 'start' || field === 'lap-target') {
-    // 기준일시/시작/랩 기준일시: 입력하는 동안 해석 결과를 라이브 미리보기로 보여준다.
+  } else if (field === 'start') {
+    // 진행 시작점: 일시 · N%(지금이 그 %) · 기간(5시간). 해석된 시작 일시를 미리보기.
+    const preview = document.createElement('p');
+    preview.className = 'card__editpreview';
+    editor.append(preview);
+    const KIND = { percent: '지금이 그 %', duration: '기준일시 − 기간', datetime: '시작 일시' };
+    const refresh = () => {
+      input.removeAttribute('aria-invalid');
+      const r = resolveProgressStart(input.value, item);
+      if (r.kind === 'default') {
+        preview.textContent = '기본값(등록/수정일시) 사용';
+        delete preview.dataset.ok;
+      } else if (r.kind === 'invalid') {
+        preview.textContent = '인식할 수 없는 형식';
+        preview.dataset.ok = 'no';
+      } else {
+        preview.textContent = `시작 → ${formatLocal(r.date)} · ${KIND[r.kind]}`;
+        preview.dataset.ok = 'yes';
+      }
+    };
+    input.addEventListener('input', refresh);
+    refresh();
+  } else if (field === 'date' || field === 'lap-target') {
+    // 기준일시/랩 기준일시: 입력하는 동안 해석 결과를 라이브 미리보기로 보여준다.
     const preview = document.createElement('p');
     preview.className = 'card__editpreview';
     editor.append(preview);
@@ -811,7 +875,7 @@ function openFieldEditor(card, id, field, lapIndex = null) {
       input.removeAttribute('aria-invalid');
       const raw = input.value.trim();
       if (!raw) {
-        preview.textContent = field === 'start' ? '기본값(등록/수정일시) 사용' : '';
+        preview.textContent = '';
         delete preview.dataset.ok;
         return;
       }
@@ -822,8 +886,7 @@ function openFieldEditor(card, id, field, lapIndex = null) {
         return;
       }
       const dir = DIRS[diff(d).direction];
-      preview.textContent =
-        field === 'start' ? formatLocal(d) : `${formatLocal(d)} · ${dir.label}`;
+      preview.textContent = `${formatLocal(d)} · ${dir.label}`;
       preview.dataset.ok = 'yes';
     };
     input.addEventListener('input', refresh);
@@ -876,19 +939,14 @@ function commitField(card, id, field) {
     list = updateItem(localStorage, id, { targetISO: toLocalISO(date) });
     srStatus.textContent = '기준일시 변경됨';
   } else if (field === 'start') {
-    const raw = input.value.trim();
-    if (raw === '') {
-      list = updateItem(localStorage, id, { startISO: null }); // 비우면 기본값으로
-      srStatus.textContent = '진행 시작 기본값으로';
-    } else {
-      const date = parseFlexible(raw);
-      if (!date) {
-        input.setAttribute('aria-invalid', 'true');
-        return;
-      }
-      list = updateItem(localStorage, id, { startISO: toLocalISO(date) });
-      srStatus.textContent = '진행 시작 변경됨';
+    // 일시 · N%(지금이 그 %) · 기간(5시간) → 시작 일시 계산. 비우면 기본(등록/수정일시).
+    const r = resolveProgressStart(input.value, itemById(id));
+    if (r.kind === 'invalid') {
+      input.setAttribute('aria-invalid', 'true');
+      return;
     }
+    list = updateItem(localStorage, id, { startISO: r.date ? toLocalISO(r.date) : null });
+    srStatus.textContent = r.kind === 'default' ? '진행 시작 기본값으로' : '진행 시작 변경됨';
   } else {
     list = updateItem(localStorage, id, { label: input.value.trim() });
     srStatus.textContent = '제목 변경됨';

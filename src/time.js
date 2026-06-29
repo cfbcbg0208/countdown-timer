@@ -124,6 +124,18 @@ export function elapsedFraction(start, target, now = Date.now()) {
   return Math.min(1, Math.max(0, (n - s) / (t - s)));
 }
 
+/**
+ * 지금(now)이 진행률 f(0~1)가 되도록 하는 '시작 시각'(ms). elapsedFraction의 역연산.
+ *   f = (now-start)/(target-start) → start = (now - f*target)/(1-f).
+ *   f는 [0, 0.999]로 클램프(1이면 분모 0). 예) 50% → start = 2*now - target.
+ */
+export function startForFraction(now, target, f) {
+  const n = new Date(now).getTime();
+  const t = new Date(target).getTime();
+  const ff = Math.max(0, Math.min(0.999, f));
+  return (n - ff * t) / (1 - ff);
+}
+
 /** Date → "YYYY-MM-DD 요일 HH:MM:SS" (미리보기·확인용). */
 export function formatLocal(date) {
   return (

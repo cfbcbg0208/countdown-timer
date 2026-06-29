@@ -350,7 +350,7 @@ async function main() {
        editing: document.querySelector('.card[data-editing]')?.dataset.editing,
      }))()`,
   );
-  if (ed.label !== '진행 시작 일시') fails.push(`에디터 라벨="${ed.label}" (진행 시작 일시 기대)`);
+  if (!/진행 시작점/.test(ed.label || '')) fails.push(`에디터 라벨="${ed.label}" (진행 시작점 기대)`);
   if (ed.editing !== 'start') fails.push(`수정중 필드 강조 data-editing="${ed.editing}" (start 기대)`);
   // 인라인 에디터(컴팩트 밀도 + 라벨/강조) 스크린샷
   const edShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
@@ -362,6 +362,37 @@ async function main() {
   );
   const startISO = await evalJS(browser, "JSON.parse(localStorage.getItem('countdowns'))[0].startISO");
   if (!startISO) fails.push('커스텀 진행 시작(startISO) 저장 실패');
+
+  // 7.6) 진행 시작점 3방식: '50%'(지금이 50%) · '5시간'(기준일시−기간) 입력 검증
+  const setStart = async (val) => {
+    await evalJS(browser, "document.querySelector('.card__progress')?.click()");
+    await until(() => evalJS(browser, `!!document.querySelector('.card__editor[data-field="start"]')`), { label: 'start editor ' + val });
+    await evalJS(
+      browser,
+      `(() => { const i = document.querySelector('.card__editor .card__editinput');
+         i.value = ${JSON.stringify(val)}; i.dispatchEvent(new Event('input', { bubbles: true }));
+         document.querySelector('.card__editor .card__save').click(); })()`,
+    );
+  };
+  // % 입력: 지금이 진행률 ~50%가 되도록 startISO 역산
+  await setStart('50%');
+  await until(() => evalJS(browser, "!document.querySelector('.card__editor[data-field=\"start\"]')"), { label: 'pct start saved' });
+  const fAfterPct = await evalJS(
+    browser,
+    `(() => { const r = JSON.parse(localStorage.getItem('countdowns'))[0];
+       const s = new Date(r.startISO).getTime(), t = new Date(r.targetISO).getTime(), n = Date.now();
+       return (n - s) / (t - s); })()`,
+  );
+  if (!(fAfterPct > 0.48 && fAfterPct < 0.52)) fails.push(`'50%' 시작 역산 실패, 현재 진행률=${fAfterPct}`);
+  // duration 입력: startISO = 기준일시 − 5시간
+  await setStart('5시간');
+  await until(() => evalJS(browser, "!document.querySelector('.card__editor[data-field=\"start\"]')"), { label: 'dur start saved' });
+  const gapH = await evalJS(
+    browser,
+    `(() => { const r = JSON.parse(localStorage.getItem('countdowns'))[0];
+       return (new Date(r.targetISO).getTime() - new Date(r.startISO).getTime()) / 3600000; })()`,
+  );
+  if (Math.abs(gapH - 5) > 0.05) fails.push(`'5시간' 기간 시작 계산 실패, 기준일시−시작=${gapH}h`);
 
   // 8) 캘린더 열고 그리드 렌더 확인
   await evalJS(browser, "document.getElementById('calendar-fab').click()");

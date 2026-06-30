@@ -1,26 +1,17 @@
-// 0-dep dev 도구: 컬러코딩 팔레트 산출(철학: memory color-coding-philosophy / 글로벌 CLAUDE.md).
-// 색 계산은 src/oklch.mjs 공유(브라우저 슬라이더와 동일 알고리즘 — 드리프트 방지).
-// 출력 hex를 style.css 변수에 붙여넣음. 실행: node tools/gen-palette.mjs
-import { solveOklch, roleHues, hex, lumOfHex } from '../src/oklch.mjs';
+// 0-dep dev 도구: WCAG 단일 알고리즘 팔레트 산출. 색 계산은 src/oklch.mjs 공유. 실행: node tools/gen-palette.mjs
+// 조건5=배경과 같은 WCAG 명암비, 조건6=색간 ΔE 최대, 조건7=Range A[Min A,Max A]·기본=Max A.
+import { solveWcagPalette, wcagColor, rangeA, minPairwiseDE, roleHues, hex, hexToRgb, toLin, relLum } from '../src/oklch.mjs';
 
-const ROLE_LABEL = { past: '과거 빨강', now: '현재 초록', future: '미래 파랑', origin: '등록·시작', updated: '수정', target: '기준' };
+const ROLE_ORDER = ['past', 'now', 'future', 'origin', 'updated', 'target'];
+const ROLE_VAR   = { past: '--past', now: '--node-now', future: '--future', origin: '--node-origin', updated: '--node-updated', target: '--node-target' };
 const hues = roleHues();
-console.log('OKLCH hue:', Object.fromEntries(Object.entries(hues).map(([k, v]) => [k, +v.toFixed(1)])));
+const hueArr = ROLE_ORDER.map((k) => hues[k]);
 
-const TARGET = 7;
-const REMAIN_CT = 2.5; // 미래 '남은시간 잔량'(파랑) 기본 명암비 — 빈 트랙(과거)과 구분·더 진하게
-for (const t of [
-  { name: 'dark', card: '#17211c' },
-  { name: 'light', card: '#ffffff' },
-]) {
-  const bgLum = lumOfHex(t.card);
-  console.log(`\n=== ${t.name} (card ${t.card}) — 노드 ${TARGET}:1, remain ${REMAIN_CT}:1 ===`);
-  for (const key of ['origin', 'updated', 'target', 'now', 'future', 'past']) {
-    const o = solveOklch(hues[key], bgLum, TARGET);
-    const varName = key === 'now' ? '--node-now' : key === 'future' ? '--future' : key === 'past' ? '--past' : `--node-${key}`;
-    console.log(`  ${varName.padEnd(13)}: ${hex(o.rgb)};  /* ${ROLE_LABEL[key]} 명암비 ${o.ct.toFixed(2)}:1 */`);
-  }
-  // 미래 남은시간 잔량 = 파랑(future hue) at REMAIN_CT. (과거 빈 영역 --track은 은은한 회색 별도.)
-  const rm = solveOklch(hues.future, bgLum, REMAIN_CT);
-  console.log(`  --remain     : ${hex(rm.rgb)};  /* 남은시간 잔량(파랑) 명암비 ${rm.ct.toFixed(2)}:1 */`);
+for (const t of [{ name: 'dark', card: '#17211c' }, { name: 'light', card: '#ffffff' }]) {
+  const bgLum = relLum(hexToRgb(t.card).map(toLin));
+  const { minA, maxA } = rangeA(hueArr, t.card);
+  const pal = solveWcagPalette(hueArr, t.card, maxA);
+  console.log(`\n###### ${t.name} (card ${t.card}) — Range A [${minA.toFixed(2)}, ${maxA.toFixed(2)}] 기본 ${maxA.toFixed(2)}:1, 색간 최소 ΔE ${minPairwiseDE(pal).toFixed(3)} ######`);
+  pal.forEach((p, i) => console.log(`  ${ROLE_VAR[ROLE_ORDER[i]].padEnd(16)}: ${hex(p.rgb)};  /* WCAG ${p.w.toFixed(2)} */`));
+  console.log(`  --remain        : ${hex(wcagColor(hues.future, bgLum, 2.0).rgb)};  /* 잔량 WCAG 2.0 */`);
 }

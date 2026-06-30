@@ -169,21 +169,32 @@
                 <button type="button" class="seg" data-value="light">라이트</button>
               </div>
             </div>
-            <!-- TEMP(임시): 명암비 목표 미리보기. 6색을 임의 명암비로 즉시 재색칠(라이브). 정리 시 이 블록 + app.js TEMP 구간 삭제. -->
             <div class="set-row set-row--col">
-              <span class="set-row__name">🧪 노드색 명암비 <small class="set-row__hint">임시 · 슬라이더/입력 · 7=기본</small></span>
-              <div class="ctprev" id="set-ct-preview">
-                <input type="range" id="ct-range" class="ctprev__range" min="1.5" max="21" step="0.1" value="7" aria-label="노드색 명암비 슬라이더" />
-                <input type="number" id="ct-num" class="ctprev__num" min="1.5" max="21" step="0.1" value="7.0" aria-label="노드색 명암비 값" />
-                <span class="ctprev__unit">:1</span>
+              <span class="set-row__name">🎨 노드색 구분력 <small class="set-row__hint">배경과 같은 WCAG 명암비 · 색끼리 최대 구분</small></span>
+              <div class="ctprev">
+                <div class="ctslider" id="ct-slider" data-in-range="true">
+                  <div class="ctslider__rail">
+                    <div class="ctslider__track"></div>
+                    <div class="ctslider__fill"></div>
+                    <div class="ctslider__band"><span class="ctslider__band-lbl">Range A</span></div>
+                    <div class="ctslider__tick ctslider__tick--min"></div>
+                    <div class="ctslider__tick ctslider__tick--max"></div>
+                  </div>
+                  <input type="range" id="ct-range" class="ctslider__input" min="1" max="21" step="0.1" value="4.9" aria-label="노드색 구분력 (WCAG 명암비 1:1~21:1)" />
+                </div>
+                <div class="ctprev__readout">
+                  <input type="number" id="ct-num" class="ctprev__num" min="1" max="21" step="0.1" value="4.9" aria-label="노드색 구분력 명암비 값" />
+                  <span class="ctprev__unit" id="ct-unit">:1</span>
+                </div>
               </div>
+              <div class="ctslider__legend" id="ct-legend"></div>
             </div>
             <div class="set-row set-row--col">
-              <span class="set-row__name">🧪 남은시간 잔량 명암비 <small class="set-row__hint">임시 · 미래 현재→기준·도넛 남은부분 · 2.5=기본</small></span>
-              <div class="ctprev" id="set-remain-preview">
-                <input type="range" id="remain-range" class="ctprev__range" min="1.2" max="7" step="0.1" value="2.5" aria-label="남은시간 잔량 명암비 슬라이더" />
-                <input type="number" id="remain-num" class="ctprev__num" min="1.2" max="7" step="0.1" value="2.5" aria-label="남은시간 잔량 명암비 값" />
-                <span class="ctprev__unit">:1</span>
+              <span class="set-row__name">💧 남은시간 잔량 <small class="set-row__hint">미래 현재→기준 · 도넛 남은부분</small></span>
+              <div class="ctprev">
+                <input type="range" id="remain-range" class="ctprev__range" min="1.2" max="4" step="0.1" value="2.0" aria-label="남은시간 잔량 슬라이더" />
+                <input type="number" id="remain-num" class="ctprev__num" min="1.2" max="4" step="0.1" value="2.0" aria-label="남은시간 잔량 값" />
+                <span class="ctprev__unit" id="remain-unit">:1</span>
               </div>
             </div>
             <div class="set-row">

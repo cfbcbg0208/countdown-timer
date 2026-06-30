@@ -118,6 +118,8 @@ async function main() {
   await browser.open;
   await browser.send('Page.enable');
   await browser.send('Runtime.enable');
+  // 서비스워커 캐시가 옛 모듈을 주지 않게 캐시 비활성(검증은 항상 현재 소스 기준).
+  try { await browser.send('Network.enable'); await browser.send('Network.setCacheDisabled', { cacheDisabled: true }); } catch {}
   // 헤드리스에선 창이 비활성이라 element.focus()가 focus 이벤트를 안 쏨 → 포커스 에뮬레이션 ON.
   try {
     await browser.send('Emulation.setFocusEmulationEnabled', { enabled: true });
@@ -494,6 +496,23 @@ async function main() {
        accents: document.querySelectorAll('#set-accent .swatch').length,
      }))()`,
   );
+  // 노드색 구분력 슬라이더(WCAG 단일): 전체 범위 1~21(조건8), 시작값=Max A(조건7),
+  // Range A 밴드가 슬라이더 안([minA,maxA] ⊂ [1,21], minA<maxA), 단위 :1, 기본은 Range A 안.
+  const slider = await evalJS(browser, `(() => {
+    const r = document.getElementById('ct-range'), u = document.getElementById('ct-unit');
+    const box = document.getElementById('ct-slider');
+    const pct = (s) => parseFloat(getComputedStyle(box).getPropertyValue(s));
+    return { min: +r.min, max: +r.max, val: +r.value, unit: u && u.textContent,
+             minA: pct('--minA'), maxA: pct('--maxA'), inRange: box.dataset.inRange };
+  })()`);
+  if (slider.min !== 1 || slider.max !== 21 || slider.unit !== ':1')
+    fails.push(`구분력 슬라이더 범위/단위 오류(1~21, :1 기대): ${JSON.stringify(slider)}`);
+  if (!(slider.minA >= 0 && slider.minA < slider.maxA && slider.maxA <= 100))
+    fails.push(`Range A 밴드 위치 오류: ${JSON.stringify(slider)}`);
+  // 시작값=Max A: 슬라이더 값의 % 위치가 maxA 밴드 위치와 일치 + 기본은 Range A 안.
+  const valPct = ((slider.val - 1) / 20) * 100;
+  if (Math.abs(valPct - slider.maxA) > 0.6 || slider.inRange !== 'true')
+    fails.push(`시작값이 Max A가 아님: val=${slider.val} valPct=${valPct.toFixed(1)} maxA=${slider.maxA} inRange=${slider.inRange}`);
   await evalJS(browser, `document.querySelector('#set-theme .seg[data-value="light"]')?.click()`);
   await until(() => evalJS(browser, "document.documentElement.dataset.theme === 'light'"), {
     label: 'theme light',
@@ -657,18 +676,18 @@ async function main() {
        nowLeft: parseFloat(document.querySelector('.card__viz-bar .tl--now')?.style.left || '0'),
        // 과거 카드엔 미래용 흐린 채움(--rest) 없어야 함(대칭 미적용)
        restFillPast: !!document.querySelector('.card__viz--past .card__viz-fill--rest'),
-       // 노드 팔레트: 등록/수정/기준/현재 색 vs 카드배경 명암비 ≈7:1, 현재=무채색, 나머지 유채·상이.
+       // 노드 팔레트: 등록/수정/기준/현재 색이 카드배경에서 모두 같은 WCAG 명암비(조건5), 현재=초록 유채, 4색 상이.
        nodeC: (() => {
          const parse = (s) => (s.match(/\\d+/g) || []).slice(0, 3).map(Number);
          const lin = (c) => { c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
-         const lum = (g) => 0.2126 * lin(g[0]) + 0.7152 * lin(g[1]) + 0.0722 * lin(g[2]);
-         const ct = (a, b) => { const la = lum(a), lb = lum(b), hi = Math.max(la, lb), lo = Math.min(la, lb); return (hi + 0.05) / (lo + 0.05); };
-         const bgL = parse(getComputedStyle(document.querySelector('.card')).backgroundColor);
+         const lum = (g) => 0.2126*lin(g[0]) + 0.7152*lin(g[1]) + 0.0722*lin(g[2]);
+         const ct = (a, b) => { const la=lum(a), lb=lum(b), hi=Math.max(la,lb), lo=Math.min(la,lb); return (hi+0.05)/(lo+0.05); };
+         const bg = parse(getComputedStyle(document.querySelector('.card')).backgroundColor);
          const col = (sel) => parse(getComputedStyle(document.querySelector(sel)).color);
          const neutral = (c) => Math.max(...c) - Math.min(...c) <= 6;
          const o = col('.tl--created.card__vizlabel b'), u = col('.tl--updated.card__vizlabel b'),
            t = col('.tl--target.card__vizlabel b'), n = col('.tl--now.card__vizlabel b');
-         return { origin: +ct(o, bgL).toFixed(2), updated: +ct(u, bgL).toFixed(2), target: +ct(t, bgL).toFixed(2), now: +ct(n, bgL).toFixed(2),
+         return { origin: +ct(o, bg).toFixed(2), updated: +ct(u, bg).toFixed(2), target: +ct(t, bg).toFixed(2), now: +ct(n, bg).toFixed(2),
            nowGreen: !neutral(n) && n[1] > n[0] && n[1] > n[2], chroma: [o, u, t, n].every((c) => !neutral(c)),
            distinct: new Set([o, u, t, n].map((c) => c.join(','))).size === 4 };
        })(),
@@ -690,9 +709,13 @@ async function main() {
   if (tl.restFillPast) fails.push('과거 카드에 미래용 흐린 채움(.card__viz-fill--rest)이 잘못 존재');
   {
     const nc = tl.nodeC;
-    const near7 = (v) => Math.abs(v - 7) <= 0.6; // 같은 공식이라 ≈7.0, sRGB 반올림 여유
-    if (![nc.origin, nc.updated, nc.target, nc.now].every(near7))
-      fails.push(`노드 명암비 7:1 벗어남: ${JSON.stringify(nc)}`);
+    const cs = [nc.origin, nc.updated, nc.target, nc.now];
+    const mean = cs.reduce((a, b) => a + b, 0) / cs.length;
+    // 조건5 불변식: 4색이 배경에서 모두 같은 WCAG 명암비(±0.25), 그리고 합리적 범위(2.5~7).
+    if (!cs.every((v) => Math.abs(v - mean) <= 0.25))
+      fails.push(`노드 WCAG 명암비 불균일(조건5 위배): ${JSON.stringify(nc)}`);
+    if (mean < 2.5 || mean > 7)
+      fails.push(`노드 평균 WCAG ${mean.toFixed(2)} 범위(2.5~7) 벗어남: ${JSON.stringify(nc)}`);
     if (!nc.nowGreen) fails.push('현재 노드색이 초록(유채·G우세) 아님');
     if (!nc.chroma) fails.push('노드색(등록/수정/기준/현재)에 무채색 잔존');
     if (!nc.distinct) fails.push('노드 4색이 서로 다르지 않음');

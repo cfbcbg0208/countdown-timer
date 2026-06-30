@@ -35,7 +35,7 @@ import {
   update as updateSettings,
   reset as resetSettings,
 } from './settings.js';
-import { solveOklch, roleHues, hex, lumOfHex } from './oklch.mjs'; // TEMP: 명암비 미리보기 라이브 계산
+import { solveWcagPalette, wcagColor, rangeA, roleHues, hex, hexToRgb, toLin, relLum, SLIDER_MIN, SLIDER_MAX } from './oklch.mjs';
 
 const $ = (id) => document.getElementById(id);
 const labelInput = $('label-input');
@@ -1817,55 +1817,99 @@ function applySettings(s) {
   const el = document.documentElement;
   el.dataset.theme = s.theme; // 라이트/다크 팔레트 전환(나머지 색·크기는 CSS 고정)
   if (themeColorMeta) themeColorMeta.content = s.theme === 'light' ? '#eef4f0' : '#0e1512';
-  applyCtPreview(); applyRemainPreview(); // TEMP: 테마 바뀌면 미리보기 팔레트 재적용
+  applyCtPreview(); applyRemainPreview(); syncPreviewCtls(); // TEMP: 테마 바뀌면 팔레트 + 슬라이더 범위(Range A) 재계산
 }
 
-// ── TEMP(임시): 명암비 미리보기(노드 6색 + 남은시간 잔량) ─────────────
-// 컬러코딩 색을 임의 명암비로 즉시 재색칠(src/oklch.mjs 라이브 계산). 테마×값으로 비교용.
-// 정리 시: 이 구간 + 위 import + index.html #set-ct-preview/#set-remain-preview 행 + syncSettingControls의 해당 줄 삭제.
+// ── 노드 색 구분력(WCAG 명암비) 슬라이더 + 남은시간 잔량 미리보기 ──────────────
+// 조건 5: 모든 노드색이 배경과 같은 WCAG 명암비. 조건 6: 그 위에서 색끼리 min ΔE 최대.
+// 조건 7: Range A = [Min A, Max A](세 조건 모두 만족 구간). 기본값 = Max A.
+// 조건 8: 슬라이더는 1:1~21:1 전체. Range A 밖이면 조건 5+사용자 명암비만(조건 6은 그 안에서 최대).
 const CT_HUES = roleHues(); // {past, now, future, origin, updated, target} OKLCH hue
+const CT_ROLES = ['origin', 'updated', 'target', 'now', 'future', 'past'];
 const CT_VARMAP = { origin: '--node-origin', updated: '--node-updated', target: '--node-target', now: '--node-now', future: '--future', past: '--past' };
-const cardBgLum = () => lumOfHex((getComputedStyle(document.documentElement).getPropertyValue('--card').trim() || '#17211c').replace(/^#?/, '#'));
+const cardBgHex = () => { const s = getComputedStyle(document.documentElement).getPropertyValue('--card').trim() || '#17211c'; return s.startsWith('#') ? s : '#' + s; };
+const ctHueArr = () => CT_ROLES.map((k) => CT_HUES[k]);
+const _rangeCache = {}; // Range A 스캔 비쌈 → 배경별 캐시
+// Range A = {minA, maxA}. 슬라이더 step(0.1) 그리드에 맞춰 반올림(maxA가 슬라이더 눈금에 정확히 떨어지게).
+function ctRange() {
+  const bg = cardBgHex();
+  if (_rangeCache[bg]) return _rangeCache[bg];
+  const { minA, maxA } = rangeA(ctHueArr(), bg);
+  return (_rangeCache[bg] = { minA: +minA.toFixed(1), maxA: +maxA.toFixed(1) });
+}
+const REMAIN = { min: 1.2, max: 4, step: 0.1, dec: 1, def: 2.0 }; // 남은시간 잔량(미래 현재→기준 · 도넛 남은부분)
+// localStorage 숫자값이 [min,max]면 반환, 아니면 0(미설정/범위밖 정리).
+function readNum(key, min, max) {
+  const raw = localStorage.getItem(key);
+  if (raw === null || raw === '') return 0;
+  const v = +raw;
+  if (!(v >= min && v <= max)) { localStorage.removeItem(key); return 0; }
+  return v;
+}
 function applyCtPreview() {
-  const raw = localStorage.getItem('ctPreview'), st = document.documentElement.style;
-  const ct = raw === null || raw === '' ? 7 : +raw;
-  if (!(ct > 0) || Math.abs(ct - 7) < 1e-9) { for (const v of Object.values(CT_VARMAP)) st.removeProperty(v); return; } // 7=기본(CSS)
-  const bgLum = cardBgLum();
-  for (const [k, v] of Object.entries(CT_VARMAP)) st.setProperty(v, hex(solveOklch(CT_HUES[k], bgLum, ct).rgb));
+  const st = document.documentElement.style, { maxA } = ctRange();
+  const v = readNum('ctVal', SLIDER_MIN, SLIDER_MAX) || maxA; // 미설정 = Max A(조건 7 기본값)
+  const pal = solveWcagPalette(ctHueArr(), cardBgHex(), v); // 조건 5(등 WCAG) + 조건 6(색간 ΔE 최대)
+  CT_ROLES.forEach((k, i) => st.setProperty(CT_VARMAP[k], hex(pal[i].rgb)));
 }
 function applyRemainPreview() {
-  const raw = localStorage.getItem('remainPreview'), st = document.documentElement.style;
-  const ct = raw === null || raw === '' ? 0 : +raw;
-  if (!(ct > 0)) { st.removeProperty('--remain'); return; } // 기본(2.5)=CSS
-  st.setProperty('--remain', hex(solveOklch(CT_HUES.future, cardBgLum(), ct).rgb));
+  const st = document.documentElement.style;
+  const v = readNum('remainVal', REMAIN.min, REMAIN.max) || REMAIN.def;
+  st.setProperty('--remain', hex(wcagColor(CT_HUES.future, relLum(hexToRgb(cardBgHex()).map(toLin)), v).rgb));
 }
 let prevRAF = 0; // 드래그 중 프레임당 1회로 합침
 function scheduleCtPreview() { if (!prevRAF) prevRAF = requestAnimationFrame(() => { prevRAF = 0; applyCtPreview(); applyRemainPreview(); }); }
-// 슬라이더+숫자입력 한 쌍을 localStorage 키에 연결(라이브 미리보기).
-function wirePreview(rangeId, numId, key, def, min, max) {
+// 슬라이더+숫자입력 한 쌍을 localStorage 키에 연결. onChange(v): 값 변경 시 추가 갱신(범례 등).
+function wirePreview(rangeId, numId, key, onChange) {
   const range = $(rangeId), num = $(numId);
   const set = (v, from) => {
-    v = Math.max(min, Math.min(max, Math.round(v * 10) / 10));
-    if (!(v > 0)) v = def;
+    const step = +range.step || 0.1, dec = step < 0.1 ? (step < 0.01 ? 3 : 2) : 1;
+    v = +Math.max(+range.min, Math.min(+range.max, Math.round(v / step) * step)).toFixed(3);
     localStorage.setItem(key, String(v));
     if (from !== 'range') range.value = String(v);
-    if (from !== 'num') num.value = v.toFixed(1);
+    if (from !== 'num') num.value = v.toFixed(dec);
+    onChange?.(v);
     scheduleCtPreview();
   };
   range.addEventListener('input', () => set(+range.value, 'range'));
   num.addEventListener('change', () => set(+num.value, 'num'));
-  return { range, num, def, min, max };
+  return { range, num };
 }
-const ctCtl = wirePreview('ct-range', 'ct-num', 'ctPreview', 7, 1.5, 21);
-const remainCtl = wirePreview('remain-range', 'remain-num', 'remainPreview', 2.5, 1.2, 7);
-function syncPreviewCtls() {
-  for (const [c, k] of [[ctCtl, 'ctPreview'], [remainCtl, 'remainPreview']]) {
-    const v = Math.max(c.min, Math.min(c.max, +(localStorage.getItem(k) || c.def) || c.def));
-    c.range.value = String(v);
-    c.num.value = v.toFixed(1);
+// 슬라이더 1~21을 백분율로(특별 디자인: Range A 밴드·Min A/Max A 눈금·범례 위치 계산).
+const ctPct = (x) => ((x - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN)) * 100;
+function updateRangeAUI(cur) {
+  const { minA, maxA } = ctRange(), slider = $('ct-slider');
+  if (!slider) return;
+  slider.style.setProperty('--minA', ctPct(minA) + '%');
+  slider.style.setProperty('--maxA', ctPct(maxA) + '%');
+  slider.style.setProperty('--cur', ctPct(cur) + '%');
+  const inA = cur >= minA - 1e-9 && cur <= maxA + 1e-9;
+  slider.dataset.inRange = String(inA);
+  const legend = $('ct-legend');
+  if (legend) {
+    legend.innerHTML = `<span class="ctslider__chip ctslider__chip--band">Range A ${minA.toFixed(1)}–${maxA.toFixed(1)}:1</span>`
+      + `<span class="ctslider__chip">Min A ${minA.toFixed(1)}</span>`
+      + `<span class="ctslider__chip">Max A ${maxA.toFixed(1)} · 기본</span>`
+      + `<span class="ctslider__chip ${inA ? 'is-in' : 'is-out'}">현재 ${cur.toFixed(1)}:1 · ${inA ? '조건 5·6 모두 만족' : 'Range A 밖 — 조건 6 양보'}</span>`;
   }
 }
-// ── /TEMP ────────────────────────────────────────────────────────
+const ctCtl = wirePreview('ct-range', 'ct-num', 'ctVal', (v) => updateRangeAUI(v));
+const remainCtl = wirePreview('remain-range', 'remain-num', 'remainVal');
+function setCtl(c, key, min, max, def, step, dec) {
+  const v = readNum(key, min, max) || def;
+  for (const el of [c.range, c.num]) { el.min = String(min); el.max = String(max); el.step = String(step); }
+  c.range.value = String(v);
+  c.num.value = (+v).toFixed(dec);
+  return v;
+}
+// 슬라이더 범위(1~21 고정)·시작값(Max A)·Range A 표시를 현재 테마로 갱신.
+function syncPreviewCtls() {
+  const { maxA } = ctRange();
+  const cur = setCtl(ctCtl, 'ctVal', SLIDER_MIN, SLIDER_MAX, maxA, 0.1, 1);
+  setCtl(remainCtl, 'remainVal', REMAIN.min, REMAIN.max, REMAIN.def, REMAIN.step, REMAIN.dec);
+  updateRangeAUI(cur);
+}
+// ──────────────────────────────────────────────────────────────────
 
 const PART_LABEL = { bar: '타임라인', pie: '도넛', percent: '퍼센트' };
 // 진행률 파트 칩(바/파이/퍼센트): progressOrder 순서로 렌더, progressShow로 켜짐(aria-pressed) 표시.
@@ -1889,7 +1933,7 @@ function syncSettingControls(s) {
   for (const b of setDates.querySelectorAll('.seg')) b.setAttribute('aria-pressed', String(!!s[b.dataset.key]));
   syncSeg(setDateFormat, s.dateFormat);
   syncSeg(setTheme, s.theme);
-  syncPreviewCtls(); // TEMP: 명암비/잔량 미리보기 슬라이더·숫자 동기화
+  syncPreviewCtls(); // TEMP: ΔE 미리보기 슬라이더·숫자 동기화
 }
 
 function changeSetting(patch) {

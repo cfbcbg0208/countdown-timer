@@ -8,17 +8,17 @@
   --muted: #8ea59a;
   --line: #2a3a32;
   --accent: #16a34a; /* 중립 강조 = 녹색(기본) */
-  --future: #7da7ff; /* 남은(미래)=파랑. 순파랑(OKLCH 264°) 다크 대비 7.0:1 */
-  --past: #ff8575;   /* 지난(과거)=빨강. 순빨강(OKLCH 29°) 7.0:1 */
+  --future: #5287ff; /* 남은(미래)=파랑. 등 WCAG 4.9(hybrid 기본) */
+  --past: #ff4838;   /* 지난(과거)=빨강. 등 WCAG 4.9 */
   --ok: #16a34a;
   --err: #f87171;
-  --track: #2a3a32;  /* 과거 빈 영역/rail(은은한 회색) 1.4:1 */
-  --remain: #033eff; /* 미래 '남은시간 잔량'(파랑·도넛 남은부분) 2.5:1 — 빈 트랙과 구분 */
-  /* 컬러코딩(gen-palette.mjs+src/oklch.mjs): 고정 RGB원색(빨/녹/파) + OKLCH 균등 자유색(CMY). 모두 7.0:1(양자화 정밀). */
-  --node-origin: #d3a100;  /* 등록·시작 OKLCH 86°(골드) */
-  --node-updated: #00bbc8; /* 수정 OKLCH 203°(청록) */
-  --node-target: #fc6fff;  /* 기준 OKLCH 327°(마젠타) */
-  --node-now: #00c400;     /* 현재 OKLCH 142°(초록·고정 원색) */
+  --track: #2a3a32;  /* 과거 빈 영역/rail(은은한 회색) */
+  --remain: #0014ff; /* 미래 '남은시간 잔량'(파랑·도넛 남은부분) WCAG 2.0 */
+  /* 컬러코딩(gen-palette.mjs+src/oklch.mjs): 조건5=등 WCAG 명암비, 조건6=색간 ΔE 최대(hybrid). 모두 배경 대비 WCAG 4.9. */
+  --node-origin: #b08500;  /* 등록·시작 OKLCH 86° WCAG 4.9 */
+  --node-updated: #009aa5; /* 수정 OKLCH 203° WCAG 4.9 */
+  --node-target: #f300fb;  /* 기준 OKLCH 327° WCAG 4.9 */
+  --node-now: #00a300;     /* 현재 OKLCH 142° WCAG 4.9 */
   --glow: #1a2b22;   /* 상단 은은한 글로우(녹색-중립, 남색 아님) */
   --fab2: #2b3036;   /* 보조 FAB: 무채색·불투명 */
   --fab2-fg: #d7dde2;
@@ -38,17 +38,17 @@
   --muted: #56685e;
   --line: #d2ded6;
   --accent: #16a34a;
-  --future: #0037ff; /* 미래=파랑. 순파랑(OKLCH 264°) 흰 카드 대비 7.0:1 */
-  --past: #b60000;   /* 과거=빨강. 순빨강(OKLCH 29°) 7.0:1 */
+  --future: #3a74ff; /* 미래=파랑. 등 WCAG 4.1(hybrid 기본) */
+  --past: #fb0000;   /* 과거=빨강. 등 WCAG 4.1 */
   --ok: #16a34a;
   --err: #dc4446;
-  --track: #d8e3dc;  /* 과거 빈 영역/rail(은은) 1.4:1 */
-  --remain: #74a1ff; /* 미래 '남은시간 잔량'(파랑·도넛 남은부분) 2.5:1 */
-  /* 컬러코딩(라이트): 고정 RGB원색 + OKLCH 균등 자유색(CMY). 흰 카드 대비 모두 7.0:1. */
-  --node-origin: #725500;  /* 등록·시작 OKLCH 86°(골드) */
-  --node-updated: #00636b; /* 수정 OKLCH 203°(청록) */
-  --node-target: #9e00a4;  /* 기준 OKLCH 327°(마젠타) */
-  --node-now: #076805;     /* 현재 OKLCH 142°(초록·고정 원색) */
+  --track: #d8e3dc;  /* 과거 빈 영역/rail(은은) */
+  --remain: #95b7ff; /* 미래 '남은시간 잔량'(파랑·도넛 남은부분) WCAG 2.0 */
+  /* 컬러코딩(라이트): 조건5=등 WCAG 명암비, 조건6=색간 ΔE 최대(hybrid). 모두 배경 대비 WCAG 4.1. */
+  --node-origin: #9e7800;  /* 등록·시작 OKLCH 86° WCAG 4.1 */
+  --node-updated: #008b94; /* 수정 OKLCH 203° WCAG 4.1 */
+  --node-target: #db00e3;  /* 기준 OKLCH 327° WCAG 4.1 */
+  --node-now: #009300;     /* 현재 OKLCH 142° WCAG 4.1 */
   --glow: #ffffff;
   --fab2: #eceef2;
   --fab2-fg: #3a414a;
@@ -1243,15 +1243,65 @@ body.select-mode .card.card--selected::after { background: var(--accent); border
 /* 세로 배치 행(이름 위, 컨트롤 아래) — 진행률 파트처럼 넓은 컨트롤용 */
 .set-row--col { flex-direction: column; align-items: stretch; gap: 0.5rem; }
 
-/* TEMP(임시): 명암비 미리보기 = 슬라이더 + 숫자입력(▲▼ 스테퍼) */
+/* 색 미리보기 = 슬라이더 + 숫자입력(▲▼ 스테퍼) */
 .ctprev { display: flex; align-items: center; gap: 0.6rem; }
-.ctprev__range { flex: 1; min-width: 0; accent-color: var(--accent); }
+.ctprev__range { flex: 1; min-width: 0; accent-color: var(--accent); } /* 남은시간 잔량(기본 슬라이더) */
+.ctprev__readout { display: flex; align-items: center; gap: 0.2rem; }
 .ctprev__num {
   width: 4.2rem; padding: 0.3rem 0.4rem; border: 1px solid var(--line); border-radius: 0.4rem;
   background: var(--card-2); color: var(--fg); font-size: 0.85rem; font-variant-numeric: tabular-nums;
 }
 .ctprev__num:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
-.ctprev__unit { font-size: 0.8rem; color: var(--muted); margin-left: -0.3rem; }
+.ctprev__unit { font-size: 0.8rem; color: var(--muted); }
+
+/* ── 노드색 구분력: 1:1~21:1 WCAG 슬라이더 + Range A 밴드·Min A/Max A 눈금(특별 디자인) ── */
+.ctslider { position: relative; flex: 1; min-width: 0; height: 2.6rem; --minA: 16%; --maxA: 20%; --cur: 20%; }
+/* rail = thumb 이동 구간(좌우 8px=thumb 반지름 안쪽). 밴드·눈금은 이 안에서 % 배치 → thumb와 정렬 */
+.ctslider__rail { position: absolute; left: 0.5rem; right: 0.5rem; top: 0; bottom: 0; pointer-events: none; }
+.ctslider__track, .ctslider__fill { position: absolute; top: 0.85rem; height: 6px; border-radius: 999px; }
+.ctslider__track { left: 0; right: 0; background: var(--track); }
+.ctslider__fill { left: 0; width: var(--cur); background: rgba(22, 163, 74, 0.45); } /* 좌→thumb 채움 */
+.ctslider__band {
+  position: absolute; top: 0.7rem; height: 10px; left: var(--minA);
+  width: max(4px, calc(var(--maxA) - var(--minA))); border-radius: 999px; background: var(--accent);
+  box-shadow: 0 0 0 1px rgba(22, 163, 74, 0.5), 0 0 10px 1px rgba(22, 163, 74, 0.5);
+}
+/* 좁은 Range A 밴드 위에 'Range A' 떠있는 라벨(가운데 정렬, 넘쳐도 클리핑 안 됨) */
+.ctslider__band-lbl {
+  position: absolute; bottom: 13px; left: 50%; transform: translateX(-50%); white-space: nowrap;
+  font-size: 0.6rem; line-height: 1; color: var(--accent); font-weight: 600;
+}
+.ctslider__tick { position: absolute; top: 0.5rem; width: 2px; height: 15px; margin-left: -1px; background: var(--accent); border-radius: 1px; }
+.ctslider__tick--min { left: var(--minA); }
+.ctslider__tick--max { left: var(--maxA); }
+/* 네이티브 range를 트랙 위에 투명하게 올림(thumb만 보이게) */
+.ctslider__input {
+  position: absolute; left: 0; top: 0.55rem; width: 100%; height: 1rem; margin: 0;
+  -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer;
+}
+.ctslider__input::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--accent); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.ctslider__input::-moz-range-thumb {
+  width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+.ctslider__input:focus { outline: none; }
+.ctslider__input:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Range A 밖이면 밴드·눈금을 무채색으로(조건 6 양보 신호) */
+.ctslider[data-in-range="false"] .ctslider__band { background: var(--muted); box-shadow: none; }
+.ctslider[data-in-range="false"] .ctslider__band-lbl { color: var(--muted); }
+.ctslider[data-in-range="false"] .ctslider__fill { background: rgba(142, 165, 154, 0.4); }
+.ctslider[data-in-range="false"] .ctslider__tick { background: var(--muted); }
+/* 범례 칩: Range A / 기본 Max A / 현재값 */
+.ctslider__legend { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.ctslider__chip {
+  font-size: 0.68rem; padding: 0.12rem 0.45rem; border-radius: 999px; font-variant-numeric: tabular-nums;
+  background: var(--card-2); color: var(--muted); border: 1px solid var(--line);
+}
+.ctslider__chip--band, .ctslider__chip.is-in { color: var(--accent); border-color: rgba(22, 163, 74, 0.5); }
+.ctslider__chip.is-out { color: var(--fg); border-color: var(--muted); }
 
 /* 진행률 파트 칩(바·파이·퍼센트): 탭=표시 토글, 드래그=순서 */
 .pparts { display: flex; gap: 0.4rem; flex-wrap: wrap; touch-action: none; }

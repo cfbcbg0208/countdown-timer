@@ -509,10 +509,9 @@ async function main() {
     fails.push(`구분력 슬라이더 범위/단위 오류(3~7, :1 기대): ${JSON.stringify(slider)}`);
   if (!(slider.minA >= 0 && slider.minA < slider.maxA && slider.maxA <= 100))
     fails.push(`Range A 밴드 위치 오류: ${JSON.stringify(slider)}`);
-  // 시작값=Max A: 슬라이더 값의 % 위치가 maxA 밴드 위치와 일치 + 기본은 Range A 안.
-  const valPct = ((slider.val - slider.min) / (slider.max - slider.min)) * 100;
-  if (Math.abs(valPct - slider.maxA) > 0.6 || slider.inRange !== 'true')
-    fails.push(`시작값이 Max A가 아님: val=${slider.val} valPct=${valPct.toFixed(1)} maxA=${slider.maxA} inRange=${slider.inRange}`);
+  // 기본값(시작값) = 7.0 = 슬라이더 최대(사용자 기본 셋업, Range A 밖이라 inRange=false 정상).
+  if (Math.abs(slider.val - slider.max) > 1e-6)
+    fails.push(`시작값이 슬라이더 최대(7.0)가 아님: ${JSON.stringify(slider)}`);
   // 잔량 2슬라이더 연동: 불투명도 0/50/100 → WCAG 값이 [min..max]로 단조 연동(요청 핵심).
   const remain = await evalJS(browser, `(() => {
     const opR = document.getElementById('remain-op-range'), wR = document.getElementById('remain-range');

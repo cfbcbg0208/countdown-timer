@@ -509,24 +509,26 @@ kbd {
   border-right: 4px solid transparent;
   border-bottom: 6px solid var(--muted);
 }
-/* 라벨(이름 + 컴팩트 일시 2줄): 점 아래에 점 위치대로 절대배치, 겹치면 renderViz가 top으로 단을 내림. */
-.card__viz-labels { position: relative; margin-top: 0.05rem; }
+/* 라벨(이름 + 컴팩트 일시): 가로로 길게. 이름은 마커 옆, 시간은 기본 우측(우측이 좁으면 좌측).
+   겹치면 renderViz가 top으로 단을 내린다. */
+.card__viz-labels { position: relative; margin-top: 0.15rem; }
 .card__vizlabel {
   position: absolute;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  line-height: 1.05;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3em;
+  line-height: 1.2;
   white-space: nowrap;
 }
+.card__vizlabel[data-side="right"] { transform: translateX(0); }        /* 이름 좌단=마커 → 시간 우측 */
+.card__vizlabel[data-side="left"] { transform: translateX(-100%); flex-direction: row-reverse; } /* 이름 우단=마커 → 시간 좌측 */
+.card__vizts { display: inline-flex; gap: 0.3em; align-items: baseline; } /* 날짜·시간 묶음(내부 순서 유지) */
 .card__vizlabel b { font-size: 0.56rem; font-weight: 800; } /* 이름(색) */
-.card__vizlabel i { /* 컴팩트 일시(날짜/시간), 무채색 */
-  font-size: 0.44rem;
+.card__vizlabel i { /* 컴팩트 일시(날짜·시간), 무채색 */
+  font-size: 0.5rem;
   font-style: normal;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
-  line-height: 1.15;
 }
 /* 색(이름): 방향색(빨/파)과 분리된 노드 팔레트. 시작/등록=앰버 · 수정=청록 · 기준=마젠타 · 현재=무채색. 모두 ≈7:1 */
 .tl--start.card__vizmark, .tl--created.card__vizmark { border-bottom-color: var(--node-origin); }

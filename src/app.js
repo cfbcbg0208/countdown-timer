@@ -489,20 +489,23 @@ function renderViz(refs, item, direction) {
   refs.vizEl.classList.toggle('card__viz--past', !future); // 과거 = 적색 채움
   // 라벨 위치는 px로 충돌 회피(밴드 폭 기준).
   const W = refs.vizEl.clientWidth || 240;
-  const ROW_H = 26; // 라벨 묶음(이름+날짜+시간 3줄) 한 단 높이(px)
+  const ROW_H = 15; // 가로 라벨(이름+일시 한 줄) 한 단 높이(px)
   const GAP = 2; // 같은 행 허용 임계값(px): 두 라벨이 이만큼만 떨어져도 같은 행에 둠(좁은 밴드 밀집 대응)
   const items = pts.map((p) => {
     const f = elapsedFraction(min, max, p.ms);
     const xPct = 8 + f * 84; // 8~92%: 가장자리 라벨 잘림 방지
+    const xPx = (xPct / 100) * W;
     const c = formatCompact(new Date(p.ms)); // "YYMMDD요일HHMMSS"(13자)
     return {
       ...p,
       xPct,
-      xPx: (xPct / 100) * W,
-      estW: Math.max(p.label.length, 7) * 6 + 8, // 미부착(측정 0)일 때만 쓰는 폴백 추정폭
+      xPx,
+      // 시간은 기본 이름 우측. 단 우측보다 좌측 공간이 넓으면(점이 중앙보다 오른쪽) 좌측에 둔다.
+      side: xPx <= W / 2 ? 'right' : 'left',
+      estW: (Math.max(p.label.length, 2) + 13) * 5 + 12, // 미부착(측정 0)일 때만 쓰는 폴백 추정폭(가로)
       full: c,
       datePart: c.slice(0, 7), // 260630화
-      timePart: c.slice(7), // 032559
+      timePart: c.slice(7), // 074153
     };
   });
   const marks = items
@@ -511,13 +514,13 @@ function renderViz(refs, item, direction) {
         `<span class="card__vizmark ${it.cls}" style="left:${it.xPct.toFixed(1)}%" title="${esc(it.label)} ${it.full}"></span>`,
     )
     .join('');
-  // 각 노드 아래: 이름 + 컴팩트 타임스탬프 2줄(날짜 / 시간). top은 실측 후 부여.
+  // 각 노드: 이름 + 컴팩트 타임스탬프를 '가로로' (이름 옆 날짜·시간). 시간 위치(좌/우)는 side로. top은 실측 후 부여.
   const labels = items
     .map(
       (it) =>
-        `<span class="card__vizlabel ${it.cls}" style="left:${it.xPct.toFixed(1)}%" ` +
+        `<span class="card__vizlabel ${it.cls}" data-side="${it.side}" style="left:${it.xPct.toFixed(1)}%" ` +
         `title="${esc(it.label)} ${it.full}"><b>${esc(it.label)}</b>` +
-        `<i>${esc(it.datePart)}</i><i>${esc(it.timePart)}</i></span>`,
+        `<span class="card__vizts"><i>${esc(it.datePart)}</i><i>${esc(it.timePart)}</i></span></span>`,
     )
     .join('');
   // 미래는 '남은 시간'(현재→기준=fillB→1)을 흐린 파랑으로 덧칠해 진한 채움(경과)과 2색 대비.
@@ -535,13 +538,18 @@ function renderViz(refs, item, direction) {
   const labelsEl = refs.vizEl.querySelector('.card__viz-labels');
   labelsEl.innerHTML = labels;
   const labelEls = [...labelsEl.querySelectorAll('.card__vizlabel')];
-  const placed = items.map((it, i) => ({ x: it.xPx, w: labelEls[i].offsetWidth || it.estW, el: labelEls[i] }));
+  // 라벨 좌/우 끝(L,R)은 side에 따라 다름: 우측배치=[x, x+w], 좌측배치=[x−w, x].
+  const placed = items.map((it, i) => {
+    const w = labelEls[i].offsetWidth || it.estW;
+    const L = it.side === 'right' ? it.xPx : it.xPx - w;
+    return { L, R: L + w, el: labelEls[i] };
+  });
   const rowRight = []; // 각 행에 마지막으로 놓인(=가장 오른쪽) 라벨의 우측 끝
-  for (const m of [...placed].sort((a, b) => a.x - b.x)) {
+  for (const m of [...placed].sort((a, b) => a.L - b.L)) {
     let r = 0;
-    while (r < rowRight.length && m.x - m.w / 2 < rowRight[r] + GAP) r++;
+    while (r < rowRight.length && m.L < rowRight[r] + GAP) r++;
     m.el.style.top = `${r * ROW_H}px`;
-    rowRight[r] = m.x + m.w / 2;
+    rowRight[r] = m.R;
   }
   labelsEl.style.height = `${Math.max(1, rowRight.length) * ROW_H}px`;
   refs.vizEl.setAttribute('aria-label', future ? '진행률 타임라인' : '등록·수정·기준·현재 일시 타임라인');
@@ -1846,8 +1854,8 @@ function readNum(key, min, max) {
   return v;
 }
 function applyCtPreview() {
-  const st = document.documentElement.style, { maxA } = ctRange();
-  const v = readNum('ctVal', SLIDER_MIN, SLIDER_MAX) || maxA; // 미설정 = Max A(조건 7 기본값)
+  const st = document.documentElement.style;
+  const v = readNum('ctVal', SLIDER_MIN, SLIDER_MAX) || SLIDER_MAX; // 미설정 = 7.0(슬라이더 최대, 사용자 기본 셋업)
   const pal = solveWcagPalette(ctHueArr(), cardBgHex(), v); // 조건 5(등 WCAG) + 조건 6(색간 ΔE 최대)
   CT_ROLES.forEach((k, i) => st.setProperty(CT_VARMAP[k], hex(pal[i].rgb)));
 }
@@ -1856,11 +1864,10 @@ function applyCtPreview() {
 function readAlpha() {
   const raw = localStorage.getItem('remainAlpha');
   const v = raw === null || raw === '' ? NaN : +raw;
-  return v >= 0 && v <= 1 ? v : 0.4; // 기본 40%
+  return v >= 0 && v <= 1 ? v : 0.34; // 기본 34%(사용자 기본 셋업)
 }
 function futureRgb() { // 현재 노드 슬라이더 값에서의 미래(파랑) 색
-  const { maxA } = ctRange();
-  const v = readNum('ctVal', SLIDER_MIN, SLIDER_MAX) || maxA;
+  const v = readNum('ctVal', SLIDER_MIN, SLIDER_MAX) || SLIDER_MAX;
   return wcagColor(CT_HUES.future, relLum(hexToRgb(cardBgHex()).map(toLin)), v).rgb;
 }
 // 미래색을 배경 위에 alpha로 합성(브라우저 opacity와 동일한 sRGB 공간 선형보간).
@@ -1957,8 +1964,7 @@ function syncRemainCtls() {
 }
 // 슬라이더 범위·시작값(Max A)·Range A 표시 + 잔량 슬라이더를 현재 테마로 갱신.
 function syncPreviewCtls() {
-  const { maxA } = ctRange();
-  const cur = setCtl(ctCtl, 'ctVal', SLIDER_MIN, SLIDER_MAX, maxA, 0.1, 1);
+  const cur = setCtl(ctCtl, 'ctVal', SLIDER_MIN, SLIDER_MAX, SLIDER_MAX, 0.1, 1); // 기본=7.0(슬라이더 최대, 사용자 셋업)
   updateRangeAUI(cur);
   syncRemainCtls();
 }

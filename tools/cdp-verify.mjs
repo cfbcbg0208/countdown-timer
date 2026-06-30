@@ -505,12 +505,12 @@ async function main() {
     return { min: +r.min, max: +r.max, val: +r.value, unit: u && u.textContent,
              minA: pct('--minA'), maxA: pct('--maxA'), inRange: box.dataset.inRange };
   })()`);
-  if (slider.min !== 1 || slider.max !== 21 || slider.unit !== ':1')
-    fails.push(`구분력 슬라이더 범위/단위 오류(1~21, :1 기대): ${JSON.stringify(slider)}`);
+  if (slider.min !== 3 || slider.max !== 7 || slider.unit !== ':1')
+    fails.push(`구분력 슬라이더 범위/단위 오류(3~7, :1 기대): ${JSON.stringify(slider)}`);
   if (!(slider.minA >= 0 && slider.minA < slider.maxA && slider.maxA <= 100))
     fails.push(`Range A 밴드 위치 오류: ${JSON.stringify(slider)}`);
   // 시작값=Max A: 슬라이더 값의 % 위치가 maxA 밴드 위치와 일치 + 기본은 Range A 안.
-  const valPct = ((slider.val - 1) / 20) * 100;
+  const valPct = ((slider.val - slider.min) / (slider.max - slider.min)) * 100;
   if (Math.abs(valPct - slider.maxA) > 0.6 || slider.inRange !== 'true')
     fails.push(`시작값이 Max A가 아님: val=${slider.val} valPct=${valPct.toFixed(1)} maxA=${slider.maxA} inRange=${slider.inRange}`);
   await evalJS(browser, `document.querySelector('#set-theme .seg[data-value="light"]')?.click()`);

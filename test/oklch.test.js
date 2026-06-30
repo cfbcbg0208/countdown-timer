@@ -31,10 +31,14 @@ test('조건3: 자유 hue는 maximin으로 분포(이웃 간격이 충분히 큼
   assert.ok(Math.min(...gaps) >= 40, `최소 hue 간격 ${Math.min(...gaps).toFixed(1)}° < 40°`);
 });
 
-// 조건 8: 슬라이더 전체 범위 = WCAG 1:1 ~ 21:1.
-test('조건8: 슬라이더 범위 상수 1~21', () => {
-  assert.equal(SLIDER_MIN, 1);
-  assert.equal(SLIDER_MAX, 21);
+// 조건 8: 슬라이더 범위 = WCAG 3:1 ~ 7:1(Range A 주변). Range A가 이 범위 안에 들어와야 한다.
+test('조건8: 슬라이더 범위 상수 3~7, Range A를 포함', () => {
+  assert.equal(SLIDER_MIN, 3);
+  assert.equal(SLIDER_MAX, 7);
+  for (const [, bg] of BGS) {
+    const { minA, maxA } = rangeA(hueArr(), bg);
+    assert.ok(minA >= SLIDER_MIN && maxA <= SLIDER_MAX, `Range A [${minA},${maxA}] 슬라이더 밖`);
+  }
 });
 
 for (const [name, bg] of BGS) {

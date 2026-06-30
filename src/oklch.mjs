@@ -107,8 +107,9 @@ export function solveWcagPalette(huesArr, bgHex, targetC) {
 // 배경 대비 도달 가능한 최대 WCAG 명암비(흰/검 방향). 살짝 안쪽.
 export const wcagMaxC = (bgLum) => contrast(bgLum < 0.5 ? 1 : 0, bgLum) * 0.985;
 
-// 조건 8: 명암비 슬라이더 전체 범위(WCAG 1:1 ~ 21:1).
-export const SLIDER_MIN = 1, SLIDER_MAX = 21;
+// 조건 8: 명암비 슬라이더 범위(WCAG :1). Range A(다크 [4.1,4.9]·라이트 [3.4,4.1]) 주변으로 좁혀
+// 밴드가 잘 보이게 3.0~7.0(2026-07-01 사용자 지정 — 1~21은 Range A가 점선처럼 좁아 보임).
+export const SLIDER_MIN = 3, SLIDER_MAX = 7;
 
 // 조건 7: Range A = 조건 6(색간 min ΔE)이 정점의 tol배 이상 유지되는 명암비 구간 [minA, maxA].
 //   이 구간 안에서는 조건 5·6 + 사용자 명암비가 모두 성립. 벗어나면(명암비를 더 올리거나 내리면)

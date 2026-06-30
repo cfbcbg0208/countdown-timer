@@ -165,10 +165,11 @@ async function main() {
        chips: document.querySelectorAll('.card .chip').length,
        hasBar: !!document.querySelector('.card__viz-fill'),
        hasPie: !!document.querySelector('.card__pie'),
-       // 미래 카드: 전체폭 밴드가 cols 아래(.card__body>.card__viz) + 시작/현재/기준 마커 3 + 채움>0 + 도넛 zone2
+       // 미래 카드: 전체폭 밴드가 cols 아래(.card__body>.card__viz) + 등록·수정·기준·현재 마커 4(과거와 통일) + 채움>0
        bandInBody: !!document.querySelector('.card__body > .card__viz'),
        bandMarks: document.querySelectorAll('.card__viz .card__vizmark').length,
-       bandStart: !!document.querySelector('.card__viz .tl--start'),
+       bandCreated: !!document.querySelector('.card__viz .tl--created'),
+       bandNoStart: !document.querySelector('.card__viz .tl--start'),
        bandFillW: parseFloat(document.querySelector('.card__viz-fill')?.style.width || '0'),
        // 미래 '남은 시간'(현재→기준) 흐린 파랑 둘째 채움 + 현재 노드=초록(유채·G우세, 파랑 아님)
        restFillW: parseFloat(document.querySelector('.card__viz-fill--rest')?.style.width || '0'),
@@ -224,8 +225,8 @@ async function main() {
   if (checks.chips < 3) fails.push(`칩 3개 이상 기대, 실제 ${checks.chips}`);
   if (!checks.hasBar) fails.push('진행률 바(전체폭 밴드 채움) 없음');
   if (!checks.bandInBody) fails.push('전체폭 밴드가 본문(.card__body > .card__viz) 아래에 없음');
-  if (checks.bandMarks !== 3) fails.push(`미래 밴드 마커 3개(시작·현재·기준) 기대, 실제 ${checks.bandMarks}`);
-  if (!checks.bandStart) fails.push('미래 밴드에 시작 마커(.tl--start) 없음');
+  if (checks.bandMarks !== 4) fails.push(`미래 밴드 마커 4개(등록·수정·기준·현재) 기대, 실제 ${checks.bandMarks}`);
+  if (!checks.bandCreated || !checks.bandNoStart) fails.push('미래 밴드가 과거와 미통일(등록 마커 없거나 시작(.tl--start) 잔존)');
   if (!(checks.bandFillW > 0)) fails.push(`미래 밴드 진행 채움(시작→현재) 없음(width=${checks.bandFillW})`);
   if (!(checks.restFillW > 0)) fails.push(`미래 '남은 시간' 흐린 채움(.card__viz-fill--rest) 없음(width=${checks.restFillW})`);
   if (!checks.nowGreenF) fails.push('미래 현재 노드색이 초록(유채·G우세) 아님');

@@ -522,7 +522,7 @@ kbd {
 }
 .card__vizlabel[data-side="right"] { transform: translateX(0); }        /* 이름 좌단=마커 → 시간 우측 */
 .card__vizlabel[data-side="left"] { transform: translateX(-100%); flex-direction: row-reverse; } /* 이름 우단=마커 → 시간 좌측 */
-.card__vizts { display: inline-flex; gap: 0.3em; align-items: baseline; } /* 날짜·시간 묶음(내부 순서 유지) */
+.card__vizts { display: inline-flex; gap: 0; align-items: baseline; } /* 날짜·시간 묶음: 붙여쓰기(260701수080144) */
 .card__vizlabel b { font-size: 0.56rem; font-weight: 800; } /* 이름(색) */
 .card__vizlabel i { /* 컴팩트 일시(날짜·시간), 무채색 */
   font-size: 0.5rem;

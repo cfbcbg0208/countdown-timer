@@ -465,24 +465,18 @@ function updateProgress(refs, item, target, direction) {
 function renderViz(refs, item, direction) {
   const future = direction === 'future';
   const now = Date.now();
-  let pts;
-  if (future) {
-    const start = item.startISO || (settings.progressBase === 'updated' ? item.updatedAt : item.createdAt) || item.createdAt;
-    pts = [
-      { cls: 'tl--start', label: '시작', ms: new Date(start).getTime() },
-      { cls: 'tl--now', label: '현재', ms: now },
-      { cls: 'tl--target', label: '기준', ms: new Date(item.targetISO).getTime() },
-    ];
-  } else {
-    pts = TL_POINTS.map((p) => ({ cls: p.cls, label: p.label, ms: new Date(p.isoOf(item)).getTime() }))
-      .filter((p) => Number.isFinite(p.ms))
-      .concat([{ cls: 'tl--now', label: '현재', ms: now }])
-      .sort((a, b) => a.ms - b.ms);
-  }
+  // 미래·과거 통일(노드 동일): 항상 등록·수정·기준 + 현재(시간순). '시작'은 별도 노드 없이 진행 채움 시작점으로만.
+  const pts = TL_POINTS.map((p) => ({ cls: p.cls, label: p.label, ms: new Date(p.isoOf(item)).getTime() }))
+    .filter((p) => Number.isFinite(p.ms))
+    .concat([{ cls: 'tl--now', label: '현재', ms: now }])
+    .sort((a, b) => a.ms - b.ms);
   const min = Math.min(...pts.map((p) => p.ms));
   const max = Math.max(...pts.map((p) => p.ms));
-  // 채움 구간(트랙 0~1): 미래=시작(0)→현재 / 과거=기준→현재(=1).
-  const fillA = future ? 0 : elapsedFraction(min, max, new Date(item.targetISO).getTime());
+  // 채움 구간(트랙 0~1): 미래=진행시작(등록/수정/커스텀 startISO)→현재(경과) / 과거=기준→현재(=1, 적색).
+  const startMs = future
+    ? new Date(item.startISO || (settings.progressBase === 'updated' ? item.updatedAt : item.createdAt) || item.createdAt).getTime()
+    : new Date(item.targetISO).getTime();
+  const fillA = elapsedFraction(min, max, startMs);
   const fillB = future ? elapsedFraction(min, max, now) : 1;
   refs.vizEl.hidden = false;
   refs.vizEl.classList.toggle('card__viz--editable', future); // 미래 바 클릭 → 시작점 편집

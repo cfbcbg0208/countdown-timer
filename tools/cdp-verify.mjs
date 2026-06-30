@@ -496,8 +496,8 @@ async function main() {
        accents: document.querySelectorAll('#set-accent .swatch').length,
      }))()`,
   );
-  // 노드색 구분력 슬라이더(WCAG 단일): 전체 범위 1~21(조건8), 시작값=Max A(조건7),
-  // Range A 밴드가 슬라이더 안([minA,maxA] ⊂ [1,21], minA<maxA), 단위 :1, 기본은 Range A 안.
+  // 노드색 구분력 슬라이더(WCAG 단일): 범위 3~7(조건8), 시작값=Max A(조건7),
+  // Range A 밴드가 슬라이더 안([minA,maxA] ⊂ [3,7], minA<maxA), 단위 :1, 기본은 Range A 안.
   const slider = await evalJS(browser, `(() => {
     const r = document.getElementById('ct-range'), u = document.getElementById('ct-unit');
     const box = document.getElementById('ct-slider');
@@ -513,6 +513,21 @@ async function main() {
   const valPct = ((slider.val - slider.min) / (slider.max - slider.min)) * 100;
   if (Math.abs(valPct - slider.maxA) > 0.6 || slider.inRange !== 'true')
     fails.push(`시작값이 Max A가 아님: val=${slider.val} valPct=${valPct.toFixed(1)} maxA=${slider.maxA} inRange=${slider.inRange}`);
+  // 잔량 2슬라이더 연동: 불투명도 0/50/100 → WCAG 값이 [min..max]로 단조 연동(요청 핵심).
+  const remain = await evalJS(browser, `(() => {
+    const opR = document.getElementById('remain-op-range'), wR = document.getElementById('remain-range');
+    const fire = (el, v) => { el.value = String(v); el.dispatchEvent(new Event('input', { bubbles: true })); };
+    fire(opR, 0);   const at0 = +wR.value;
+    fire(opR, 50);  const at50 = +wR.value;
+    fire(opR, 100); const at100 = +wR.value;
+    return { wMin: +wR.min, wMax: +wR.max, at0, at50, at100 };
+  })()`);
+  if (!(remain.wMin >= 1 && remain.wMin < remain.wMax))
+    fails.push(`잔량 WCAG 범위 오류(min≥1·min<max 기대): ${JSON.stringify(remain)}`);
+  if (!(Math.abs(remain.at0 - remain.wMin) < 0.15 && Math.abs(remain.at100 - remain.wMax) < 0.15))
+    fails.push(`잔량 불투명도↔WCAG 끝점 불일치: ${JSON.stringify(remain)}`);
+  if (!(remain.at0 < remain.at50 && remain.at50 < remain.at100))
+    fails.push(`잔량 불투명도↔WCAG 비단조: ${JSON.stringify(remain)}`);
   await evalJS(browser, `document.querySelector('#set-theme .seg[data-value="light"]')?.click()`);
   await until(() => evalJS(browser, "document.documentElement.dataset.theme === 'light'"), {
     label: 'theme light',

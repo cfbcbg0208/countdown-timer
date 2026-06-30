@@ -35,7 +35,7 @@ import {
   update as updateSettings,
   reset as resetSettings,
 } from './settings.js';
-import { solveWcagPalette, wcagColor, rangeA, roleHues, hex, hexToRgb, toLin, relLum, SLIDER_MIN, SLIDER_MAX } from './oklch.mjs';
+import { solveWcagPalette, wcagColor, rangeA, roleHues, hex, hexToRgb, toLin, relLum, contrast, SLIDER_MIN, SLIDER_MAX } from './oklch.mjs';
 
 const $ = (id) => document.getElementById(id);
 const labelInput = $('label-input');
@@ -1817,7 +1817,7 @@ function applySettings(s) {
   const el = document.documentElement;
   el.dataset.theme = s.theme; // 라이트/다크 팔레트 전환(나머지 색·크기는 CSS 고정)
   if (themeColorMeta) themeColorMeta.content = s.theme === 'light' ? '#eef4f0' : '#0e1512';
-  applyCtPreview(); applyRemainPreview(); syncPreviewCtls(); // TEMP: 테마 바뀌면 팔레트 + 슬라이더 범위(Range A) 재계산
+  applyCtPreview(); syncPreviewCtls(); // 테마 바뀌면 노드 팔레트 + 슬라이더 범위(Range A)·잔량 재계산
 }
 
 // ── 노드 색 구분력(WCAG 명암비) 슬라이더 + 남은시간 잔량 미리보기 ──────────────
@@ -1837,7 +1837,6 @@ function ctRange() {
   const { minA, maxA } = rangeA(ctHueArr(), bg);
   return (_rangeCache[bg] = { minA: +minA.toFixed(1), maxA: +maxA.toFixed(1) });
 }
-const REMAIN = { min: 1.2, max: 4, step: 0.1, dec: 1, def: 2.0 }; // 남은시간 잔량(미래 현재→기준 · 도넛 남은부분)
 // localStorage 숫자값이 [min,max]면 반환, 아니면 0(미설정/범위밖 정리).
 function readNum(key, min, max) {
   const raw = localStorage.getItem(key);
@@ -1852,13 +1851,40 @@ function applyCtPreview() {
   const pal = solveWcagPalette(ctHueArr(), cardBgHex(), v); // 조건 5(등 WCAG) + 조건 6(색간 ΔE 최대)
   CT_ROLES.forEach((k, i) => st.setProperty(CT_VARMAP[k], hex(pal[i].rgb)));
 }
+// ── 남은시간 잔량: 미래색(파랑)을 배경 위 '불투명도'로 합성(요청: 미래색 기준 alpha 조절) ──
+// canonical = remainAlpha(0~1). WCAG 슬라이더는 파생 — 불투명도 0→1 스윕으로 얻는 명암비 범위가 곧 min/max.
+function readAlpha() {
+  const raw = localStorage.getItem('remainAlpha');
+  const v = raw === null || raw === '' ? NaN : +raw;
+  return v >= 0 && v <= 1 ? v : 0.4; // 기본 40%
+}
+function futureRgb() { // 현재 노드 슬라이더 값에서의 미래(파랑) 색
+  const { maxA } = ctRange();
+  const v = readNum('ctVal', SLIDER_MIN, SLIDER_MAX) || maxA;
+  return wcagColor(CT_HUES.future, relLum(hexToRgb(cardBgHex()).map(toLin)), v).rgb;
+}
+// 미래색을 배경 위에 alpha로 합성(브라우저 opacity와 동일한 sRGB 공간 선형보간).
+function remainColorAt(alpha) {
+  const bg = hexToRgb(cardBgHex()), fut = futureRgb();
+  const rgb = [0, 1, 2].map((i) => Math.round(alpha * fut[i] + (1 - alpha) * bg[i]));
+  return { rgb, w: contrast(relLum(rgb.map(toLin)), relLum(bg.map(toLin))) };
+}
+// 불투명도 0→1 스윕으로 얻는 WCAG 범위 = WCAG 슬라이더 [min, max].
+function remainWcagRange() {
+  const a = remainColorAt(0).w, b = remainColorAt(1).w;
+  return { min: +Math.min(a, b).toFixed(1), max: +Math.max(a, b).toFixed(1) };
+}
+// WCAG 목표 → alpha(명암비는 alpha에 단조증가 → 이분탐색).
+function alphaForWcag(target) {
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 26; i++) { const m = (lo + hi) / 2; if (remainColorAt(m).w < target) lo = m; else hi = m; }
+  return (lo + hi) / 2;
+}
 function applyRemainPreview() {
-  const st = document.documentElement.style;
-  const v = readNum('remainVal', REMAIN.min, REMAIN.max) || REMAIN.def;
-  st.setProperty('--remain', hex(wcagColor(CT_HUES.future, relLum(hexToRgb(cardBgHex()).map(toLin)), v).rgb));
+  document.documentElement.style.setProperty('--remain', hex(remainColorAt(readAlpha()).rgb));
 }
 let prevRAF = 0; // 드래그 중 프레임당 1회로 합침
-function scheduleCtPreview() { if (!prevRAF) prevRAF = requestAnimationFrame(() => { prevRAF = 0; applyCtPreview(); applyRemainPreview(); }); }
+function scheduleCtPreview() { if (!prevRAF) prevRAF = requestAnimationFrame(() => { prevRAF = 0; applyCtPreview(); syncRemainCtls(); }); }
 // 슬라이더+숫자입력 한 쌍을 localStorage 키에 연결. onChange(v): 값 변경 시 추가 갱신(범례 등).
 function wirePreview(rangeId, numId, key, onChange) {
   const range = $(rangeId), num = $(numId);
@@ -1883,18 +1909,22 @@ function updateRangeAUI(cur) {
   slider.style.setProperty('--minA', ctPct(minA) + '%');
   slider.style.setProperty('--maxA', ctPct(maxA) + '%');
   slider.style.setProperty('--cur', ctPct(cur) + '%');
-  const inA = cur >= minA - 1e-9 && cur <= maxA + 1e-9;
-  slider.dataset.inRange = String(inA);
-  const legend = $('ct-legend');
-  if (legend) {
-    legend.innerHTML = `<span class="ctslider__chip ctslider__chip--band">Range A ${minA.toFixed(1)}–${maxA.toFixed(1)}:1</span>`
-      + `<span class="ctslider__chip">Min A ${minA.toFixed(1)}</span>`
-      + `<span class="ctslider__chip">Max A ${maxA.toFixed(1)} · 기본</span>`
-      + `<span class="ctslider__chip ${inA ? 'is-in' : 'is-out'}">현재 ${cur.toFixed(1)}:1 · ${inA ? '조건 5·6 모두 만족' : 'Range A 밖 — 조건 6 양보'}</span>`;
+  slider.dataset.inRange = String(cur >= minA - 1e-9 && cur <= maxA + 1e-9);
+  const axis = $('ct-axis'); // ▲ 눈금: 슬라이더끝·Min A·Max A·슬라이더끝(칩 대신, 사용자 지정 디자인)
+  if (axis) {
+    const ticks = [
+      { v: SLIDER_MIN, role: 'end',  title: '슬라이더 최저' },
+      { v: minA,       role: 'edge', title: 'Min A — Range A 하한' },
+      { v: maxA,       role: 'edge', title: 'Max A — Range A 상한 · 기본값' },
+      { v: SLIDER_MAX, role: 'end',  title: '슬라이더 최고' },
+    ];
+    axis.innerHTML = ticks.map((t) =>
+      `<div class="ctaxis-tick ctaxis-tick--${t.role}" style="left:${ctPct(t.v)}%" title="${t.title}">`
+      + `<span class="ctaxis-tick__mark"></span><span class="ctaxis-tick__num">${t.v.toFixed(1)}</span></div>`
+    ).join('');
   }
 }
 const ctCtl = wirePreview('ct-range', 'ct-num', 'ctVal', (v) => updateRangeAUI(v));
-const remainCtl = wirePreview('remain-range', 'remain-num', 'remainVal');
 function setCtl(c, key, min, max, def, step, dec) {
   const v = readNum(key, min, max) || def;
   for (const el of [c.range, c.num]) { el.min = String(min); el.max = String(max); el.step = String(step); }
@@ -1902,12 +1932,35 @@ function setCtl(c, key, min, max, def, step, dec) {
   c.num.value = (+v).toFixed(dec);
   return v;
 }
-// 슬라이더 범위(1~21 고정)·시작값(Max A)·Range A 표시를 현재 테마로 갱신.
+// 잔량 슬라이더 2개(불투명도·WCAG) 연동: alpha 저장 + 네 입력 동기화(한쪽 조절→다른쪽 자동).
+const remOp = { range: $('remain-op-range'), num: $('remain-op-num') }; // 불투명도 0~100(%)
+const remW = { range: $('remain-range'), num: $('remain-num') };        // WCAG :1
+function setRemainAlpha(alpha, from) {
+  alpha = Math.max(0, Math.min(1, alpha || 0));
+  localStorage.setItem('remainAlpha', String(+alpha.toFixed(3)));
+  const opPct = Math.round(alpha * 100), w = remainColorAt(alpha).w;
+  if (from !== 'op-range') remOp.range.value = String(opPct);
+  if (from !== 'op-num') remOp.num.value = String(opPct);
+  if (from !== 'w-range') remW.range.value = w.toFixed(1);
+  if (from !== 'w-num') remW.num.value = w.toFixed(1);
+  applyRemainPreview();
+}
+remOp.range.addEventListener('input', () => setRemainAlpha(+remOp.range.value / 100, 'op-range'));
+remOp.num.addEventListener('change', () => setRemainAlpha(+remOp.num.value / 100, 'op-num'));
+remW.range.addEventListener('input', () => setRemainAlpha(alphaForWcag(+remW.range.value), 'w-range'));
+remW.num.addEventListener('change', () => setRemainAlpha(alphaForWcag(+remW.num.value), 'w-num'));
+// WCAG 슬라이더 min/max(불투명도 스윕 결과)·두 슬라이더 값을 현재 테마/노드색에 맞춰 갱신.
+function syncRemainCtls() {
+  const { min, max } = remainWcagRange();
+  for (const el of [remW.range, remW.num]) { el.min = String(min); el.max = String(max); el.step = '0.1'; }
+  setRemainAlpha(readAlpha(), null);
+}
+// 슬라이더 범위·시작값(Max A)·Range A 표시 + 잔량 슬라이더를 현재 테마로 갱신.
 function syncPreviewCtls() {
   const { maxA } = ctRange();
   const cur = setCtl(ctCtl, 'ctVal', SLIDER_MIN, SLIDER_MAX, maxA, 0.1, 1);
-  setCtl(remainCtl, 'remainVal', REMAIN.min, REMAIN.max, REMAIN.def, REMAIN.step, REMAIN.dec);
   updateRangeAUI(cur);
+  syncRemainCtls();
 }
 // ──────────────────────────────────────────────────────────────────
 

@@ -1253,9 +1253,13 @@ body.select-mode .card.card--selected::after { background: var(--accent); border
 }
 .ctprev__num:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 .ctprev__unit { font-size: 0.8rem; color: var(--muted); }
+/* 잔량: 라벨 붙은 슬라이더 2줄(불투명도·명암비) + 결과색 미리보기 바 */
+.ctprev--labeled { gap: 0.5rem; }
+.ctprev__lbl { flex: none; width: 3.6rem; font-size: 0.74rem; color: var(--muted); }
+.remain-swatch { height: 1.5rem; border-radius: 0.4rem; border: 1px solid var(--line); background: var(--remain); }
 
-/* ── 노드색 구분력: 1:1~21:1 WCAG 슬라이더 + Range A 밴드·Min A/Max A 눈금(특별 디자인) ── */
-.ctslider { position: relative; flex: 1; min-width: 0; height: 2.6rem; --minA: 16%; --maxA: 20%; --cur: 20%; }
+/* ── 노드색 구분력: WCAG 슬라이더 + Range A 밴드 + ▲ 축 눈금(슬라이더끝·Min A·Max A·슬라이더끝) ── */
+.ctslider { position: relative; flex: 1; min-width: 0; height: 3.1rem; --minA: 16%; --maxA: 20%; --cur: 20%; }
 /* rail = thumb 이동 구간(좌우 8px=thumb 반지름 안쪽). 밴드·눈금은 이 안에서 % 배치 → thumb와 정렬 */
 .ctslider__rail { position: absolute; left: 0.5rem; right: 0.5rem; top: 0; bottom: 0; pointer-events: none; }
 .ctslider__track, .ctslider__fill { position: absolute; top: 0.85rem; height: 6px; border-radius: 999px; }
@@ -1271,9 +1275,16 @@ body.select-mode .card.card--selected::after { background: var(--accent); border
   position: absolute; bottom: 13px; left: 50%; transform: translateX(-50%); white-space: nowrap;
   font-size: 0.6rem; line-height: 1; color: var(--accent); font-weight: 600;
 }
-.ctslider__tick { position: absolute; top: 0.5rem; width: 2px; height: 15px; margin-left: -1px; background: var(--accent); border-radius: 1px; }
-.ctslider__tick--min { left: var(--minA); }
-.ctslider__tick--max { left: var(--maxA); }
+/* ▲ 축 눈금(트랙 아래): 슬라이더끝(옅게)·Min A/Max A(강조=Range A 경계) + 숫자 라벨 */
+.ctslider__axis { position: absolute; left: 0; right: 0; top: 1.5rem; height: 1.5rem; }
+.ctaxis-tick { position: absolute; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; line-height: 1; }
+.ctaxis-tick__mark {
+  width: 0; height: 0; border-left: 4px solid transparent; border-right: 4px solid transparent;
+  border-bottom: 6px solid var(--muted); margin-bottom: 3px;
+}
+.ctaxis-tick__num { font-size: 0.62rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ctaxis-tick--edge .ctaxis-tick__mark { border-bottom-color: var(--accent); }
+.ctaxis-tick--edge .ctaxis-tick__num { color: var(--accent); }
 /* 네이티브 range를 트랙 위에 투명하게 올림(thumb만 보이게) */
 .ctslider__input {
   position: absolute; left: 0; top: 0.55rem; width: 100%; height: 1rem; margin: 0;
@@ -1289,19 +1300,12 @@ body.select-mode .card.card--selected::after { background: var(--accent); border
 }
 .ctslider__input:focus { outline: none; }
 .ctslider__input:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--accent); outline-offset: 2px; }
-/* Range A 밖이면 밴드·눈금을 무채색으로(조건 6 양보 신호) */
+/* Range A 밖이면 밴드·Min/Max 눈금을 무채색으로(조건 6 양보 신호) */
 .ctslider[data-in-range="false"] .ctslider__band { background: var(--muted); box-shadow: none; }
 .ctslider[data-in-range="false"] .ctslider__band-lbl { color: var(--muted); }
 .ctslider[data-in-range="false"] .ctslider__fill { background: rgba(142, 165, 154, 0.4); }
-.ctslider[data-in-range="false"] .ctslider__tick { background: var(--muted); }
-/* 범례 칩: Range A / 기본 Max A / 현재값 */
-.ctslider__legend { display: flex; flex-wrap: wrap; gap: 0.3rem; }
-.ctslider__chip {
-  font-size: 0.68rem; padding: 0.12rem 0.45rem; border-radius: 999px; font-variant-numeric: tabular-nums;
-  background: var(--card-2); color: var(--muted); border: 1px solid var(--line);
-}
-.ctslider__chip--band, .ctslider__chip.is-in { color: var(--accent); border-color: rgba(22, 163, 74, 0.5); }
-.ctslider__chip.is-out { color: var(--fg); border-color: var(--muted); }
+.ctslider[data-in-range="false"] .ctaxis-tick--edge .ctaxis-tick__mark { border-bottom-color: var(--muted); }
+.ctslider[data-in-range="false"] .ctaxis-tick--edge .ctaxis-tick__num { color: var(--muted); }
 
 /* 진행률 파트 칩(바·파이·퍼센트): 탭=표시 토글, 드래그=순서 */
 .pparts { display: flex; gap: 0.4rem; flex-wrap: wrap; touch-action: none; }

@@ -1,5 +1,6 @@
 /* 색 규칙: 파랑=미래·빨강=과거(의미색). 그래서 중립 UI(배경·강조)는 녹색 계열로. */
 :root {
+  color-scheme: dark; /* 네이티브 폼 컨트롤(숫자입력 스피너 등)을 테마에 맞춤 */
   --bg: #0e1512;     /* 다크 배경: 남색 대신 녹색-중립 */
   --card: #17211c;
   --card-2: #0b120f;
@@ -11,7 +12,8 @@
   --past: #ff8575;   /* 지난(과거)=빨강. 순빨강(OKLCH 29°) 7.0:1 */
   --ok: #16a34a;
   --err: #f87171;
-  --track: #484848;  /* 빈/남은 트랙(도넛 남은부분·바·밴드 '남은시간' 공통) 1.8:1 */
+  --track: #2a3a32;  /* 과거 빈 영역/rail(은은한 회색) 1.4:1 */
+  --remain: #033eff; /* 미래 '남은시간 잔량'(파랑·도넛 남은부분) 2.5:1 — 빈 트랙과 구분 */
   /* 컬러코딩(gen-palette.mjs+src/oklch.mjs): 고정 RGB원색(빨/녹/파) + OKLCH 균등 자유색(CMY). 모두 7.0:1(양자화 정밀). */
   --node-origin: #d3a100;  /* 등록·시작 OKLCH 86°(골드) */
   --node-updated: #00bbc8; /* 수정 OKLCH 203°(청록) */
@@ -28,6 +30,7 @@
 
 /* 라이트 테마: 녹색-중립 밝은 팔레트(미래/과거 의미색만 유지, 강조색은 사용자 인라인 우선) */
 [data-theme='light'] {
+  color-scheme: light; /* 라이트 테마: 네이티브 컨트롤도 라이트 */
   --bg: #eef4f0;
   --card: #ffffff;
   --card-2: #e6eee9;
@@ -39,7 +42,8 @@
   --past: #b60000;   /* 과거=빨강. 순빨강(OKLCH 29°) 7.0:1 */
   --ok: #16a34a;
   --err: #dc4446;
-  --track: #c1c1c1;  /* 빈/남은 트랙(도넛 남은부분·바·밴드 '남은시간' 공통) 1.8:1 */
+  --track: #d8e3dc;  /* 과거 빈 영역/rail(은은) 1.4:1 */
+  --remain: #74a1ff; /* 미래 '남은시간 잔량'(파랑·도넛 남은부분) 2.5:1 */
   /* 컬러코딩(라이트): 고정 RGB원색 + OKLCH 균등 자유색(CMY). 흰 카드 대비 모두 7.0:1. */
   --node-origin: #725500;  /* 등록·시작 OKLCH 86°(골드) */
   --node-updated: #00636b; /* 수정 OKLCH 203°(청록) */
@@ -444,7 +448,7 @@ kbd {
   width: 2rem;
   height: 2rem;
   border-radius: 50%;
-  background: conic-gradient(var(--future) 0%, var(--track) 0);
+  background: conic-gradient(var(--future) 0%, var(--remain) 0);
   display: grid;
   place-items: center;
 }
@@ -492,8 +496,8 @@ kbd {
 /* 채움: 미래=청색(시작→현재), 과거=적색(기준→현재). left/width는 renderViz가 인라인. */
 .card__viz-fill { position: absolute; top: 0; height: 100%; background: var(--future); border-radius: 999px; }
 .card__viz--past .card__viz-fill { background: var(--past); }
-/* 미래 '남은 시간'(현재→기준): 도넛 남은부분과 동일한 트랙색(1.8:1)으로 통일 */
-.card__viz-fill--rest { background: var(--track); }
+/* 미래 '남은 시간'(현재→기준): 도넛 남은부분과 동일한 --remain(파랑). 과거 빈 영역(--track)과 구분 */
+.card__viz-fill--rest { background: var(--remain); }
 /* ▲ 마커: 트랙 아래에서 위(트랙)를 가리키는 삼각형, 점 위치(left%)에 */
 .card__vizmark {
   position: absolute;

@@ -443,7 +443,7 @@ function updateProgress(refs, item, target, direction) {
     const f = elapsedFraction(start, target);
     const pctRound = Math.round(f * 100);
     refs.progressEl.hidden = false;
-    refs.pieEl.style.background = `conic-gradient(var(--future) ${(f * 100).toFixed(1)}%, var(--track) 0)`;
+    refs.pieEl.style.background = `conic-gradient(var(--future) ${(f * 100).toFixed(1)}%, var(--remain) 0)`;
     // 도넛 가운데 %는 독립 퍼센트가 꺼졌을 때만(둘 다 켜면 %가 두 번 나오던 문제 수정 → 도넛은 링만).
     refs.pieLabelEl.textContent = show.percent ? '' : `${pctRound}%`;
     refs.pctEl.textContent = `${pctRound}%`;
@@ -1817,36 +1817,54 @@ function applySettings(s) {
   const el = document.documentElement;
   el.dataset.theme = s.theme; // 라이트/다크 팔레트 전환(나머지 색·크기는 CSS 고정)
   if (themeColorMeta) themeColorMeta.content = s.theme === 'light' ? '#eef4f0' : '#0e1512';
-  applyCtPreview(); // TEMP: 테마 바뀌면 명암비 미리보기 팔레트 재적용
+  applyCtPreview(); applyRemainPreview(); // TEMP: 테마 바뀌면 미리보기 팔레트 재적용
 }
 
-// ── TEMP(임시): 명암비 목표 미리보기(슬라이더+숫자입력) ───────────────
-// 컬러코딩 6색을 임의 명암비로 즉시 재색칠(src/oklch.mjs 라이브 계산). 테마×값으로 비교용.
-// 정리 시: 이 구간 + 위 import + index.html #set-ct-preview 행 + syncSettingControls의 해당 줄 삭제.
+// ── TEMP(임시): 명암비 미리보기(노드 6색 + 남은시간 잔량) ─────────────
+// 컬러코딩 색을 임의 명암비로 즉시 재색칠(src/oklch.mjs 라이브 계산). 테마×값으로 비교용.
+// 정리 시: 이 구간 + 위 import + index.html #set-ct-preview/#set-remain-preview 행 + syncSettingControls의 해당 줄 삭제.
 const CT_HUES = roleHues(); // {past, now, future, origin, updated, target} OKLCH hue
 const CT_VARMAP = { origin: '--node-origin', updated: '--node-updated', target: '--node-target', now: '--node-now', future: '--future', past: '--past' };
+const cardBgLum = () => lumOfHex((getComputedStyle(document.documentElement).getPropertyValue('--card').trim() || '#17211c').replace(/^#?/, '#'));
 function applyCtPreview() {
-  const raw = localStorage.getItem('ctPreview');
-  const st = document.documentElement.style;
+  const raw = localStorage.getItem('ctPreview'), st = document.documentElement.style;
   const ct = raw === null || raw === '' ? 7 : +raw;
   if (!(ct > 0) || Math.abs(ct - 7) < 1e-9) { for (const v of Object.values(CT_VARMAP)) st.removeProperty(v); return; } // 7=기본(CSS)
-  const cardHex = (getComputedStyle(document.documentElement).getPropertyValue('--card').trim() || '#17211c').replace(/^#?/, '#');
-  const bgLum = lumOfHex(cardHex);
+  const bgLum = cardBgLum();
   for (const [k, v] of Object.entries(CT_VARMAP)) st.setProperty(v, hex(solveOklch(CT_HUES[k], bgLum, ct).rgb));
 }
-let ctRAF = 0; // 드래그 중 프레임당 1회로 합침
-function scheduleCtPreview() { if (!ctRAF) ctRAF = requestAnimationFrame(() => { ctRAF = 0; applyCtPreview(); }); }
-const ctRange = $('ct-range'), ctNum = $('ct-num');
-function setCt(v, from) {
-  v = Math.max(1.5, Math.min(21, Math.round(v * 10) / 10));
-  if (!(v > 0)) v = 7;
-  localStorage.setItem('ctPreview', String(v));
-  if (from !== 'range') ctRange.value = String(v);
-  if (from !== 'num') ctNum.value = v.toFixed(1);
-  scheduleCtPreview();
+function applyRemainPreview() {
+  const raw = localStorage.getItem('remainPreview'), st = document.documentElement.style;
+  const ct = raw === null || raw === '' ? 0 : +raw;
+  if (!(ct > 0)) { st.removeProperty('--remain'); return; } // 기본(2.5)=CSS
+  st.setProperty('--remain', hex(solveOklch(CT_HUES.future, cardBgLum(), ct).rgb));
 }
-ctRange.addEventListener('input', () => setCt(+ctRange.value, 'range'));
-ctNum.addEventListener('change', () => setCt(+ctNum.value, 'num'));
+let prevRAF = 0; // 드래그 중 프레임당 1회로 합침
+function scheduleCtPreview() { if (!prevRAF) prevRAF = requestAnimationFrame(() => { prevRAF = 0; applyCtPreview(); applyRemainPreview(); }); }
+// 슬라이더+숫자입력 한 쌍을 localStorage 키에 연결(라이브 미리보기).
+function wirePreview(rangeId, numId, key, def, min, max) {
+  const range = $(rangeId), num = $(numId);
+  const set = (v, from) => {
+    v = Math.max(min, Math.min(max, Math.round(v * 10) / 10));
+    if (!(v > 0)) v = def;
+    localStorage.setItem(key, String(v));
+    if (from !== 'range') range.value = String(v);
+    if (from !== 'num') num.value = v.toFixed(1);
+    scheduleCtPreview();
+  };
+  range.addEventListener('input', () => set(+range.value, 'range'));
+  num.addEventListener('change', () => set(+num.value, 'num'));
+  return { range, num, def, min, max };
+}
+const ctCtl = wirePreview('ct-range', 'ct-num', 'ctPreview', 7, 1.5, 21);
+const remainCtl = wirePreview('remain-range', 'remain-num', 'remainPreview', 2.5, 1.2, 7);
+function syncPreviewCtls() {
+  for (const [c, k] of [[ctCtl, 'ctPreview'], [remainCtl, 'remainPreview']]) {
+    const v = Math.max(c.min, Math.min(c.max, +(localStorage.getItem(k) || c.def) || c.def));
+    c.range.value = String(v);
+    c.num.value = v.toFixed(1);
+  }
+}
 // ── /TEMP ────────────────────────────────────────────────────────
 
 const PART_LABEL = { bar: '타임라인', pie: '도넛', percent: '퍼센트' };
@@ -1871,11 +1889,7 @@ function syncSettingControls(s) {
   for (const b of setDates.querySelectorAll('.seg')) b.setAttribute('aria-pressed', String(!!s[b.dataset.key]));
   syncSeg(setDateFormat, s.dateFormat);
   syncSeg(setTheme, s.theme);
-  { // TEMP: 명암비 미리보기 슬라이더/숫자 동기화
-    const ct = Math.max(1.5, Math.min(21, +(localStorage.getItem('ctPreview') || '7') || 7));
-    ctRange.value = String(ct);
-    ctNum.value = ct.toFixed(1);
-  }
+  syncPreviewCtls(); // TEMP: 명암비/잔량 미리보기 슬라이더·숫자 동기화
 }
 
 function changeSetting(patch) {

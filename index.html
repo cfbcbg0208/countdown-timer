@@ -171,10 +171,18 @@
             </div>
             <!-- TEMP(임시): 명암비 목표 미리보기. 6색을 임의 명암비로 즉시 재색칠(라이브). 정리 시 이 블록 + app.js TEMP 구간 삭제. -->
             <div class="set-row set-row--col">
-              <span class="set-row__name">🧪 명암비 미리보기 <small class="set-row__hint">임시 · 슬라이더/입력 · 7=기본</small></span>
+              <span class="set-row__name">🧪 노드색 명암비 <small class="set-row__hint">임시 · 슬라이더/입력 · 7=기본</small></span>
               <div class="ctprev" id="set-ct-preview">
-                <input type="range" id="ct-range" class="ctprev__range" min="1.5" max="21" step="0.1" value="7" aria-label="명암비 목표 슬라이더" />
-                <input type="number" id="ct-num" class="ctprev__num" min="1.5" max="21" step="0.1" value="7.0" aria-label="명암비 목표 값" />
+                <input type="range" id="ct-range" class="ctprev__range" min="1.5" max="21" step="0.1" value="7" aria-label="노드색 명암비 슬라이더" />
+                <input type="number" id="ct-num" class="ctprev__num" min="1.5" max="21" step="0.1" value="7.0" aria-label="노드색 명암비 값" />
+                <span class="ctprev__unit">:1</span>
+              </div>
+            </div>
+            <div class="set-row set-row--col">
+              <span class="set-row__name">🧪 남은시간 잔량 명암비 <small class="set-row__hint">임시 · 미래 현재→기준·도넛 남은부분 · 2.5=기본</small></span>
+              <div class="ctprev" id="set-remain-preview">
+                <input type="range" id="remain-range" class="ctprev__range" min="1.2" max="7" step="0.1" value="2.5" aria-label="남은시간 잔량 명암비 슬라이더" />
+                <input type="number" id="remain-num" class="ctprev__num" min="1.2" max="7" step="0.1" value="2.5" aria-label="남은시간 잔량 명암비 값" />
                 <span class="ctprev__unit">:1</span>
               </div>
             </div>

@@ -65,12 +65,13 @@ const THEMES = [
   { name: 'dark ', cardHex: '#17211c', futureHex: '#6cb0ff' }, // :root
   { name: 'light', cardHex: '#ffffff', futureHex: '#0a57cc' }, // [data-theme='light']
 ];
-// 빨강·파랑·녹색(강조색) 제외 등분: 앰버 40 / 청록 170 / 마젠타 300.
+// 노드 4색(무채색은 컬러코딩에서 배제 — 일반 텍스트용으로 비워둠).
+// 등록=앰버 40 / 수정=청록 170 / 기준=마젠타 300 / 현재=초록 120(RGB 기본 녹색, 청록과 50° 간격).
 const NODES = [
   { key: '--node-origin ', label: '등록·시작 앰버 40°', hue: 40, target: 7 },
   { key: '--node-updated', label: '수정     청록 170°', hue: 170, target: 7 },
   { key: '--node-target ', label: '기준     마젠타 300°', hue: 300, target: 7 },
-  { key: '--node-now    ', label: '현재     무채색', hue: 0, target: 7, neutral: true },
+  { key: '--node-now    ', label: '현재     초록 120°', hue: 120, target: 7 },
 ];
 const DIM_TARGET = 2.5; // 남은시간 흐린 파랑(채움 바라 명암비 느슨)
 

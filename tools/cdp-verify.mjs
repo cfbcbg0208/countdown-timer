@@ -168,11 +168,11 @@ async function main() {
        bandMarks: document.querySelectorAll('.card__viz .card__vizmark').length,
        bandStart: !!document.querySelector('.card__viz .tl--start'),
        bandFillW: parseFloat(document.querySelector('.card__viz-fill')?.style.width || '0'),
-       // 미래 '남은 시간'(현재→기준) 흐린 파랑 둘째 채움 + 현재 노드=무채색(파랑 아님)
+       // 미래 '남은 시간'(현재→기준) 흐린 파랑 둘째 채움 + 현재 노드=초록(유채·G우세, 파랑 아님)
        restFillW: parseFloat(document.querySelector('.card__viz-fill--rest')?.style.width || '0'),
-       nowNeutralF: (() => { const e = document.querySelector('.tl--now.card__vizlabel b'); if (!e) return false;
+       nowGreenF: (() => { const e = document.querySelector('.tl--now.card__vizlabel b'); if (!e) return false;
          const c = (getComputedStyle(e).color.match(/\\d+/g) || []).slice(0, 3).map(Number);
-         return Math.max(...c) - Math.min(...c) <= 6; })(),
+         return Math.max(...c) - Math.min(...c) > 20 && c[1] > c[0] && c[1] > c[2]; })(),
        pieInZone2: !!document.querySelector('.card__col--left .card__progress .card__pie'),
        drawerTitle: document.getElementById('drawer-title')?.textContent.trim(),
        dirChip: document.querySelector('.card__time .chip')?.textContent,
@@ -226,7 +226,7 @@ async function main() {
   if (!checks.bandStart) fails.push('미래 밴드에 시작 마커(.tl--start) 없음');
   if (!(checks.bandFillW > 0)) fails.push(`미래 밴드 진행 채움(시작→현재) 없음(width=${checks.bandFillW})`);
   if (!(checks.restFillW > 0)) fails.push(`미래 '남은 시간' 흐린 채움(.card__viz-fill--rest) 없음(width=${checks.restFillW})`);
-  if (!checks.nowNeutralF) fails.push('미래 현재 노드색이 무채색이 아님(파랑 잔존?)');
+  if (!checks.nowGreenF) fails.push('미래 현재 노드색이 초록(유채·G우세) 아님');
   if (!checks.pieInZone2) fails.push('도넛(.card__pie)이 zone2(좌측 열)에 없음');
   if (!checks.hasPie) fails.push('진행률 파이 없음');
   if (!String(checks.drawerTitle).includes('타임카드 추가')) fails.push(`드로어 제목="${checks.drawerTitle}"`);
@@ -669,8 +669,8 @@ async function main() {
          const o = col('.tl--created.card__vizlabel b'), u = col('.tl--updated.card__vizlabel b'),
            t = col('.tl--target.card__vizlabel b'), n = col('.tl--now.card__vizlabel b');
          return { origin: +ct(o, bgL).toFixed(2), updated: +ct(u, bgL).toFixed(2), target: +ct(t, bgL).toFixed(2), now: +ct(n, bgL).toFixed(2),
-           nowNeutral: neutral(n), chroma: !neutral(o) && !neutral(u) && !neutral(t),
-           distinct: new Set([o, u, t].map((c) => c.join(','))).size === 3 };
+           nowGreen: !neutral(n) && n[1] > n[0] && n[1] > n[2], chroma: [o, u, t, n].every((c) => !neutral(c)),
+           distinct: new Set([o, u, t, n].map((c) => c.join(','))).size === 4 };
        })(),
      }))()`,
   );
@@ -693,9 +693,9 @@ async function main() {
     const near7 = (v) => Math.abs(v - 7) <= 0.6; // 같은 공식이라 ≈7.0, sRGB 반올림 여유
     if (![nc.origin, nc.updated, nc.target, nc.now].every(near7))
       fails.push(`노드 명암비 7:1 벗어남: ${JSON.stringify(nc)}`);
-    if (!nc.nowNeutral) fails.push('현재 노드색이 무채색(R≈G≈B) 아님');
-    if (!nc.chroma) fails.push('등록/수정/기준 노드색이 유채색 아님(무채색 잔존?)');
-    if (!nc.distinct) fails.push('등록/수정/기준 노드색이 서로 다르지 않음');
+    if (!nc.nowGreen) fails.push('현재 노드색이 초록(유채·G우세) 아님');
+    if (!nc.chroma) fails.push('노드색(등록/수정/기준/현재)에 무채색 잔존');
+    if (!nc.distinct) fails.push('노드 4색이 서로 다르지 않음');
   }
   const tlShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-timeline.png'), Buffer.from(tlShot.data, 'base64'));

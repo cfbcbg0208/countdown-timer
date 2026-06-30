@@ -7,17 +7,16 @@
   --muted: #8ea59a;
   --line: #2a3a32;
   --accent: #16a34a; /* 중립 강조 = 녹색(기본) */
-  --future: #7fa8fd; /* 남은(미래)=파랑. 순파랑(OKLCH 264°) 다크 대비 7:1 */
-  --past: #fe8676;   /* 지난(과거)=빨강. 순빨강(OKLCH 29°) 7:1 */
+  --future: #7da7ff; /* 남은(미래)=파랑. 순파랑(OKLCH 264°) 다크 대비 7.0:1 */
+  --past: #ff8575;   /* 지난(과거)=빨강. 순빨강(OKLCH 29°) 7.0:1 */
   --ok: #16a34a;
   --err: #f87171;
-  --track: #2a3a32;  /* 진행률 바/파이의 빈(미진행) 부분 */
-  /* 컬러코딩(gen-palette.mjs): 고정 RGB원색(빨/녹/파) + OKLCH 균등 자유색(CMY). 모두 ≈7:1. */
-  --node-origin: #cda23b;  /* 등록·시작 OKLCH 86°(골드) */
-  --node-updated: #17bbc7; /* 수정 OKLCH 203°(청록) */
-  --node-target: #fa71fd;  /* 기준 OKLCH 327°(마젠타) */
-  --node-now: #07c406;     /* 현재 OKLCH 142°(초록·고정 원색) */
-  --future-dim: #043efe;   /* 미래 '남은 시간'(현재→기준) 흐린 파랑, ≈2.5:1 */
+  --track: #484848;  /* 빈/남은 트랙(도넛 남은부분·바·밴드 '남은시간' 공통) 1.8:1 */
+  /* 컬러코딩(gen-palette.mjs+src/oklch.mjs): 고정 RGB원색(빨/녹/파) + OKLCH 균등 자유색(CMY). 모두 7.0:1(양자화 정밀). */
+  --node-origin: #d3a100;  /* 등록·시작 OKLCH 86°(골드) */
+  --node-updated: #00bbc8; /* 수정 OKLCH 203°(청록) */
+  --node-target: #fc6fff;  /* 기준 OKLCH 327°(마젠타) */
+  --node-now: #00c400;     /* 현재 OKLCH 142°(초록·고정 원색) */
   --glow: #1a2b22;   /* 상단 은은한 글로우(녹색-중립, 남색 아님) */
   --fab2: #2b3036;   /* 보조 FAB: 무채색·불투명 */
   --fab2-fg: #d7dde2;
@@ -36,17 +35,16 @@
   --muted: #56685e;
   --line: #d2ded6;
   --accent: #16a34a;
-  --future: #0139fd; /* 미래=파랑. 순파랑(OKLCH 264°) 흰 카드 대비 7:1 */
-  --past: #b31009;   /* 과거=빨강. 순빨강(OKLCH 29°) 7:1 */
+  --future: #0037ff; /* 미래=파랑. 순파랑(OKLCH 264°) 흰 카드 대비 7.0:1 */
+  --past: #b60000;   /* 과거=빨강. 순빨강(OKLCH 29°) 7.0:1 */
   --ok: #16a34a;
   --err: #dc4446;
-  --track: #d8e3dc;
-  /* 컬러코딩(라이트): 고정 RGB원색 + OKLCH 균등 자유색(CMY). 흰 카드 대비 모두 ≈7:1. */
-  --node-origin: #715508;  /* 등록·시작 OKLCH 86°(골드) */
-  --node-updated: #1c6268; /* 수정 OKLCH 203°(청록) */
-  --node-target: #9e02a3;  /* 기준 OKLCH 327°(마젠타) */
-  --node-now: #026802;     /* 현재 OKLCH 142°(초록·고정 원색) */
-  --future-dim: #75a1fe;   /* 미래 '남은 시간' 흐린 파랑, ≈2.5:1 */
+  --track: #c1c1c1;  /* 빈/남은 트랙(도넛 남은부분·바·밴드 '남은시간' 공통) 1.8:1 */
+  /* 컬러코딩(라이트): 고정 RGB원색 + OKLCH 균등 자유색(CMY). 흰 카드 대비 모두 7.0:1. */
+  --node-origin: #725500;  /* 등록·시작 OKLCH 86°(골드) */
+  --node-updated: #00636b; /* 수정 OKLCH 203°(청록) */
+  --node-target: #9e00a4;  /* 기준 OKLCH 327°(마젠타) */
+  --node-now: #076805;     /* 현재 OKLCH 142°(초록·고정 원색) */
   --glow: #ffffff;
   --fab2: #eceef2;
   --fab2-fg: #3a414a;
@@ -494,8 +492,8 @@ kbd {
 /* 채움: 미래=청색(시작→현재), 과거=적색(기준→현재). left/width는 renderViz가 인라인. */
 .card__viz-fill { position: absolute; top: 0; height: 100%; background: var(--future); border-radius: 999px; }
 .card__viz--past .card__viz-fill { background: var(--past); }
-/* 미래 '남은 시간'(현재→기준): 흐린 파랑(낮은 명암비)으로 채워 남은 양을 표현 */
-.card__viz-fill--rest { background: var(--future-dim); }
+/* 미래 '남은 시간'(현재→기준): 도넛 남은부분과 동일한 트랙색(1.8:1)으로 통일 */
+.card__viz-fill--rest { background: var(--track); }
 /* ▲ 마커: 트랙 아래에서 위(트랙)를 가리키는 삼각형, 점 위치(left%)에 */
 .card__vizmark {
   position: absolute;
@@ -1240,6 +1238,16 @@ body.select-mode .card.card--selected::after { background: var(--accent); border
 .set-row__hint { display: block; font-size: 0.72rem; font-weight: 400; color: var(--muted); margin-top: 0.1rem; }
 /* 세로 배치 행(이름 위, 컨트롤 아래) — 진행률 파트처럼 넓은 컨트롤용 */
 .set-row--col { flex-direction: column; align-items: stretch; gap: 0.5rem; }
+
+/* TEMP(임시): 명암비 미리보기 = 슬라이더 + 숫자입력(▲▼ 스테퍼) */
+.ctprev { display: flex; align-items: center; gap: 0.6rem; }
+.ctprev__range { flex: 1; min-width: 0; accent-color: var(--accent); }
+.ctprev__num {
+  width: 4.2rem; padding: 0.3rem 0.4rem; border: 1px solid var(--line); border-radius: 0.4rem;
+  background: var(--card-2); color: var(--fg); font-size: 0.85rem; font-variant-numeric: tabular-nums;
+}
+.ctprev__num:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ctprev__unit { font-size: 0.8rem; color: var(--muted); margin-left: -0.3rem; }
 
 /* 진행률 파트 칩(바·파이·퍼센트): 탭=표시 토글, 드래그=순서 */
 .pparts { display: flex; gap: 0.4rem; flex-wrap: wrap; touch-action: none; }

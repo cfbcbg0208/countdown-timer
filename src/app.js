@@ -35,6 +35,7 @@ import {
   update as updateSettings,
   reset as resetSettings,
 } from './settings.js';
+import { solveOklch, roleHues, hex, lumOfHex } from './oklch.mjs'; // TEMP: 명암비 미리보기 라이브 계산
 
 const $ = (id) => document.getElementById(id);
 const labelInput = $('label-input');
@@ -1819,34 +1820,33 @@ function applySettings(s) {
   applyCtPreview(); // TEMP: 테마 바뀌면 명암비 미리보기 팔레트 재적용
 }
 
-// ── TEMP(임시): 명암비 목표 미리보기 ──────────────────────────────
-// 컬러코딩 팔레트를 3:1/4.5:1/7:1로 즉시 재색칠해 비교(테마×목표=6가지). gen-palette.mjs 산출값.
-// 정리 시: 이 구간 + index.html #set-ct-preview 행 + syncSettingControls의 해당 줄 삭제.
-const CT_PALETTES = {
-  dark: {
-    '4.5': { origin: '#a77f0b', updated: '#13939d', target: '#e804ef', now: '#0b9b09', future: '#477eff', past: '#ff3024', dim: '#043efe' },
-    '3': { origin: '#846409', updated: '#0d747c', target: '#b802be', now: '#007b00', future: '#1a56ff', past: '#d40000', dim: '#043efe' },
-  },
-  light: {
-    '4.5': { origin: '#967103', updated: '#10838c', target: '#d003d7', now: '#098a07', future: '#316bff', past: '#ef0503', dim: '#75a1fe' },
-    '3': { origin: '#ba8e06', updated: '#01a5b0', target: '#f737fe', now: '#04ae04', future: '#6091fd', past: '#fd5f4e', dim: '#75a1fe' },
-  },
-};
-const CT_VARMAP = { origin: '--node-origin', updated: '--node-updated', target: '--node-target', now: '--node-now', future: '--future', past: '--past', dim: '--future-dim' };
+// ── TEMP(임시): 명암비 목표 미리보기(슬라이더+숫자입력) ───────────────
+// 컬러코딩 6색을 임의 명암비로 즉시 재색칠(src/oklch.mjs 라이브 계산). 테마×값으로 비교용.
+// 정리 시: 이 구간 + 위 import + index.html #set-ct-preview 행 + syncSettingControls의 해당 줄 삭제.
+const CT_HUES = roleHues(); // {past, now, future, origin, updated, target} OKLCH hue
+const CT_VARMAP = { origin: '--node-origin', updated: '--node-updated', target: '--node-target', now: '--node-now', future: '--future', past: '--past' };
 function applyCtPreview() {
-  const ct = localStorage.getItem('ctPreview') || '7';
-  const theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
-  const pal = ct === '7' ? null : (CT_PALETTES[theme] || {})[ct]; // 7 = 기본(CSS) 사용
+  const raw = localStorage.getItem('ctPreview');
   const st = document.documentElement.style;
-  for (const v of Object.values(CT_VARMAP)) st.removeProperty(v);
-  if (pal) for (const [k, v] of Object.entries(CT_VARMAP)) st.setProperty(v, pal[k]);
+  const ct = raw === null || raw === '' ? 7 : +raw;
+  if (!(ct > 0) || Math.abs(ct - 7) < 1e-9) { for (const v of Object.values(CT_VARMAP)) st.removeProperty(v); return; } // 7=기본(CSS)
+  const cardHex = (getComputedStyle(document.documentElement).getPropertyValue('--card').trim() || '#17211c').replace(/^#?/, '#');
+  const bgLum = lumOfHex(cardHex);
+  for (const [k, v] of Object.entries(CT_VARMAP)) st.setProperty(v, hex(solveOklch(CT_HUES[k], bgLum, ct).rgb));
 }
-const setCtPreview = $('set-ct-preview');
-onSeg(setCtPreview, (v) => {
-  localStorage.setItem('ctPreview', v);
-  applyCtPreview();
-  syncSeg(setCtPreview, v);
-});
+let ctRAF = 0; // 드래그 중 프레임당 1회로 합침
+function scheduleCtPreview() { if (!ctRAF) ctRAF = requestAnimationFrame(() => { ctRAF = 0; applyCtPreview(); }); }
+const ctRange = $('ct-range'), ctNum = $('ct-num');
+function setCt(v, from) {
+  v = Math.max(1.5, Math.min(21, Math.round(v * 10) / 10));
+  if (!(v > 0)) v = 7;
+  localStorage.setItem('ctPreview', String(v));
+  if (from !== 'range') ctRange.value = String(v);
+  if (from !== 'num') ctNum.value = v.toFixed(1);
+  scheduleCtPreview();
+}
+ctRange.addEventListener('input', () => setCt(+ctRange.value, 'range'));
+ctNum.addEventListener('change', () => setCt(+ctNum.value, 'num'));
 // ── /TEMP ────────────────────────────────────────────────────────
 
 const PART_LABEL = { bar: '타임라인', pie: '도넛', percent: '퍼센트' };
@@ -1871,7 +1871,11 @@ function syncSettingControls(s) {
   for (const b of setDates.querySelectorAll('.seg')) b.setAttribute('aria-pressed', String(!!s[b.dataset.key]));
   syncSeg(setDateFormat, s.dateFormat);
   syncSeg(setTheme, s.theme);
-  syncSeg(setCtPreview, localStorage.getItem('ctPreview') || '7'); // TEMP: 명암비 미리보기 선택 표시
+  { // TEMP: 명암비 미리보기 슬라이더/숫자 동기화
+    const ct = Math.max(1.5, Math.min(21, +(localStorage.getItem('ctPreview') || '7') || 7));
+    ctRange.value = String(ct);
+    ctNum.value = ct.toFixed(1);
+  }
 }
 
 function changeSetting(patch) {

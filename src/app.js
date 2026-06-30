@@ -1816,7 +1816,38 @@ function applySettings(s) {
   const el = document.documentElement;
   el.dataset.theme = s.theme; // 라이트/다크 팔레트 전환(나머지 색·크기는 CSS 고정)
   if (themeColorMeta) themeColorMeta.content = s.theme === 'light' ? '#eef4f0' : '#0e1512';
+  applyCtPreview(); // TEMP: 테마 바뀌면 명암비 미리보기 팔레트 재적용
 }
+
+// ── TEMP(임시): 명암비 목표 미리보기 ──────────────────────────────
+// 컬러코딩 팔레트를 3:1/4.5:1/7:1로 즉시 재색칠해 비교(테마×목표=6가지). gen-palette.mjs 산출값.
+// 정리 시: 이 구간 + index.html #set-ct-preview 행 + syncSettingControls의 해당 줄 삭제.
+const CT_PALETTES = {
+  dark: {
+    '4.5': { origin: '#a77f0b', updated: '#13939d', target: '#e804ef', now: '#0b9b09', future: '#477eff', past: '#ff3024', dim: '#043efe' },
+    '3': { origin: '#846409', updated: '#0d747c', target: '#b802be', now: '#007b00', future: '#1a56ff', past: '#d40000', dim: '#043efe' },
+  },
+  light: {
+    '4.5': { origin: '#967103', updated: '#10838c', target: '#d003d7', now: '#098a07', future: '#316bff', past: '#ef0503', dim: '#75a1fe' },
+    '3': { origin: '#ba8e06', updated: '#01a5b0', target: '#f737fe', now: '#04ae04', future: '#6091fd', past: '#fd5f4e', dim: '#75a1fe' },
+  },
+};
+const CT_VARMAP = { origin: '--node-origin', updated: '--node-updated', target: '--node-target', now: '--node-now', future: '--future', past: '--past', dim: '--future-dim' };
+function applyCtPreview() {
+  const ct = localStorage.getItem('ctPreview') || '7';
+  const theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+  const pal = ct === '7' ? null : (CT_PALETTES[theme] || {})[ct]; // 7 = 기본(CSS) 사용
+  const st = document.documentElement.style;
+  for (const v of Object.values(CT_VARMAP)) st.removeProperty(v);
+  if (pal) for (const [k, v] of Object.entries(CT_VARMAP)) st.setProperty(v, pal[k]);
+}
+const setCtPreview = $('set-ct-preview');
+onSeg(setCtPreview, (v) => {
+  localStorage.setItem('ctPreview', v);
+  applyCtPreview();
+  syncSeg(setCtPreview, v);
+});
+// ── /TEMP ────────────────────────────────────────────────────────
 
 const PART_LABEL = { bar: '타임라인', pie: '도넛', percent: '퍼센트' };
 // 진행률 파트 칩(바/파이/퍼센트): progressOrder 순서로 렌더, progressShow로 켜짐(aria-pressed) 표시.
@@ -1840,6 +1871,7 @@ function syncSettingControls(s) {
   for (const b of setDates.querySelectorAll('.seg')) b.setAttribute('aria-pressed', String(!!s[b.dataset.key]));
   syncSeg(setDateFormat, s.dateFormat);
   syncSeg(setTheme, s.theme);
+  syncSeg(setCtPreview, localStorage.getItem('ctPreview') || '7'); // TEMP: 명암비 미리보기 선택 표시
 }
 
 function changeSetting(patch) {

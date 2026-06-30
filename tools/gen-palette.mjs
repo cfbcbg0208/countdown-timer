@@ -84,31 +84,38 @@ const freeHues = placeFree([HUE_RED, HUE_GREEN, HUE_BLUE], 3); // → ~노랑/�
 console.log(`고정 OKLCH hue: 빨강 ${HUE_RED.toFixed(1)}° · 초록 ${HUE_GREEN.toFixed(1)}° · 파랑 ${HUE_BLUE.toFixed(1)}°`);
 console.log(`자유 OKLCH hue(maximin): ${freeHues.map((h) => h.toFixed(1) + '°').join(' / ')}  (등록/수정/기준)`);
 
-const TARGET = 7;
+// 역할별 hue(키 = CSS 변수명, 순서 = origin/updated/target/now/future/past + dim).
 const ROLES = [
-  { key: '--past       ', label: '과거 빨강 ', hue: HUE_RED },
-  { key: '--node-now   ', label: '현재 초록 ', hue: HUE_GREEN },
-  { key: '--future     ', label: '미래 파랑 ', hue: HUE_BLUE },
-  { key: '--node-origin', label: '등록·시작 ', hue: freeHues[0] },
-  { key: '--node-updated', label: '수정     ', hue: freeHues[1] },
-  { key: '--node-target', label: '기준     ', hue: freeHues[2] },
+  { key: 'origin', hue: freeHues[0] },
+  { key: 'updated', hue: freeHues[1] },
+  { key: 'target', hue: freeHues[2] },
+  { key: 'now', hue: HUE_GREEN },
+  { key: 'future', hue: HUE_BLUE },
+  { key: 'past', hue: HUE_RED },
 ];
+const TARGETS = [7, 4.5, 3]; // AAA / AA / 최소(UI·큰글자)
+// JS 객체 형식으로 출력 → app.js 임시 미리보기에 붙여넣기.
 for (const t of [
-  { name: 'dark ', card: '#17211c' },
+  { name: 'dark', card: '#17211c' },
   { name: 'light', card: '#ffffff' },
 ]) {
   const bgLum = relLum(hexToRgb(t.card).map(toLin));
-  console.log(`\n=== ${t.name.trim()} (card ${t.card}, bgLum=${bgLum.toFixed(4)}) ===`);
-  const lums = [];
-  for (const r of ROLES) {
-    const o = solveOklch(r.hue, bgLum, TARGET);
-    lums.push(relLum(o.rgb.map(toLin)));
-    console.log(`  ${r.key}: ${hex(o.rgb)};  /* ${r.label} OKLCH ${r.hue.toFixed(0)}° 명암비 ${o.ct.toFixed(2)}:1 C=${o.C.toFixed(3)} */`);
+  console.log(`\n// ${t.name} (card ${t.card})`);
+  console.log(`${t.name}: {`);
+  for (const target of TARGETS) {
+    const cols = ROLES.map((r) => {
+      const o = solveOklch(r.hue, bgLum, target) || solveOklch(r.hue, bgLum, target, { tol: 0.15 });
+      return [r.key, hex(o.rgb), o.ct];
+    });
+    const dim = solveOklch(HUE_BLUE, bgLum, Math.min(2.5, target - 0.3)) || { rgb: hexToRgb('#888888') };
+    const obj = cols.map(([k, hx]) => `${k}:'${hx}'`).join(', ');
+    const cts = cols.map(([, , ct]) => ct.toFixed(1)).join('/');
+    console.log(`  '${target}': { ${obj}, dim:'${hex(dim.rgb)}' }, // 실제 ${cts}`);
   }
-  // future-dim: 파랑 hue, 낮은 명암비(흐린 남은시간)
-  const dim = solveOklch(HUE_BLUE, bgLum, 2.5);
-  console.log(`  --future-dim : ${hex(dim.rgb)};  /* 남은시간 흐린파랑 명암비 ${dim.ct.toFixed(2)}:1 */`);
-  let inter = 9;
-  for (let i = 0; i < lums.length; i++) for (let j = i + 1; j < lums.length; j++) inter = Math.min(inter, contrast(lums[i], lums[j]));
-  console.log(`  → 코딩색 간 WCAG 명암비(min) ≈ ${inter.toFixed(2)}:1 (동일 휘도라 ~1, 구분은 색조로)`);
+  console.log(`},`);
+  // 채도(선명도) 비교: 목표별 평균 OKLCH C
+  for (const target of TARGETS) {
+    const cs = ROLES.map((r) => (solveOklch(r.hue, bgLum, target) || { C: 0 }).C);
+    console.log(`//   ${t.name} target ${target}: 평균채도 C=${(cs.reduce((a, b) => a + b, 0) / cs.length).toFixed(3)} (클수록 선명)`);
+  }
 }

@@ -503,7 +503,7 @@ async function main() {
     browser,
     `document.querySelector('#set-theme .seg[data-value="light"]')?.getAttribute('aria-pressed')`,
   );
-  if (s10.segCount !== 5) fails.push(`세그먼트 5개(셀렉트4+날짜1) 기대, 실제 ${s10.segCount}`);
+  if (s10.segCount !== 6) fails.push(`세그먼트 6개(셀렉트4+날짜1+명암비미리보기1) 기대, 실제 ${s10.segCount}`);
   if (s10.dateToggles !== 3) fails.push(`날짜 토글 3개 기대, 실제 ${s10.dateToggles}`);
   if (s10.footerBtns !== 2) fails.push(`푸터 버튼 2개(취소/확인) 기대, 실제 ${s10.footerBtns}`);
   if (s10.headerClose) fails.push('설정 헤더 ✕가 아직 있음(제거 기대)');

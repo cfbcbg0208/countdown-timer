@@ -169,6 +169,15 @@
                 <button type="button" class="seg" data-value="light">라이트</button>
               </div>
             </div>
+            <!-- TEMP(임시): 명암비 목표 미리보기. 팔레트를 3.0/4.5/7.0으로 즉시 재색칠해 비교용. 정리 시 이 블록 + app.js TEMP 구간 삭제. -->
+            <div class="set-row">
+              <span class="set-row__name">🧪 명암비 미리보기 <small class="set-row__hint">임시 · 테마와 조합해 6가지</small></span>
+              <div class="segmented" id="set-ct-preview" role="group" aria-label="명암비 목표 미리보기">
+                <button type="button" class="seg" data-value="3">3:1</button>
+                <button type="button" class="seg" data-value="4.5">4.5:1</button>
+                <button type="button" class="seg" data-value="7">7:1</button>
+              </div>
+            </div>
             <div class="set-row">
               <span class="set-row__name">새 카드 추가 위치</span>
               <div class="segmented" id="set-add-position" role="group" aria-label="새 카드 추가 위치">

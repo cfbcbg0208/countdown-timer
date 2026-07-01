@@ -277,8 +277,13 @@ function makeCard(item) {
   vizEl.hidden = true;
 
   // 기준일시(클릭 편집). 값 + [기준일시] 칩은 updateCard가 갱신. showTarget로 표시 토글.
-  // 제목 아래 일시 행들: 카드별 reveal된 것만 렌더(타임라인 노드 클릭으로 토글). now 행은 live 갱신용 val 보관.
-  const dateRows = DATE_DEFS.filter((d) => isRevealed(item, d.key)).map((d) => buildDateRow(item, d));
+  // 제목 아래 일시 행들: 카드별 reveal된 것만, **클릭(표시) 순서대로** 렌더(새로 켠 게 맨 아래).
+  //   먼저 item.reveal 키 순서(=표시 순서) 중 true인 것, 그 다음 전역 기본으로만 켜진 것을 DATE_DEFS 순으로.
+  const rev = item.reveal || {};
+  const revealedKeys = [];
+  for (const k of Object.keys(rev)) if (rev[k] && DATE_DEFS.some((d) => d.key === k)) revealedKeys.push(k);
+  for (const d of DATE_DEFS) if (!(d.key in rev) && isRevealed(item, d.key)) revealedKeys.push(d.key);
+  const dateRows = revealedKeys.map((k) => buildDateRow(item, DATE_DEFS.find((d) => d.key === k)));
   const nowVal = dateRows.find((r) => r.def.key === 'now')?.val || null;
 
   // 태그(구 조합) 칩 줄: 소속 태그 + '＋ 태그' 추가 칩(클릭→팝오버). fillCardGroups가 채움.

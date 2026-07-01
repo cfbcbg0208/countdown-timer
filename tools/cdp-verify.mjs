@@ -277,34 +277,41 @@ async function main() {
   if (!checks.bodyHasCols) fails.push('본문(.card__body) 안에 2열(.card__cols)이 없음');
   if (!checks.metaHidden) fails.push('기준일시(.card__meta)가 기본 숨김이 아님(showTarget=false → 렌더 안 됨 기대)');
 
-  // 6.4) 타임라인 등록 노드 클릭 → 이 카드에서만(per-card) 등록일시 표시: 색칩=노드색 + [숨기기][연필] 순서.
-  //   다시 노드 클릭 → 토글로 숨김(reveal.created=false). 현재 노드 클릭 → 현재일시 live 행.
+  // 6.4) 타임라인 노드 클릭 → per-card 표시. **클릭 순서대로 아래에 쌓임**(기준 먼저→등록 다음 = 기준이 위).
+  //   색칩=노드색 + [숨기기][연필] 순서. 재클릭=토글 숨김. 현재 노드 → 현재일시 live 행.
+  await evalJS(browser, "document.querySelector('.card__viz-labels .tl--target')?.click()");
+  await until(() => evalJS(browser, "!!document.querySelector('.card__daterow--target')"), { label: '기준 표시' });
   await evalJS(browser, "document.querySelector('.card__viz-labels .tl--created')?.click()");
-  await until(() => evalJS(browser, "JSON.parse(localStorage.getItem('countdowns'))[0].reveal?.created === true"), { label: '등록 노드 클릭→표시(per-card)' });
-  const dateReveal = await evalJS(browser, `(() => {
-     const row = document.querySelector('.card__daterow--created');
-     const chip = row?.querySelector('.chip.chip--origin');
+  await until(() => evalJS(browser, "!!document.querySelector('.card__daterow--created')"), { label: '등록 표시' });
+  const dr = await evalJS(browser, `(() => {
+     const rows = [...document.querySelectorAll('.card__col--left .card__daterow')];
+     const idxT = rows.findIndex((r) => r.classList.contains('card__daterow--target'));
+     const idxC = rows.findIndex((r) => r.classList.contains('card__daterow--created'));
+     const crow = document.querySelector('.card__daterow--created');
+     const chip = crow?.querySelector('.chip.chip--origin');
      const chipCol = chip ? getComputedStyle(chip).color : '';
      const nodeCol = (() => { const e = document.querySelector('.tl--created.card__vizlabel b'); return e ? getComputedStyle(e).color : ''; })();
-     const kinds = row ? [...row.children].map((c) => c.classList.contains('card__datehide') ? 'hide' : c.classList.contains('card__dateedit') ? 'edit' : 'x') : [];
-     return { rowShown: !!row && !!row.offsetParent, hasChip: !!chip, chipMatchesNode: !!chipCol && chipCol === nodeCol,
-       hasHide: kinds.includes('hide'), hasEdit: kinds.includes('edit'), hideBeforeEdit: kinds.indexOf('hide') >= 0 && kinds.indexOf('hide') < kinds.indexOf('edit') }; })()`);
-  if (!dateReveal.rowShown) fails.push('등록 노드 클릭 후 등록일시 행 미표시');
-  if (!dateReveal.hasChip) fails.push('등록일시 색칩(.chip--origin) 없음');
-  if (!dateReveal.chipMatchesNode) fails.push('등록일시 칩 색이 노드색과 불일치');
-  if (!(dateReveal.hasHide && dateReveal.hasEdit)) fails.push('등록일시 행에 숨기기(눈)·연필 둘 다 필요');
-  if (!dateReveal.hideBeforeEdit) fails.push('일시 행 아이콘 순서가 [숨기기][연필] 아님');
+     const kinds = crow ? [...crow.children].map((c) => c.classList.contains('card__datehide') ? 'hide' : c.classList.contains('card__dateedit') ? 'edit' : 'x') : [];
+     return { orderOK: idxT >= 0 && idxC >= 0 && idxT < idxC, idxT, idxC,
+       perCard: JSON.parse(localStorage.getItem('countdowns'))[0].reveal?.created === true,
+       chipMatchesNode: !!chipCol && chipCol === nodeCol,
+       hasHide: kinds.includes('hide'), hasEdit: kinds.includes('edit'),
+       hideBeforeEdit: kinds.indexOf('hide') >= 0 && kinds.indexOf('hide') < kinds.indexOf('edit') }; })()`);
+  if (!dr.perCard) fails.push('노드 클릭이 per-card(item.reveal)로 반영 안 됨');
+  if (!dr.orderOK) fails.push(`일시 행이 클릭 순서(기준 위→등록 아래)로 안 쌓임: 기준idx=${dr.idxT} 등록idx=${dr.idxC}`);
+  if (!dr.chipMatchesNode) fails.push('등록일시 칩 색이 노드색과 불일치');
+  if (!(dr.hasHide && dr.hasEdit && dr.hideBeforeEdit)) fails.push('일시 행 아이콘이 [숨기기][연필] 순서로 둘 다 있어야');
   const revealShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-datereveal.png'), Buffer.from(revealShot.data, 'base64'));
-  // 현재 노드 클릭 → 현재일시 행(live)
+  // 현재 노드 → 현재일시 행(live)
   await evalJS(browser, "document.querySelector('.card__viz-labels .tl--now')?.click()");
-  await until(() => evalJS(browser, "JSON.parse(localStorage.getItem('countdowns'))[0].reveal?.now === true && !!document.querySelector('.card__daterow--now')"), { label: '현재 노드 클릭→현재일시' });
-  // 다시 등록 노드 클릭 → 토글 숨김
+  await until(() => evalJS(browser, "!!document.querySelector('.card__daterow--now')"), { label: '현재 노드→현재일시' });
+  // 재클릭 토글 숨김(등록) + 정리(기준·현재)
   await evalJS(browser, "document.querySelector('.card__viz-labels .tl--created')?.click()");
-  await until(() => evalJS(browser, "JSON.parse(localStorage.getItem('countdowns'))[0].reveal?.created === false && !document.querySelector('.card__daterow--created')"), { label: '등록 다시 클릭→토글 숨김' });
-  // 현재도 숨김(눈 버튼) → 이후 테스트 영향 없게
+  await until(() => evalJS(browser, "!document.querySelector('.card__daterow--created')"), { label: '등록 토글 숨김' });
+  await evalJS(browser, "document.querySelector('.card__viz-labels .tl--target')?.click()");
   await evalJS(browser, "document.querySelector('.card__daterow--now .card__datehide')?.click()");
-  await until(() => evalJS(browser, "JSON.parse(localStorage.getItem('countdowns'))[0].reveal?.now === false"), { label: '현재 눈→숨김' });
+  await until(() => evalJS(browser, "!document.querySelector('.card__daterow--target') && !document.querySelector('.card__daterow--now')"), { label: '기준·현재 정리' });
 
   // 6.5a) 기록(랩) 기준일시 편집 → laps[0].target 갱신(at은 숨은 기준점으로 유지)
   await evalJS(browser, "document.querySelector('.card__laps .lap__edit[data-which=\"target\"]').click()");

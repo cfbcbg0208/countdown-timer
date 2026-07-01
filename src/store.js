@@ -60,11 +60,16 @@ export function setHidden(storage, id, hidden) {
 }
 
 /** id 항목의 '제목 아래 일시 표시'(reveal.key) 상태를 카드별로 설정 후 목록 반환.
- *  key: 'start'|'created'|'updated'|'target'|'now'. UI 상태이므로 updatedAt·순서 보존. */
+ *  key: 'start'|'created'|'updated'|'target'|'now'. UI 상태이므로 updatedAt·순서 보존.
+ *  ⚠️ 표시(val=true) 시 키를 삭제 후 재삽입 → reveal의 키 순서 = '표시된 순서'(새로 켠 게 맨 뒤). */
 export function setReveal(storage, id, key, val) {
-  const list = load(storage).map((t) =>
-    t.id === id ? { ...t, reveal: { ...(t.reveal || {}), [key]: !!val } } : t,
-  );
+  const list = load(storage).map((t) => {
+    if (t.id !== id) return t;
+    const r = { ...(t.reveal || {}) };
+    delete r[key]; // 재삽입으로 맨 뒤 순서 보장(클릭 순서대로 아래에 추가)
+    r[key] = !!val; // true=표시(맨 뒤) / false=숨김(전역 기본 override로 유지)
+    return { ...t, reveal: r };
+  });
   save(storage, list);
   return list;
 }

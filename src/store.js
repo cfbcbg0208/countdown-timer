@@ -59,6 +59,25 @@ export function setHidden(storage, id, hidden) {
   return list;
 }
 
+/** id 항목의 '제목 아래 일시 표시'(reveal.key) 상태를 카드별로 설정 후 목록 반환.
+ *  key: 'start'|'created'|'updated'|'target'|'now'. UI 상태이므로 updatedAt·순서 보존. */
+export function setReveal(storage, id, key, val) {
+  const list = load(storage).map((t) =>
+    t.id === id ? { ...t, reveal: { ...(t.reveal || {}), [key]: !!val } } : t,
+  );
+  save(storage, list);
+  return list;
+}
+
+/** id 항목의 시스템 일시(createdAt/updatedAt)를 명시적으로 설정(사용자 편집) 후 목록 반환.
+ *  updateItem은 이 둘을 보존/자동갱신하므로, 사용자가 직접 고칠 때만 이 함수로 설정. 순서 보존. */
+export function setSystemDate(storage, id, key, iso) {
+  if (key !== 'createdAt' && key !== 'updatedAt') return load(storage);
+  const list = load(storage).map((t) => (t.id === id ? { ...t, [key]: iso } : t));
+  save(storage, list);
+  return list;
+}
+
 /**
  * 저장 목록을 orderedIds 순서대로 재배치 후 저장하고 새 목록을 반환.
  * 목록에 없는 id는 무시하고, orderedIds에 빠진 항목은 원래 상대순서로 끝에 보존(유실 방지).

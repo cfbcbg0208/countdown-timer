@@ -21,6 +21,8 @@ import {
   reorder,
   updateItem,
   setHidden,
+  setReveal,
+  setSystemDate,
   moveId,
   loadGroups,
   addGroup,
@@ -142,7 +144,25 @@ function chip(text, cls = '') {
   return s;
 }
 
-// 일시 행 숨기기(눈) 버튼: 클릭 시 해당 설정 키(show*)를 꺼서 제목 아래에서 숨긴다.
+// ── 제목 아래 '일시 표시': 타임라인 노드(시작/등록/수정/기준/현재) 클릭 → 카드별로 그 일시를 토글 표시 ──
+// 각 행: [값 + 색칩] [숨기기(눈)] [연필(편집·현재 제외)]. reveal는 item.reveal[key](카드별, 전역 설정이 기본값).
+const DATE_DEFS = [
+  { key: 'start',   label: '시작일시', chipCls: 'chip--start',   field: 'start',   iso: (it) => it.startISO || (settings.progressBase === 'updated' ? it.updatedAt : it.createdAt) || it.createdAt },
+  { key: 'created', label: '등록일시', chipCls: 'chip--origin',  field: 'created', iso: (it) => it.createdAt },
+  { key: 'updated', label: '수정일시', chipCls: 'chip--updated', field: 'updated', iso: (it) => it.updatedAt },
+  { key: 'target',  label: '기준일시', chipCls: 'chip--target',  field: 'date',    iso: (it) => it.targetISO },
+  { key: 'now',     label: '현재일시', chipCls: 'chip--now',     field: null,      iso: () => new Date().toISOString() },
+];
+// 전역 설정(날짜 표시)을 기본값으로, item.reveal[key]가 있으면 그 카드만 override(카드별 독립).
+const GLOBAL_REVEAL = { target: 'showTarget', created: 'showCreated', updated: 'showUpdated' };
+function isRevealed(item, key) {
+  const r = item.reveal;
+  if (r && key in r) return !!r[key];
+  const g = GLOBAL_REVEAL[key];
+  return g ? !!settings[g] : false; // start/now는 전역 기본 없음 → false
+}
+
+// 일시 행 숨기기(눈) 버튼: 클릭 시 그 카드에서 해당 일시를 숨긴다(reveal[key]=false).
 function dateHideBtn(key) {
   const b = document.createElement('button');
   b.type = 'button';
@@ -153,19 +173,28 @@ function dateHideBtn(key) {
   b.innerHTML = hideIcon(false); // 눈-사선(숨기기)
   return b;
 }
-
-// 등록/수정 일시 행(설정으로 표시·숨김). 값 + [라벨 색칩] + 숨기기(눈). 비편집(등록/수정은 시스템 일시).
-function dateRow(label, key, iso, show, colorCls) {
+// 일시 행 편집(연필) 버튼(현재일시는 편집 불가라 없음).
+function dateEditBtn(field) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'card__dateedit';
+  b.dataset.field = field;
+  b.title = '이 일시 수정';
+  b.setAttribute('aria-label', '이 일시 수정');
+  b.innerHTML = '<span class="card__pencilicon" aria-hidden="true"></span>';
+  return b;
+}
+// 표시(reveal)된 일시 행 하나. 순서: [값+색칩] [숨기기] [연필]. now는 live(updateCard가 값 갱신).
+function buildDateRow(item, def) {
+  const iso = def.iso(item);
   const row = document.createElement('div');
-  row.className = 'card__daterow card__row--date';
-  row.hidden = !show || !iso;
-  if (iso) {
-    const val = document.createElement('span');
-    val.className = 'card__datemeta';
-    val.textContent = fmtDate(new Date(iso));
-    row.append(val, chip(label, colorCls), dateHideBtn(key));
-  }
-  return row;
+  row.className = 'card__daterow card__daterow--' + def.key;
+  const val = document.createElement('span');
+  val.className = 'card__datemeta';
+  val.textContent = iso ? fmtDate(new Date(iso)) : '';
+  row.append(val, chip(def.label, def.chipCls), dateHideBtn(def.key));
+  if (def.field) row.append(dateEditBtn(def.field));
+  return { row, val, def };
 }
 
 // 숨기기/보이기 아이콘(filled mono SVG). hidden=true면 '눈'(보이기), false면 '눈-사선'(숨기기).
@@ -248,19 +277,9 @@ function makeCard(item) {
   vizEl.hidden = true;
 
   // 기준일시(클릭 편집). 값 + [기준일시] 칩은 updateCard가 갱신. showTarget로 표시 토글.
-  const metaEl = document.createElement('button');
-  metaEl.type = 'button';
-  metaEl.className = 'card__meta';
-  metaEl.title = '클릭하여 기준일시 수정';
-  // 기준일시 행: [값 + 색칩(클릭 편집·연필)] + 숨기기(눈). 행 전체를 showTarget으로 표시/숨김.
-  const metaRow = document.createElement('div');
-  metaRow.className = 'card__daterow';
-  metaRow.hidden = !settings.showTarget;
-  metaRow.append(metaEl, dateHideBtn('showTarget'));
-
-  // 등록/수정 일시 행(설정 토글). 색칩(등록=노랑·수정=청록) + 숨기기(눈).
-  const createdRow = dateRow('등록일시', 'showCreated', item.createdAt, settings.showCreated, 'chip--origin');
-  const updatedRow = dateRow('수정일시', 'showUpdated', item.updatedAt, settings.showUpdated, 'chip--updated');
+  // 제목 아래 일시 행들: 카드별 reveal된 것만 렌더(타임라인 노드 클릭으로 토글). now 행은 live 갱신용 val 보관.
+  const dateRows = DATE_DEFS.filter((d) => isRevealed(item, d.key)).map((d) => buildDateRow(item, d));
+  const nowVal = dateRows.find((r) => r.def.key === 'now')?.val || null;
 
   // 태그(구 조합) 칩 줄: 소속 태그 + '＋ 태그' 추가 칩(클릭→팝오버). fillCardGroups가 채움.
   const groupsRow = document.createElement('div');
@@ -297,7 +316,7 @@ function makeCard(item) {
   // 좌측 열: 제목(상단) → 기준/등록/수정일시 → 태그. 기준일시·태그는 기본 숨김(타임라인이 대체).
   const left = document.createElement('div');
   left.className = 'card__col card__col--left';
-  left.append(labelEl, metaRow, createdRow, updatedRow, groupsRow);
+  left.append(labelEl, ...dateRows.map((r) => r.row), groupsRow);
 
   // 우측 열: 기록(랩) 목록.
   const right = document.createElement('div');
@@ -324,7 +343,7 @@ function makeCard(item) {
 
   card.append(railLeft, body, railRight);
 
-  const refs = { card, timeEl, progressEl, pieEl, pieLabelEl, pctEl, vizEl, heroLineEl: heroLine, heroFrontEl: heroFront, metaEl, lapsEl, item, dir: null };
+  const refs = { card, timeEl, progressEl, pieEl, pieLabelEl, pctEl, vizEl, heroLineEl: heroLine, heroFrontEl: heroFront, nowVal, lapsEl, item, dir: null };
   renderLaps(refs);
   updateCard(refs);
   return refs;
@@ -430,8 +449,7 @@ function updateCard(refs) {
   refs.timeEl.innerHTML =
     `<span class="card__num">${d.sign ? `<span class="display__sign">${d.sign}</span>` : ''}${formatDuration(r)}</span>` +
     ` <span class="chip chip--${r.direction}">${d.chip}</span>`;
-  // 기준일시: 값(자르기) + [기준일시] 칩(고정 → 날짜가 길어도 칩은 항상 보임).
-  refs.metaEl.innerHTML = `<span class="card__metadate">${fmtDate(target)}</span><span class="chip chip--target">기준일시</span>`;
+  if (refs.nowVal) refs.nowVal.textContent = fmtDate(new Date()); // 현재일시 행(표시된 경우) 매초 갱신
   updateProgress(refs, item, target, r.direction);
   fitTime(refs.timeEl); // 히어로 줄 가용폭에 맞게 폰트 자동 축소(오버플로우 방지)
   refs.dir = r.direction;
@@ -890,6 +908,8 @@ function resolveProgressStart(raw, item) {
 const FIELD_LABELS = {
   title: '제목 수정',
   date: '기준일시 수정',
+  created: '등록일시 수정',
+  updated: '수정일시 수정',
   start: '진행 시작점 (일시 · N% · 기간)',
   'lap-rel': '상대 시간 수정 (기준일시 연동)',
   'lap-target': '기준일시 수정 (상대시간 연동)',
@@ -934,9 +954,10 @@ function openFieldEditor(card, id, field, lapIndex = null) {
     input.value = toLocalISO(new Date(lap.target)).replace('T', ' ');
     input.placeholder = '예: 260626금1800 · 2026-06-26 18:00 · 오후 6시';
     input.spellcheck = false;
-  } else if (field === 'date') {
-    // 기준일시도 추가영역처럼 '자유 텍스트 → 해석' 방식. 현재값을 파싱 가능한 형태로 채운다.
-    input.value = toLocalISO(new Date(item.targetISO)).replace('T', ' ');
+  } else if (field === 'date' || field === 'created' || field === 'updated') {
+    // 기준/등록/수정일시: 자유 텍스트 → 해석. 현재값을 파싱 가능한 형태로 채운다.
+    const iso = field === 'created' ? item.createdAt : field === 'updated' ? item.updatedAt : item.targetISO;
+    input.value = toLocalISO(new Date(iso)).replace('T', ' ');
     input.placeholder = '예: 260626금1800 · 2026-06-26 18:00 · 오후 6시';
     input.spellcheck = false;
   } else if (field === 'start') {
@@ -1011,8 +1032,8 @@ function openFieldEditor(card, id, field, lapIndex = null) {
     };
     input.addEventListener('input', refresh);
     refresh();
-  } else if (field === 'date' || field === 'lap-target') {
-    // 기준일시/랩 기준일시: 입력하는 동안 해석 결과를 라이브 미리보기로 보여준다.
+  } else if (field === 'date' || field === 'lap-target' || field === 'created' || field === 'updated') {
+    // 기준/등록/수정/랩 기준일시: 입력하는 동안 해석 결과를 라이브 미리보기로 보여준다.
     const preview = document.createElement('p');
     preview.className = 'card__editpreview';
     editor.append(preview);
@@ -1040,7 +1061,7 @@ function openFieldEditor(card, id, field, lapIndex = null) {
 
   // 편집기는 2열(.card__cols) 아래 전체폭으로 삽입(열 내부에 넣으면 레이아웃 깨짐).
   // 랩 필드도 우측 열 내부가 아니라 2열 아래 전체폭으로(좁은 열 깨짐 방지).
-  const ANCHOR = { date: '.card__meta', start: '.card__progress', title: '.card__label' };
+  const ANCHOR = { date: '.card__daterow--target', created: '.card__daterow--created', updated: '.card__daterow--updated', start: '.card__progress', title: '.card__label' };
   const anchor = card.querySelector(ANCHOR[field] || '.card__cols');
   // 제목·기준일시=2열 아래, 진행 시작점(도넛/밴드)=히어로 아래 전체폭.
   (anchor.closest('.card__cols, .card__row, .card__hero') || anchor).after(editor);
@@ -1084,6 +1105,14 @@ function commitField(card, id, field) {
     }
     list = updateItem(localStorage, id, { targetISO: toLocalISO(date) });
     srStatus.textContent = '기준일시 변경됨';
+  } else if (field === 'created' || field === 'updated') {
+    const date = parseFlexible(input.value);
+    if (!date) {
+      input.setAttribute('aria-invalid', 'true');
+      return;
+    }
+    list = setSystemDate(localStorage, id, field === 'created' ? 'createdAt' : 'updatedAt', toLocalISO(date));
+    srStatus.textContent = (field === 'created' ? '등록일시' : '수정일시') + ' 변경됨';
   } else if (field === 'start') {
     // 일시 · N%(지금이 그 %) · 기간(5시간) → 시작 일시 계산. 비우면 기본(등록/수정일시).
     const r = resolveProgressStart(input.value, itemById(id));
@@ -1134,16 +1163,16 @@ listEl.addEventListener('click', (e) => {
     card.removeAttribute('data-editing');
   } else if (e.target.closest('.card__label')) {
     openFieldEditor(card, id, 'title');
-  } else if (e.target.closest('.card__meta')) {
-    openFieldEditor(card, id, 'date');
+  } else if (e.target.closest('.card__dateedit')) {
+    openFieldEditor(card, id, e.target.closest('.card__dateedit').dataset.field); // 연필 → 그 일시 편집
   } else if (e.target.closest('.card__datehide')) {
-    changeSetting({ [e.target.closest('.card__datehide').dataset.key]: false }); // 눈 → 그 일시를 제목 아래에서 숨김
+    list = setReveal(localStorage, id, e.target.closest('.card__datehide').dataset.key, false); // 눈 → 이 카드에서 숨김
     rebuild();
   } else if (e.target.closest('.card__vizlabel')) {
-    // 타임라인 노드 클릭 → 그 일시를 제목 아래에 표시(등록/수정/기준). 시작·현재는 대응 행 없어 무시.
-    const c = e.target.closest('.card__vizlabel').classList;
-    const key = c.contains('tl--created') ? 'showCreated' : c.contains('tl--updated') ? 'showUpdated' : c.contains('tl--target') ? 'showTarget' : null;
-    if (key) { changeSetting({ [key]: true }); rebuild(); }
+    // 타임라인 노드 클릭 → 이 카드에서만 그 일시를 토글(시작/등록/수정/기준/현재). 다시 클릭 시 숨김.
+    const cl = e.target.closest('.card__vizlabel').classList;
+    const key = cl.contains('tl--start') ? 'start' : cl.contains('tl--created') ? 'created' : cl.contains('tl--updated') ? 'updated' : cl.contains('tl--target') ? 'target' : cl.contains('tl--now') ? 'now' : null;
+    if (key) { list = setReveal(localStorage, id, key, !isRevealed(itemById(id), key)); rebuild(); }
   } else if (e.target.closest('.card__progress, .card__viz--editable')) {
     openFieldEditor(card, id, 'start'); // 도넛/% 또는 미래 진행바 클릭 → 진행 시작점 지정
   } else if (e.target.closest('.card__group')) {

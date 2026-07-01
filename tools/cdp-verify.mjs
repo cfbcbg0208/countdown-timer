@@ -220,8 +220,8 @@ async function main() {
          return !!l && !!x && getComputedStyle(l).color === getComputedStyle(x).color; })(),
        lapEdits: document.querySelectorAll('.card__laps .lap__edit').length,
        bodyHasCols: !!document.querySelector('.card__body > .card__cols'),
-       // 기준일시 기본 숨김(showTarget=false): 감싼 행(.card__daterow[hidden])이 숨겨져 metaEl이 렌더 안 됨(offsetParent null).
-       metaHidden: (() => { const m = document.querySelector('.card__meta'); return !!m && !m.offsetParent; })(),
+       // 기준일시 기본 미표시(reveal 없음·showTarget=false): 기준일시 행 자체가 렌더되지 않음.
+       metaHidden: !document.querySelector('.card__daterow--target'),
        tagAddInGroups: !!document.querySelector('.card__groups .card__groupbtn'),
        tagAddText: document.querySelector('.card__groups .card__groupbtn')?.textContent,
        cardGroupsHidden: getComputedStyle(document.querySelector('.card__groups')).display === 'none',
@@ -277,24 +277,34 @@ async function main() {
   if (!checks.bodyHasCols) fails.push('본문(.card__body) 안에 2열(.card__cols)이 없음');
   if (!checks.metaHidden) fails.push('기준일시(.card__meta)가 기본 숨김이 아님(showTarget=false → 렌더 안 됨 기대)');
 
-  // 6.4) 타임라인 등록 노드 클릭 → 등록일시가 제목 아래에 표시(색칩=노드색 + 숨기기 눈). 눈 클릭 → 다시 숨김.
+  // 6.4) 타임라인 등록 노드 클릭 → 이 카드에서만(per-card) 등록일시 표시: 색칩=노드색 + [숨기기][연필] 순서.
+  //   다시 노드 클릭 → 토글로 숨김(reveal.created=false). 현재 노드 클릭 → 현재일시 live 행.
   await evalJS(browser, "document.querySelector('.card__viz-labels .tl--created')?.click()");
-  await until(() => evalJS(browser, "JSON.parse(localStorage.getItem('settings')).showCreated === true"), { label: '등록 노드 클릭→표시' });
+  await until(() => evalJS(browser, "JSON.parse(localStorage.getItem('countdowns'))[0].reveal?.created === true"), { label: '등록 노드 클릭→표시(per-card)' });
   const dateReveal = await evalJS(browser, `(() => {
-     const row = document.querySelector('.card__daterow.card__row--date');
-     const chip = document.querySelector('.card__daterow .chip.chip--origin');
-     const hide = document.querySelector('.card__datehide[data-key="showCreated"]');
+     const row = document.querySelector('.card__daterow--created');
+     const chip = row?.querySelector('.chip.chip--origin');
      const chipCol = chip ? getComputedStyle(chip).color : '';
      const nodeCol = (() => { const e = document.querySelector('.tl--created.card__vizlabel b'); return e ? getComputedStyle(e).color : ''; })();
-     return { rowShown: !!row && !!row.offsetParent, hasChip: !!chip, hasHide: !!hide, chipMatchesNode: !!chipCol && chipCol === nodeCol }; })()`);
-  if (!dateReveal.rowShown) fails.push('타임라인 등록 노드 클릭 후 등록일시 행이 제목 아래에 표시 안 됨');
-  if (!dateReveal.hasChip) fails.push('등록일시 색칩(.chip--origin)이 없음');
-  if (!dateReveal.chipMatchesNode) fails.push('등록일시 칩 색이 타임라인 등록 노드색과 불일치');
-  if (!dateReveal.hasHide) fails.push('등록일시 행에 숨기기(눈) 버튼 없음');
+     const kinds = row ? [...row.children].map((c) => c.classList.contains('card__datehide') ? 'hide' : c.classList.contains('card__dateedit') ? 'edit' : 'x') : [];
+     return { rowShown: !!row && !!row.offsetParent, hasChip: !!chip, chipMatchesNode: !!chipCol && chipCol === nodeCol,
+       hasHide: kinds.includes('hide'), hasEdit: kinds.includes('edit'), hideBeforeEdit: kinds.indexOf('hide') >= 0 && kinds.indexOf('hide') < kinds.indexOf('edit') }; })()`);
+  if (!dateReveal.rowShown) fails.push('등록 노드 클릭 후 등록일시 행 미표시');
+  if (!dateReveal.hasChip) fails.push('등록일시 색칩(.chip--origin) 없음');
+  if (!dateReveal.chipMatchesNode) fails.push('등록일시 칩 색이 노드색과 불일치');
+  if (!(dateReveal.hasHide && dateReveal.hasEdit)) fails.push('등록일시 행에 숨기기(눈)·연필 둘 다 필요');
+  if (!dateReveal.hideBeforeEdit) fails.push('일시 행 아이콘 순서가 [숨기기][연필] 아님');
   const revealShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-datereveal.png'), Buffer.from(revealShot.data, 'base64'));
-  await evalJS(browser, "document.querySelector('.card__datehide[data-key=\"showCreated\"]')?.click()");
-  await until(() => evalJS(browser, "JSON.parse(localStorage.getItem('settings')).showCreated === false"), { label: '눈 클릭→숨김' });
+  // 현재 노드 클릭 → 현재일시 행(live)
+  await evalJS(browser, "document.querySelector('.card__viz-labels .tl--now')?.click()");
+  await until(() => evalJS(browser, "JSON.parse(localStorage.getItem('countdowns'))[0].reveal?.now === true && !!document.querySelector('.card__daterow--now')"), { label: '현재 노드 클릭→현재일시' });
+  // 다시 등록 노드 클릭 → 토글 숨김
+  await evalJS(browser, "document.querySelector('.card__viz-labels .tl--created')?.click()");
+  await until(() => evalJS(browser, "JSON.parse(localStorage.getItem('countdowns'))[0].reveal?.created === false && !document.querySelector('.card__daterow--created')"), { label: '등록 다시 클릭→토글 숨김' });
+  // 현재도 숨김(눈 버튼) → 이후 테스트 영향 없게
+  await evalJS(browser, "document.querySelector('.card__daterow--now .card__datehide')?.click()");
+  await until(() => evalJS(browser, "JSON.parse(localStorage.getItem('countdowns'))[0].reveal?.now === false"), { label: '현재 눈→숨김' });
 
   // 6.5a) 기록(랩) 기준일시 편집 → laps[0].target 갱신(at은 숨은 기준점으로 유지)
   await evalJS(browser, "document.querySelector('.card__laps .lap__edit[data-which=\"target\"]').click()");
@@ -659,15 +669,18 @@ async function main() {
   if (pp0.pctShown) fails.push('독립 퍼센트가 기본 off여야 함(도넛이 %를 품음)');
   if (!/^\d+%$/.test(pp0.pieLabel || '')) fails.push(`도넛 가운데 % 형식 실패: "${pp0.pieLabel}"`);
 
-  // 10.5) 날짜 표시 형식: 컴팩트(기본 260628일…) ↔ 전체(2026-06-28 …) 토글 → 카드 기준일시 텍스트 변화
-  const metaDefault = await evalJS(browser, "document.querySelector('.card__metadate')?.textContent");
+  // 10.5) 날짜 표시 형식: 등록일시 하나 표시(노드 클릭) 후 컴팩트↔전체 토글 → 값(.card__datemeta) 변화.
+  await evalJS(browser, "document.querySelector('.card__viz-labels .tl--created')?.click()");
+  await until(() => evalJS(browser, "!!document.querySelector('.card__daterow--created .card__datemeta')"), { label: '등록일시 표시(형식 테스트)' });
+  const metaDefault = await evalJS(browser, "document.querySelector('.card__daterow--created .card__datemeta')?.textContent");
   if (!/^\d{6}[일월화수목금토]/.test(metaDefault || '')) fails.push(`기본 컴팩트 날짜 형식 아님: "${metaDefault}"`);
   await evalJS(browser, "document.querySelector('#set-date-format .seg[data-value=\"full\"]').click()");
-  await until(() => evalJS(browser, "/\\d{4}-\\d{2}-\\d{2}/.test(document.querySelector('.card__metadate')?.textContent||'')"), { label: 'date full' });
-  const metaFull = await evalJS(browser, "document.querySelector('.card__metadate')?.textContent");
+  await until(() => evalJS(browser, "/\\d{4}-\\d{2}-\\d{2}/.test(document.querySelector('.card__daterow--created .card__datemeta')?.textContent||'')"), { label: 'date full' });
+  const metaFull = await evalJS(browser, "document.querySelector('.card__daterow--created .card__datemeta')?.textContent");
   if (!/^\d{4}-\d{2}-\d{2} /.test(metaFull || '')) fails.push(`전체 날짜 형식 아님: "${metaFull}"`);
   await evalJS(browser, "document.querySelector('#set-date-format .seg[data-value=\"compact\"]').click()");
-  await until(() => evalJS(browser, "/^\\d{6}/.test(document.querySelector('.card__metadate')?.textContent||'')"), { label: 'date compact' });
+  await until(() => evalJS(browser, "/^\\d{6}/.test(document.querySelector('.card__daterow--created .card__datemeta')?.textContent||'')"), { label: 'date compact' });
+  await evalJS(browser, "document.querySelector('.card__viz-labels .tl--created')?.click()"); // 다시 숨김(정리)
 
   const lightShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
   await writeFile(join(ARTIFACTS, 'verify-light.png'), Buffer.from(lightShot.data, 'base64'));

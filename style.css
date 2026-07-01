@@ -585,13 +585,14 @@ kbd {
 .card__row--date { gap: 0.3rem; overflow: hidden; white-space: nowrap; }
 .card__row--date[hidden] { display: none; }
 .card__row--date .chip { flex: none; } /* 칩 고정 → 항상 표시 */
-.card__datemeta { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: var(--card-meta-size, 0.64rem); color: var(--muted); font-variant-numeric: tabular-nums; }
+.card__datemeta { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--card-meta-size, 0.64rem); color: var(--muted); font-variant-numeric: tabular-nums; }
 
-/* 일시 행(제목 아래): [값 + 색칩(+연필)] + 숨기기(눈). showTarget/Created/Updated로 표시. */
+/* 제목 아래 일시 행(타임라인 노드 클릭으로 카드별 토글): [값 + 색칩] [숨기기(눈)] [연필(편집·현재 제외)]. */
 .card__daterow { display: flex; align-items: center; gap: 0.25rem; }
-.card__daterow[hidden] { display: none; }
-.card__daterow .card__meta { flex: 1 1 auto; width: auto; min-width: 0; } /* 행 안에서 값+칩이 남는 폭 차지 */
-.card__datehide {
+.card__daterow .chip { flex: none; } /* 색칩 고정 → 값만 줄어듦 */
+/* 아이콘 버튼 공통(눈·연필): 작은 무채색, 호버 시 또렷. 순서는 DOM(숨기기→연필). */
+.card__datehide,
+.card__dateedit {
   flex: none;
   display: grid;
   place-items: center;
@@ -606,8 +607,17 @@ kbd {
   border-radius: 0.3rem;
 }
 .card__datehide .card__railicon { width: 0.85rem; height: 0.85rem; }
-.card__datehide:hover { color: var(--fg); background: var(--elev); }
-.card__datehide:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.card__pencilicon { /* 연필(mask로 색 입힘, 테마 대응) */
+  width: 0.8rem;
+  height: 0.8rem;
+  background: currentColor;
+  -webkit-mask: var(--pencil) center / contain no-repeat;
+  mask: var(--pencil) center / contain no-repeat;
+}
+.card__datehide:hover,
+.card__dateedit:hover { color: var(--fg); background: var(--elev); }
+.card__datehide:focus-visible,
+.card__dateedit:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 
 /* 작은 라벨 칩(pill) */
 .chip {
@@ -626,10 +636,12 @@ kbd {
 }
 .chip--future { color: var(--future); border-color: var(--future); }
 .chip--past { color: var(--past); border-color: var(--past); }
-/* 일시 칩 색상코드(타임라인 노드 팔레트): 기준=보라·등록=노랑·수정=청록 */
+/* 일시 칩 색상코드(타임라인 노드 팔레트): 시작=핑크·등록=노랑·수정=청록·기준=보라·현재=초록 */
 .chip--target { color: var(--node-target); border-color: var(--node-target); }
 .chip--origin { color: var(--node-origin); border-color: var(--node-origin); }
 .chip--updated { color: var(--node-updated); border-color: var(--node-updated); }
+.chip--start { color: var(--node-start); border-color: var(--node-start); }
+.chip--now { color: var(--node-now); border-color: var(--node-now); }
 
 /* 우측 레일 상단: 삭제(✕) */
 .card__del {

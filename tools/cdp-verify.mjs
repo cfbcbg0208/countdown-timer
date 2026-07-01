@@ -165,8 +165,11 @@ async function main() {
        chips: document.querySelectorAll('.card .chip').length,
        hasBar: !!document.querySelector('.card__viz-fill'),
        hasPie: !!document.querySelector('.card__pie'),
-       // 미래 카드: 전체폭 밴드가 cols 아래(.card__body>.card__viz) + 등록·수정·기준·현재 마커 4(과거와 통일) + 채움>0
-       bandInBody: !!document.querySelector('.card__body > .card__viz'),
+       // 미래 카드: 전체폭 밴드가 히어로 안(.card__body>.card__hero>.card__viz) + 등록·수정·기준·현재 마커 4(과거와 통일) + 채움>0
+       bandInBody: !!document.querySelector('.card__body > .card__hero > .card__viz'),
+       // 타임라인 상단: 히어로가 본문 첫 요소 + 히어로/2열 사이 구분선
+       heroFirst: document.querySelector('.card__body')?.firstElementChild?.classList.contains('card__hero'),
+       colsDivider: parseFloat(getComputedStyle(document.querySelector('.card__cols')).borderTopWidth) > 0,
        bandMarks: document.querySelectorAll('.card__viz .card__vizmark').length,
        bandCreated: !!document.querySelector('.card__viz .tl--created'),
        bandNoStart: !document.querySelector('.card__viz .tl--start'),
@@ -176,11 +179,16 @@ async function main() {
        nowGreenF: (() => { const e = document.querySelector('.tl--now.card__vizlabel b'); if (!e) return false;
          const c = (getComputedStyle(e).color.match(/\\d+/g) || []).slice(0, 3).map(Number);
          return Math.max(...c) - Math.min(...c) > 20 && c[1] > c[0] && c[1] > c[2]; })(),
-       pieInZone2: !!document.querySelector('.card__col--left .card__progress .card__pie'),
+       pieInHero: !!document.querySelector('.card__hero .card__heroline .card__progress .card__pie'),
        drawerTitle: document.getElementById('drawer-title')?.textContent.trim(),
        dirChip: document.querySelector('.card__time .chip')?.textContent,
        theme: document.documentElement.dataset.theme,
-       timeInRight: !!document.querySelector('.card__col--right .card__time'),
+       timeInHero: !!document.querySelector('.card__hero .card__heroline .card__time'),
+       // 도넛에 연필(::after) 없음(클릭만으로 편집) + 큰시간+도넛(heroFront)이 채움 중앙 위로 absolute 배치(inline left%)
+       donutNoPencil: (() => { const p = document.querySelector('.card__progress'); if (!p) return true;
+         const c = getComputedStyle(p, '::after').content; return c === 'none' || c === 'normal' || !c; })(),
+       frontPositioned: (() => { const f = document.querySelector('.card__hero .card__heroline .card__herofront');
+         return !!f && getComputedStyle(f).position === 'absolute' && /%$/.test(f.style.left || ''); })(),
        labelInLeft: !!document.querySelector('.card__col--left .card__label'),
        lapsInRight: !!document.querySelector('.card__col--right .card__laps'),
        lapRelChip: document.querySelector('.card__laps .lap__edit--rel .chip')?.textContent,
@@ -212,6 +220,8 @@ async function main() {
          return !!l && !!x && getComputedStyle(l).color === getComputedStyle(x).color; })(),
        lapEdits: document.querySelectorAll('.card__laps .lap__edit').length,
        bodyHasCols: !!document.querySelector('.card__body > .card__cols'),
+       // 기준일시 기본 숨김(showTarget=false): display:none이어야 함(.card__meta display:flex가 UA [hidden] 안 덮게)
+       metaHidden: (() => { const m = document.querySelector('.card__meta'); return !!m && getComputedStyle(m).display === 'none'; })(),
        tagAddInGroups: !!document.querySelector('.card__groups .card__groupbtn'),
        tagAddText: document.querySelector('.card__groups .card__groupbtn')?.textContent,
        cardGroupsHidden: getComputedStyle(document.querySelector('.card__groups')).display === 'none',
@@ -224,13 +234,15 @@ async function main() {
   if (checks.cards !== 1) fails.push(`카드 1개 기대, 실제 ${checks.cards}`);
   if (checks.chips < 3) fails.push(`칩 3개 이상 기대, 실제 ${checks.chips}`);
   if (!checks.hasBar) fails.push('진행률 바(전체폭 밴드 채움) 없음');
-  if (!checks.bandInBody) fails.push('전체폭 밴드가 본문(.card__body > .card__viz) 아래에 없음');
+  if (!checks.bandInBody) fails.push('전체폭 밴드가 히어로(.card__body > .card__hero > .card__viz)에 없음');
+  if (!checks.heroFirst) fails.push('히어로(.card__hero)가 본문 첫 요소가 아님(타임라인 상단 아님)');
+  if (!checks.colsDivider) fails.push('히어로와 2열 사이 구분선(.card__cols border-top) 없음');
   if (checks.bandMarks !== 4) fails.push(`미래 밴드 마커 4개(등록·수정·기준·현재) 기대, 실제 ${checks.bandMarks}`);
-  if (!checks.bandCreated || !checks.bandNoStart) fails.push('미래 밴드가 과거와 미통일(등록 마커 없거나 시작(.tl--start) 잔존)');
+  if (!checks.bandCreated || !checks.bandNoStart) fails.push('기본 카드(startISO 없음→시작=등록)는 등록 마커 존재 + 별도 시작(.tl--start) 마커 없어야');
   if (!(checks.bandFillW > 0)) fails.push(`미래 밴드 진행 채움(시작→현재) 없음(width=${checks.bandFillW})`);
   if (!(checks.restFillW > 0)) fails.push(`미래 '남은 시간' 흐린 채움(.card__viz-fill--rest) 없음(width=${checks.restFillW})`);
   if (!checks.nowGreenF) fails.push('미래 현재 노드색이 초록(유채·G우세) 아님');
-  if (!checks.pieInZone2) fails.push('도넛(.card__pie)이 zone2(좌측 열)에 없음');
+  if (!checks.pieInHero) fails.push('도넛(.card__pie)이 히어로(.card__hero .card__heroline)에 없음');
   if (!checks.hasPie) fails.push('진행률 파이 없음');
   if (!String(checks.drawerTitle).includes('타임카드 추가')) fails.push(`드로어 제목="${checks.drawerTitle}"`);
   if (checks.dirChip !== '남은시간') fails.push(`방향 칩="${checks.dirChip}" (남은시간 기대)`);
@@ -238,7 +250,9 @@ async function main() {
   if (!checks.railRightLap) fails.push('기록 버튼(아이콘)이 우측 레일 하단(.card__rail--right .card__lap)에 없음');
   if (!checks.railLapNeutral) fails.push('기록 아이콘이 다른 레일 아이콘(✕)과 다른 색(혼자 강조색) — 무채색 기대');
   if (checks.lapEdits < 2) fails.push(`기록 행에 편집 버튼 2개(기준일시·기록시각) 기대, 실제 ${checks.lapEdits}`);
-  if (!checks.timeInRight) fails.push('큰 시간이 우측 열(.card__col--right)에 없음');
+  if (!checks.timeInHero) fails.push('큰 시간이 히어로(.card__hero .card__heroline)에 없음');
+  if (!checks.donutNoPencil) fails.push('진행률 도넛에 연필(::after)이 아직 있음(제거 기대)');
+  if (!checks.frontPositioned) fails.push('큰시간+도넛(.card__herofront)이 채움 중앙 위로 배치(absolute+left%)되지 않음');
   if (!checks.labelInLeft) fails.push('제목이 좌측 열(.card__col--left)에 없음');
   if (!checks.lapsInRight) fails.push('기록(랩) 목록이 우측 열(.card__col--right .card__laps)에 없음');
   if (checks.lapRelChip !== '남은시간' && checks.lapRelChip !== '지난시간')
@@ -261,6 +275,7 @@ async function main() {
   if (!checks.railLeftHide) fails.push('숨기기 버튼(.card__hide)이 좌측 레일에 없음');
   if (!checks.railRightDel) fails.push('삭제(✕)가 우측 레일(.card__rail--right)에 없음');
   if (!checks.bodyHasCols) fails.push('본문(.card__body) 안에 2열(.card__cols)이 없음');
+  if (!checks.metaHidden) fails.push('기준일시(.card__meta)가 기본 숨김이 아님(showTarget=false → display:none 기대)');
 
   // 6.5a) 기록(랩) 기준일시 편집 → laps[0].target 갱신(at은 숨은 기준점으로 유지)
   await evalJS(browser, "document.querySelector('.card__laps .lap__edit[data-which=\"target\"]').click()");
@@ -420,6 +435,44 @@ async function main() {
   );
   if (Math.abs(gapH - 5) > 0.05) fails.push(`'5시간' 기간 시작 계산 실패, 기준일시−시작=${gapH}h`);
 
+  // 7.7) 남은시간 두 기준(시작=진행시작점 / 끝=기준): 도넛 %와 타임라인 '현재' 마커 위치가 일치 +
+  //   커스텀 startISO일 때 '시작' 노드 마킹. 위 '5시간' startISO는 등록(6/20)보다 뒤 → 등록 왼쪽 클램프.
+  const twoRef = await evalJS(
+    browser,
+    `(() => { const r = JSON.parse(localStorage.getItem('countdowns'))[0];
+       const s = new Date(r.startISO).getTime(), t = new Date(r.targetISO).getTime(), n = Date.now();
+       const donut = (n - s) / (t - s);
+       const nowLeft = parseFloat(document.querySelector('.card__viz-bar .tl--now')?.style.left || 'NaN');
+       const createdLeft = parseFloat(document.querySelector('.card__viz-bar .tl--created')?.style.left || 'NaN');
+       return { donut, markFrac: (nowLeft - 8) / 84, createdLeft,
+         startMarked: !!document.querySelector('.card__viz-bar .tl--start') }; })()`,
+  );
+  if (Math.abs(twoRef.donut - twoRef.markFrac) > 0.03)
+    fails.push(`남은시간 두 기준 불일치: 도넛%=${twoRef.donut.toFixed(3)} vs 타임라인 현재 마커=${twoRef.markFrac.toFixed(3)}`);
+  if (!(twoRef.createdLeft < 10))
+    fails.push(`시작보다 이른 등록 노드가 왼쪽 끝(≈8%)으로 클램프 안 됨: created left=${twoRef.createdLeft}`);
+  if (!twoRef.startMarked) fails.push('커스텀 startISO인데 시작(.tl--start) 마커가 없음');
+
+  // 사용자 시나리오: startISO가 등록보다 이른 커스텀 → 시작 노드가 좌측 끝, 등록은 안쪽에 분리(색=--node-start).
+  await evalJS(browser, `(() => { const cs = JSON.parse(localStorage.getItem('countdowns'));
+     cs[0].startISO = '2026-06-17T00:00:00'; localStorage.setItem('countdowns', JSON.stringify(cs)); location.reload(); })()`);
+  await until(() => evalJS(browser, 'document.readyState === "complete" && document.querySelector(".card__viz-bar .tl--start")'), { label: 'custom start marker' });
+  const cleanStart = await evalJS(browser, `(() => {
+     const sL = parseFloat(document.querySelector('.card__viz-bar .tl--start')?.style.left || 'NaN');
+     const cL = parseFloat(document.querySelector('.card__viz-bar .tl--created')?.style.left || 'NaN');
+     const sc = (() => { const e = document.querySelector('.tl--start.card__vizlabel b'); if (!e) return [];
+       return (getComputedStyle(e).color.match(/\\d+/g) || []).slice(0, 3).map(Number); })();
+     const oc = (() => { const e = document.querySelector('.tl--created.card__vizlabel b'); if (!e) return [];
+       return (getComputedStyle(e).color.match(/\\d+/g) || []).slice(0, 3).map(Number); })();
+     return { sL, cL, startChromatic: sc.length === 3 && (Math.max(...sc) - Math.min(...sc) > 20),
+       distinctFromCreated: JSON.stringify(sc) !== JSON.stringify(oc) }; })()`);
+  if (!(cleanStart.sL >= 7 && cleanStart.sL <= 10)) fails.push(`커스텀 시작 노드가 좌측 끝(≈8%)에 없음: ${cleanStart.sL}`);
+  if (!(cleanStart.cL > cleanStart.sL + 3)) fails.push(`등록 노드가 시작보다 안쪽(우측)에 분리 안 됨: 시작=${cleanStart.sL} 등록=${cleanStart.cL}`);
+  if (!cleanStart.startChromatic) fails.push('시작 노드색이 유채색이 아님(--node-start 미적용)');
+  if (!cleanStart.distinctFromCreated) fails.push('시작 노드색이 등록색과 구분되지 않음');
+  const twoRefShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  await writeFile(join(ARTIFACTS, 'verify-tworef.png'), Buffer.from(twoRefShot.data, 'base64'));
+
   // 8) 캘린더 열고 그리드 렌더 확인
   await evalJS(browser, "document.getElementById('calendar-fab').click()");
   await until(() => evalJS(browser, "document.querySelectorAll('#cal-grid .cal__day').length"), {
@@ -497,22 +550,44 @@ async function main() {
        accents: document.querySelectorAll('#set-accent .swatch').length,
      }))()`,
   );
-  // 노드색 구분력 슬라이더(WCAG 단일): 범위 3~7(조건8), 시작값=Max A(조건7),
-  // Range A 밴드가 슬라이더 안([minA,maxA] ⊂ [3,7], minA<maxA), 단위 :1, 기본은 Range A 안.
+  // 노드색 구분력 슬라이더(WCAG 단일): 범위 3~7(사용자 스펙), 기본=7.0(사용자 지정 시작값).
+  // Range A 밴드는 정보용(HSL 분포에선 슬라이더 밖일 수 있어 [0,100]% 클램프 표시), minA<maxA.
   const slider = await evalJS(browser, `(() => {
     const r = document.getElementById('ct-range'), u = document.getElementById('ct-unit');
     const box = document.getElementById('ct-slider');
     const pct = (s) => parseFloat(getComputedStyle(box).getPropertyValue(s));
     return { min: +r.min, max: +r.max, val: +r.value, unit: u && u.textContent,
+             valPct: ((+r.value - +r.min) / (+r.max - +r.min)) * 100,
              minA: pct('--minA'), maxA: pct('--maxA'), inRange: box.dataset.inRange };
   })()`);
   if (slider.min !== 3 || slider.max !== 7 || slider.unit !== ':1')
     fails.push(`구분력 슬라이더 범위/단위 오류(3~7, :1 기대): ${JSON.stringify(slider)}`);
   if (!(slider.minA >= 0 && slider.minA < slider.maxA && slider.maxA <= 100))
     fails.push(`Range A 밴드 위치 오류: ${JSON.stringify(slider)}`);
-  // 기본값(시작값) = 7.0 = 슬라이더 최대(사용자 기본 셋업, Range A 밖이라 inRange=false 정상).
+  // 기본값(시작값) = 7.0 = 슬라이더 최대(사용자 지정, 유지). Range A 밖이라 inRange=false 정상.
   if (Math.abs(slider.val - slider.max) > 1e-6)
     fails.push(`시작값이 슬라이더 최대(7.0)가 아님: ${JSON.stringify(slider)}`);
+
+  // 상단 크기 배율(설정): 기본 1 → 슬라이더 1.4 → 도넛(.card__pie) 커짐 + 저장, 다시 1로 복원.
+  const heroBase = await evalJS(browser, `(() => ({
+     scale: getComputedStyle(document.documentElement).getPropertyValue('--hero-scale').trim(),
+     rMin: document.getElementById('set-hero-scale').min, rMax: document.getElementById('set-hero-scale').max,
+     numVal: document.getElementById('set-hero-scale-num').value,
+     pieW: document.querySelector('.card__pie')?.getBoundingClientRect().width || 0 }))()`);
+  if (!(heroBase.scale === '1' || heroBase.scale === '')) fails.push(`상단 크기 기본 배율 1 아님: "${heroBase.scale}"`);
+  if (heroBase.rMin !== '0.5' || heroBase.rMax !== '1.5') fails.push(`상단 크기 슬라이더 범위 0.5~1.5 아님: ${heroBase.rMin}~${heroBase.rMax}`);
+  if (!/^\d\.\d\d$/.test(heroBase.numVal)) fails.push(`상단 크기 spinbox 소수점 2자리 아님: "${heroBase.numVal}"`);
+  await evalJS(browser, `(() => { const el = document.getElementById('set-hero-scale');
+     el.value = '1.4'; el.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+  await until(() => evalJS(browser, "getComputedStyle(document.documentElement).getPropertyValue('--hero-scale').trim() === '1.4'"), { label: 'hero scale 1.4' });
+  const heroBig = await evalJS(browser, `(() => ({
+     saved: JSON.parse(localStorage.getItem('settings')).heroScale,
+     pieW: document.querySelector('.card__pie')?.getBoundingClientRect().width || 0 }))()`);
+  if (!(heroBig.pieW > heroBase.pieW + 3)) fails.push(`상단 크기↑ 시 도넛 커지지 않음: ${heroBase.pieW}→${heroBig.pieW}`);
+  if (Math.abs(heroBig.saved - 1.4) > 1e-6) fails.push(`상단 크기 배율 저장 실패: ${heroBig.saved}`);
+  await evalJS(browser, `(() => { const el = document.getElementById('set-hero-scale');
+     el.value = '1'; el.dispatchEvent(new Event('input', { bubbles: true })); })()`);
+  await until(() => evalJS(browser, "getComputedStyle(document.documentElement).getPropertyValue('--hero-scale').trim() === '1'"), { label: 'hero scale reset' });
   // 잔량 2슬라이더 연동: 불투명도 0/50/100 → WCAG 값이 [min..max]로 단조 연동(요청 핵심).
   const remain = await evalJS(browser, `(() => {
     const opR = document.getElementById('remain-op-range'), wR = document.getElementById('remain-range');
@@ -528,6 +603,9 @@ async function main() {
     fails.push(`잔량 불투명도↔WCAG 끝점 불일치: ${JSON.stringify(remain)}`);
   if (!(remain.at0 < remain.at50 && remain.at50 < remain.at100))
     fails.push(`잔량 불투명도↔WCAG 비단조: ${JSON.stringify(remain)}`);
+  // 스윕 후 기본값(35%/≈2.0)으로 복원 → 스크린샷이 기본 셋업 반영
+  await evalJS(browser, `(() => { const op = document.getElementById('remain-op-range');
+    op.value = '35'; op.dispatchEvent(new Event('input', { bubbles: true })); })()`);
   await evalJS(browser, `document.querySelector('#set-theme .seg[data-value="light"]')?.click()`);
   await until(() => evalJS(browser, "document.documentElement.dataset.theme === 'light'"), {
     label: 'theme light',
@@ -545,71 +623,22 @@ async function main() {
   if (theme !== 'light') fails.push(`세그먼트로 라이트 전환 실패: ${theme}`);
   if (segPressed !== 'true') fails.push('세그먼트 선택 표시(aria-pressed) 실패');
 
-  // 10.4) 진행률 파트(바·도넛파이·독립%): 기본=바·도넛 on, 독립% off(도넛이 %를 품음) + 도넛 % 표시
+  // 10.4) 진행률(설정 '남은 시간 진행률' 파트 UI 삭제 — 기본값이 동작 규정):
+  //   타임라인·도넛 표시 + 독립% off(도넛이 %를 품음) + 도넛 가운데 % 표시.
   const pp0 = await evalJS(
     browser,
     `(() => ({
-       chips: [...document.querySelectorAll('#set-progress-parts .ppart')].map((b) => b.dataset.part),
-       pressed: [...document.querySelectorAll('#set-progress-parts .ppart')].map((b) => b.getAttribute('aria-pressed')),
+       noPartsUI: !document.getElementById('set-progress-parts'),
        barShown: !document.querySelector('.card__viz')?.hidden,
        pieShown: !document.querySelector('.card__pie')?.hidden,
        pctShown: !document.querySelector('.card__pct')?.hidden,
        pieLabel: document.querySelector('.card__pielabel')?.textContent,
      }))()`,
   );
-  if (pp0.chips.join() !== 'bar,pie,percent')
-    fails.push(`진행률 파트 칩 기대 [bar,pie,percent], 실제 [${pp0.chips}]`);
-  if (pp0.pressed.join() !== 'true,true,false')
-    fails.push(`진행률 파트 기본 [바on·파이on·%off] 기대, 실제 [${pp0.pressed}]`);
-  if (!(pp0.barShown && pp0.pieShown)) fails.push(`기본 바·도넛 표시 아님(bar=${pp0.barShown} pie=${pp0.pieShown})`);
+  if (!pp0.noPartsUI) fails.push("설정 '남은 시간 진행률' 파트 섹션(#set-progress-parts)이 아직 있음(삭제 기대)");
+  if (!(pp0.barShown && pp0.pieShown)) fails.push(`기본 타임라인·도넛 표시 아님(bar=${pp0.barShown} pie=${pp0.pieShown})`);
   if (pp0.pctShown) fails.push('독립 퍼센트가 기본 off여야 함(도넛이 %를 품음)');
   if (!/^\d+%$/.test(pp0.pieLabel || '')) fails.push(`도넛 가운데 % 형식 실패: "${pp0.pieLabel}"`);
-  // 퍼센트 칩 탭(클릭) → 독립 % 켜짐
-  await evalJS(
-    browser,
-    `(() => { const c = document.querySelector('#set-progress-parts .ppart[data-part="percent"]');
-       const r = c.getBoundingClientRect(); const x = r.left + r.width / 2, y = r.top + r.height / 2;
-       const o = { bubbles: true, clientX: x, clientY: y, pointerId: 1 };
-       c.dispatchEvent(new PointerEvent('pointerdown', o));
-       c.dispatchEvent(new PointerEvent('pointerup', o)); })()`,
-  );
-  await until(() => evalJS(browser, "document.querySelector('.card__pct')?.hidden === false"), { label: 'pct toggled on' });
-  const pctOn = await evalJS(
-    browser,
-    "document.querySelector('#set-progress-parts .ppart[data-part=\"percent\"]')?.getAttribute('aria-pressed')",
-  );
-  if (pctOn !== 'true') fails.push(`퍼센트 칩 켜기 후 aria-pressed=true 기대, 실제 ${pctOn}`);
-  // %중복 수정: 도넛+독립% 둘 다 켜지면 독립%만 보이고 도넛 가운데 %는 빈다(두 번 안 나옴).
-  const dbl = await evalJS(
-    browser,
-    `(() => ({ pctShown: !document.querySelector('.card__pct')?.hidden, pieLabel: document.querySelector('.card__pielabel')?.textContent }))()`,
-  );
-  if (!dbl.pctShown) fails.push('퍼센트 켜기 후 독립 %가 표시되지 않음');
-  if (dbl.pieLabel !== '') fails.push(`퍼센트+도넛 동시 켜짐 시 도넛 가운데 %는 비어야 함(중복 방지), 실제 "${dbl.pieLabel}"`);
-  // 다시 꺼서 원복
-  await evalJS(
-    browser,
-    `(() => { const c = document.querySelector('#set-progress-parts .ppart[data-part="percent"]');
-       const r = c.getBoundingClientRect(); const o = { bubbles: true, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, pointerId: 1 };
-       c.dispatchEvent(new PointerEvent('pointerdown', o)); c.dispatchEvent(new PointerEvent('pointerup', o)); })()`,
-  );
-  // 드래그로 순서 변경: '바'를 맨 뒤로 끌기 → progressOrder = [pie,percent,bar]
-  await evalJS(
-    browser,
-    `(() => { const parts = document.querySelectorAll('#set-progress-parts .ppart');
-       const bar = parts[0], last = parts[parts.length - 1];
-       const br = bar.getBoundingClientRect(), lr = last.getBoundingClientRect(); const cy = br.top + br.height / 2;
-       const fire = (t, x) => bar.dispatchEvent(new PointerEvent(t, { bubbles: true, clientX: x, clientY: cy, pointerId: 2 }));
-       fire('pointerdown', br.left + br.width / 2);
-       fire('pointermove', lr.left + lr.width * 0.75);
-       fire('pointerup', lr.left + lr.width * 0.75); })()`,
-  );
-  await until(
-    () => evalJS(browser, "JSON.parse(localStorage.getItem('settings')||'{}').progressOrder?.join(',') === 'pie,percent,bar'"),
-    { label: 'progress reordered by drag' },
-  );
-  const reordered = await evalJS(browser, "JSON.parse(localStorage.getItem('settings')).progressOrder.join(',')");
-  if (reordered !== 'pie,percent,bar') fails.push(`드래그 순서 변경 실패, order=${reordered}`);
 
   // 10.5) 날짜 표시 형식: 컴팩트(기본 260628일…) ↔ 전체(2026-06-28 …) 토글 → 카드 기준일시 텍스트 변화
   const metaDefault = await evalJS(browser, "document.querySelector('.card__metadate')?.textContent");
@@ -677,13 +706,13 @@ async function main() {
     browser,
     `(() => ({
        vizShown: !document.querySelector('.card__viz')?.hidden,
-       bandInBody: !!document.querySelector('.card__body > .card__viz'),
+       bandInBody: !!document.querySelector('.card__body > .card__hero > .card__viz'),
        progressHidden: document.querySelector('.card__progress')?.hidden,
        marks: document.querySelectorAll('.card__viz-bar .card__vizmark').length,
        labels: [...document.querySelectorAll('.card__viz-labels .card__vizlabel b')].map((e) => e.textContent),
-       tsLines: document.querySelectorAll('.card__viz-labels .tl--target i').length, // 날짜/시간 2줄
-       tsDate: document.querySelector('.card__viz-labels .tl--target i')?.textContent, // 260620…
-       labelHasTooltip: /\\d{6}/.test(document.querySelector('.card__viz-labels .tl--target')?.title || ''),
+       // 타임스탬프·툴팁 제거(사용자 요청): 라벨 안 일시(i/vizts) 0개 + 마커·라벨에 title(호버 팝업) 없음.
+       tsCount: document.querySelectorAll('.card__viz-labels .card__vizts, .card__viz-labels .card__vizlabel i').length,
+       anyTooltip: [...document.querySelectorAll('.card__viz-bar .card__vizmark, .card__viz-labels .card__vizlabel')].some((e) => (e.getAttribute('title') || '') !== ''),
        pastFillW: parseFloat(document.querySelector('.card__viz--past .card__viz-fill')?.style.width || '0'),
        labelsPositioned: [...document.querySelectorAll('.card__viz-labels .card__vizlabel')].every((e) => e.style.left),
        hasNow: !!document.querySelector('.card__viz .tl--now'),
@@ -709,14 +738,13 @@ async function main() {
      }))()`,
   );
   if (!tl.vizShown) fails.push('과거 카드 타임라인 밴드가 표시되지 않음');
-  if (!tl.bandInBody) fails.push('과거 밴드가 본문 전체폭(.card__body > .card__viz)에 없음');
+  if (!tl.bandInBody) fails.push('과거 밴드가 히어로(.card__body > .card__hero > .card__viz)에 없음');
   if (!tl.progressHidden) fails.push('과거 카드에서 zone2 진행률(도넛)이 숨겨지지 않음');
   if (tl.marks !== 4) fails.push(`타임라인 마커 4개(등록·수정·기준·현재) 기대, 실제 ${tl.marks}`);
   if (tl.labels.slice().sort().join() !== ['기준', '등록', '수정', '현재'].sort().join())
     fails.push(`타임라인 라벨(이름) [등록,수정,기준,현재] 기대, 실제 [${tl.labels}]`);
-  if (tl.tsLines !== 2) fails.push(`각 노드 아래 타임스탬프 2줄(날짜/시간) 기대, 실제 ${tl.tsLines}줄`);
-  if (!/^\d{6}/.test(tl.tsDate || '')) fails.push(`노드 날짜줄(예 260620화) 형식 실패: "${tl.tsDate}"`);
-  if (!tl.labelHasTooltip) fails.push('타임라인 라벨 툴팁(title)에 컴팩트 일시 없음');
+  if (tl.tsCount !== 0) fails.push(`타임라인 라벨에 타임스탬프가 남아있음(제거 기대, ${tl.tsCount}개)`);
+  if (tl.anyTooltip) fails.push('타임라인 마커/라벨에 title(호버 팝업)이 남아있음(제거 기대)');
   if (!(tl.pastFillW > 0)) fails.push(`과거 밴드 적색 채움(기준→현재) 없음(width=${tl.pastFillW})`);
   if (!tl.labelsPositioned) fails.push('타임라인 라벨이 점 위치(left)로 배치되지 않음');
   if (!(tl.hasNow && tl.hasTarget)) fails.push('타임라인에 현재/기준 마커 누락');
@@ -726,11 +754,11 @@ async function main() {
     const nc = tl.nodeC;
     const cs = [nc.origin, nc.updated, nc.target, nc.now];
     const mean = cs.reduce((a, b) => a + b, 0) / cs.length;
-    // 조건5 불변식: 4색이 배경에서 모두 같은 WCAG 명암비(±0.25), 그리고 합리적 범위(2.5~7).
+    // 조건5 불변식: 4색이 배경에서 모두 같은 WCAG 명암비(±0.25), 그리고 합리적 범위(2.5~7.1, 기본 7.0).
     if (!cs.every((v) => Math.abs(v - mean) <= 0.25))
       fails.push(`노드 WCAG 명암비 불균일(조건5 위배): ${JSON.stringify(nc)}`);
-    if (mean < 2.5 || mean > 7)
-      fails.push(`노드 평균 WCAG ${mean.toFixed(2)} 범위(2.5~7) 벗어남: ${JSON.stringify(nc)}`);
+    if (mean < 2.5 || mean > 7.1)
+      fails.push(`노드 평균 WCAG ${mean.toFixed(2)} 범위(2.5~7.1) 벗어남: ${JSON.stringify(nc)}`);
     if (!nc.nowGreen) fails.push('현재 노드색이 초록(유채·G우세) 아님');
     if (!nc.chroma) fails.push('노드색(등록/수정/기준/현재)에 무채색 잔존');
     if (!nc.distinct) fails.push('노드 4색이 서로 다르지 않음');

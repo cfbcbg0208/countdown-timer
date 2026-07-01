@@ -2,8 +2,8 @@
 // 조건5=배경과 같은 WCAG 명암비, 조건6=색간 ΔE 최대, 조건7=Range A[Min A,Max A]·기본=Max A.
 import { solveWcagPalette, wcagColor, rangeA, minPairwiseDE, roleHues, hex, hexToRgb, toLin, relLum } from '../src/oklch.mjs';
 
-const ROLE_ORDER = ['past', 'now', 'future', 'origin', 'updated', 'target'];
-const ROLE_VAR   = { past: '--past', now: '--node-now', future: '--future', origin: '--node-origin', updated: '--node-updated', target: '--node-target' };
+const ROLE_ORDER = ['past', 'now', 'future', 'origin', 'updated', 'start', 'target'];
+const ROLE_VAR   = { past: '--past', now: '--node-now', future: '--future', origin: '--node-origin', updated: '--node-updated', start: '--node-start', target: '--node-target' };
 const hues = roleHues();
 const hueArr = ROLE_ORDER.map((k) => hues[k]);
 

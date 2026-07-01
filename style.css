@@ -8,17 +8,18 @@
   --muted: #8ea59a;
   --line: #2a3a32;
   --accent: #16a34a; /* 중립 강조 = 녹색(기본) */
-  --future: #5287ff; /* 남은(미래)=파랑. 등 WCAG 4.9(hybrid 기본) */
-  --past: #ff4838;   /* 지난(과거)=빨강. 등 WCAG 4.9 */
+  --future: #7ea8ff; /* 남은(미래)=파랑 HSL 240°. 등 WCAG 7.0(기본) */
+  --past: #ff8675;   /* 지난(과거)=빨강 HSL 0°. 등 WCAG 7.0 */
   --ok: #16a34a;
   --err: #f87171;
   --track: #2a3a32;  /* 과거 빈 영역/rail(은은한 회색) */
   --remain: #0014ff; /* 미래 '남은시간 잔량'(파랑·도넛 남은부분) WCAG 2.0 */
-  /* 컬러코딩(gen-palette.mjs+src/oklch.mjs): 조건5=등 WCAG 명암비, 조건6=색간 ΔE 최대(hybrid). 모두 배경 대비 WCAG 4.9. */
-  --node-origin: #b08500;  /* 등록·시작 OKLCH 86° WCAG 4.9 */
-  --node-updated: #009aa5; /* 수정 OKLCH 203° WCAG 4.9 */
-  --node-target: #f300fb;  /* 기준 OKLCH 327° WCAG 4.9 */
-  --node-now: #00a300;     /* 현재 OKLCH 142° WCAG 4.9 */
+  /* 컬러코딩(gen-palette.mjs+src/oklch.mjs): 고정 hue=HSL 0/120/240, 자유색=HSL 전역 maximin[60,180,280,320]. 등 WCAG 7.0(기본). */
+  --node-origin: #afaf00;  /* 등록 HSL 60°(노랑) WCAG 7.0 */
+  --node-updated: #00bcbc; /* 수정 HSL 180°(청록) WCAG 7.0 */
+  --node-start: #ff7cc0;   /* 시작 HSL 320°(핑크) WCAG 7.0 */
+  --node-target: #ca90ff;  /* 기준 HSL 280°(보라) WCAG 7.0 */
+  --node-now: #00c300;     /* 현재 HSL 120°(초록) WCAG 7.0 */
   --glow: #1a2b22;   /* 상단 은은한 글로우(녹색-중립, 남색 아님) */
   --fab2: #2b3036;   /* 보조 FAB: 무채색·불투명 */
   --fab2-fg: #d7dde2;
@@ -38,17 +39,18 @@
   --muted: #56685e;
   --line: #d2ded6;
   --accent: #16a34a;
-  --future: #3a74ff; /* 미래=파랑. 등 WCAG 4.1(hybrid 기본) */
-  --past: #fb0000;   /* 과거=빨강. 등 WCAG 4.1 */
+  --future: #0038ff; /* 미래=파랑 HSL 240°. 등 WCAG 7.0(기본) */
+  --past: #b60000;   /* 과거=빨강 HSL 0°. 등 WCAG 7.0 */
   --ok: #16a34a;
   --err: #dc4446;
   --track: #d8e3dc;  /* 과거 빈 영역/rail(은은) */
   --remain: #95b7ff; /* 미래 '남은시간 잔량'(파랑·도넛 남은부분) WCAG 2.0 */
-  /* 컬러코딩(라이트): 조건5=등 WCAG 명암비, 조건6=색간 ΔE 최대(hybrid). 모두 배경 대비 WCAG 4.1. */
-  --node-origin: #9e7800;  /* 등록·시작 OKLCH 86° WCAG 4.1 */
-  --node-updated: #008b94; /* 수정 OKLCH 203° WCAG 4.1 */
-  --node-target: #db00e3;  /* 기준 OKLCH 327° WCAG 4.1 */
-  --node-now: #009300;     /* 현재 OKLCH 142° WCAG 4.1 */
+  /* 컬러코딩(라이트): 고정 hue=HSL 0/120/240, 자유색=HSL 전역 maximin[60,180,280,320]. 등 WCAG 7.0(기본). */
+  --node-origin: #5d5c00;  /* 등록 HSL 60°(노랑) WCAG 7.0 */
+  --node-updated: #006364; /* 수정 HSL 180°(청록) WCAG 7.0 */
+  --node-start: #ac0071;   /* 시작 HSL 320°(핑크) WCAG 7.0 */
+  --node-target: #8a00d0;  /* 기준 HSL 280°(보라) WCAG 7.0 */
+  --node-now: #006900;     /* 현재 HSL 120°(초록) WCAG 7.0 */
   --glow: #ffffff;
   --fab2: #eceef2;
   --fab2-fg: #3a414a;
@@ -338,7 +340,7 @@ kbd {
 .card__railicon { width: 1.15rem; height: 1.15rem; }
 .card__railspare { cursor: default; } /* 추후 기능용 빈 슬롯 */
 
-/* 본문: 2열(cols) + 인라인 에디터가 들어가는 가운데 영역 */
+/* 본문: 상단 히어로(도넛+시간+타임라인) → 구분선 → 2열(제목 / 랩) + 인라인 에디터 */
 .card__body {
   flex: 1;
   min-width: 0;
@@ -347,13 +349,34 @@ kbd {
   padding: 0.5rem 0.4rem 0.55rem;
 }
 
-/* 2열 구성: 좌(제목·일시·태그) / 우(큰 시간·기록). 둘 다 상단 정렬.
+/* 상단 히어로: 도넛+큰시간 묶음 → 바로 아래 타임라인. 타임라인이 카드 주역. */
+.card__hero { display: flex; flex-direction: column; }
+/* 히어로 줄: 위치 컨텍스트(높이만 확보). heroFront를 채움 영역 중앙 위로 절대배치.
+   상단 크기 배율(--hero-scale, 설정)에 따라 예약 높이도 함께 커짐. */
+.card__heroline { position: relative; min-height: calc(2.1rem * var(--hero-scale, 1)); }
+/* 도넛(진행률)+큰시간(+방향칩) 묶음 — renderViz가 left(채움 중앙%)를 인라인으로 지정, 화면 밖 안 나가게 클램프 */
+.card__herofront {
+  position: absolute;
+  top: 50%;
+  left: 50%; /* JS가 채움 중앙 %로 덮어씀(기본=가운데) */
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+/* 2열 구성: 좌(제목·일시·태그) / 우(랩 기록). 둘 다 상단 정렬. 위 히어로와 구분선으로 분리.
    grid + minmax(0,1fr): 콘텐츠가 트랙을 넘쳐 카드를 늘리지 못하게(blowout 방지). */
 .card__cols {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); /* zone2·zone3 가로폭 동일 */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); /* 좌·우 가로폭 동일 */
   align-items: stretch; /* 두 열 높이를 같게 → 중앙 구분선이 카드 전체 높이를 채움(내용은 상단 정렬 유지) */
   gap: 0;
+  border-top: 1px solid var(--line); /* 히어로와 2열 사이 구분선 */
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
 }
 
 /* 숨긴 카드(숨김 보기 모드에서만 표시): 흐리게 + 점선 테두리로 구분 */
@@ -391,10 +414,10 @@ kbd {
 .card__labeltext { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card__label .chip { flex: none; } /* [제목] 칩은 항상 보이고 제목 텍스트만 잘림 */
 
-/* 클릭=편집 어포던스: 연필 아이콘(평시 muted, 호버 시 accent). 점선보다 또렷·세련. */
+/* 클릭=편집 어포던스: 연필 아이콘(평시 muted, 호버 시 accent). 점선보다 또렷·세련.
+   ※ 도넛(.card__progress)은 연필 없이 클릭만으로 편집(사용자 요청) → 목록에서 제외. */
 .card__label::after,
-.card__meta::after,
-.card__progress::after {
+.card__meta::after {
   content: '';
   flex: none;
   width: 0.8rem;
@@ -406,16 +429,17 @@ kbd {
   transition: opacity 0.12s, background 0.12s;
 }
 .card__label:hover::after,
-.card__meta:hover::after,
-.card__progress:hover::after { background: var(--accent); opacity: 1; }
+.card__meta:hover::after { background: var(--accent); opacity: 1; }
 .card__label--empty::after { display: none; } /* '＋ 제목'이면 ＋가 이미 안내 */
 
 .card__time {
   display: block;
-  text-align: right;
+  min-width: 0; /* 히어로 줄에서 축소 가능 → fitTime이 오버플로우 감지·축소 */
+  max-width: 100%;
+  text-align: center; /* 히어로 중앙 스택 */
   overflow: hidden;
   white-space: nowrap; /* 한 줄 유지 → 넘치면 fitTime이 폰트 축소 */
-  font-size: var(--card-time-size, 1.3rem);
+  font-size: calc(var(--card-time-size, 1.3rem) * var(--hero-scale, 1)); /* 상단 크기 배율(설정) */
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.01em;
@@ -434,19 +458,16 @@ kbd {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  margin-top: 0.3rem;
+  margin-top: 0; /* 히어로 줄 안에서 큰시간과 나란히 */
   cursor: pointer;
 }
 .card__progress[hidden] { display: none; }
-/* 바·파이·퍼센트의 순서(flex order)·표시(hidden)는 updateProgress가 설정대로 제어.
-   연필 어포던스(::after)는 항상 맨 끝에 오도록 큰 order. */
-.card__progress::after { order: 9; }
-/* 도넛 파이: 원 테두리=진행, 가운데 구멍에 % 표시(파이+퍼센트 합침). */
+/* 도넛 파이: 원 테두리=진행, 가운데 구멍에 % 표시(파이+퍼센트 합침). 클릭=진행 시작점 편집(연필 없음). */
 .card__pie {
   position: relative;
   flex: none;
-  width: 2rem;
-  height: 2rem;
+  width: calc(2rem * var(--hero-scale, 1)); /* 상단 크기 배율(설정) */
+  height: calc(2rem * var(--hero-scale, 1));
   border-radius: 50%;
   background: conic-gradient(var(--future) 0%, var(--remain) 0);
   display: grid;
@@ -461,7 +482,7 @@ kbd {
 }
 .card__pielabel {
   position: relative; /* 구멍 위에 % */
-  font-size: 0.62rem;
+  font-size: calc(0.62rem * var(--hero-scale, 1)); /* 상단 크기 배율(설정) */
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--future);
@@ -469,7 +490,7 @@ kbd {
 }
 /* 독립 퍼센트 텍스트(도넛과 별개 토글, 기본 off) */
 .card__pct {
-  font-size: 0.82rem;
+  font-size: calc(0.82rem * var(--hero-scale, 1)); /* 상단 크기 배율(도넛·시간과 함께) */
   font-weight: 800;
   font-variant-numeric: tabular-nums;
   color: var(--future);
@@ -477,9 +498,9 @@ kbd {
 }
 .card__pct[hidden], .card__pie[hidden] { display: none; }
 
-/* 전체폭 시각화 밴드(2열 아래, zone2+zone3): 트랙(+미래 채움) + ▲마커 + 충돌회피 라벨.
+/* 전체폭 시각화 밴드(히어로 안, 큰시간 아래): 트랙(+미래 채움) + ▲마커 + 충돌회피 라벨.
    미래=진행바+시작/현재/기준, 과거=등록/수정/기준/현재 타임라인. */
-.card__viz { margin-top: 0.4rem; }
+.card__viz { margin-top: 0.35rem; }
 .card__viz[hidden] { display: none; }
 .card__viz--editable { cursor: pointer; }
 .card__viz-bar { position: relative; height: 0.95rem; }
@@ -522,17 +543,12 @@ kbd {
 }
 .card__vizlabel[data-side="right"] { transform: translateX(0); }        /* 이름 좌단=마커 → 시간 우측 */
 .card__vizlabel[data-side="left"] { transform: translateX(-100%); flex-direction: row-reverse; } /* 이름 우단=마커 → 시간 좌측 */
-.card__vizts { display: inline-flex; gap: 0; align-items: baseline; } /* 날짜·시간 묶음: 붙여쓰기(260701수080144) */
-.card__vizlabel b { font-size: 0.56rem; font-weight: 800; } /* 이름(색) */
-.card__vizlabel i { /* 컴팩트 일시(날짜·시간), 무채색 */
-  font-size: 0.5rem;
-  font-style: normal;
-  color: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-/* 색(이름): 방향색(빨/파)과 분리된 노드 팔레트. 시작/등록=앰버 · 수정=청록 · 기준=마젠타 · 현재=무채색. 모두 ≈7:1 */
-.tl--start.card__vizmark, .tl--created.card__vizmark { border-bottom-color: var(--node-origin); }
-.tl--start.card__vizlabel b, .tl--created.card__vizlabel b { color: var(--node-origin); }
+.card__vizlabel b { font-size: 0.56rem; font-weight: 800; } /* 이름(색). 타임스탬프 표시·툴팁은 제거됨(사용자 요청) */
+/* 색(이름): 고정 빨/초/파 + 자유 HSL maximin. 등록=노랑·수정=청록·기준=보라·시작=핑크·현재=초록 */
+.tl--created.card__vizmark { border-bottom-color: var(--node-origin); }
+.tl--created.card__vizlabel b { color: var(--node-origin); }
+.tl--start.card__vizmark { border-bottom-color: var(--node-start); }
+.tl--start.card__vizlabel b { color: var(--node-start); }
 .tl--updated.card__vizmark { border-bottom-color: var(--node-updated); }
 .tl--updated.card__vizlabel b { color: var(--node-updated); }
 .tl--target.card__vizmark { border-bottom-color: var(--node-target); }
@@ -559,6 +575,7 @@ kbd {
   font-variant-numeric: tabular-nums;
   cursor: pointer;
 }
+.card__meta[hidden] { display: none; } /* display:flex가 UA [hidden]을 덮으므로 명시(기준일시 기본 숨김) */
 .card__metadate { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card__meta .chip { flex: none; } /* 칩은 안 줄어듦 → 항상 표시 */
 .card__meta:hover { color: var(--fg); }
@@ -1309,24 +1326,6 @@ body.select-mode .card.card--selected::after { background: var(--accent); border
 .ctslider[data-in-range="false"] .ctaxis-tick--edge .ctaxis-tick__mark { border-bottom-color: var(--muted); }
 .ctslider[data-in-range="false"] .ctaxis-tick--edge .ctaxis-tick__num { color: var(--muted); }
 
-/* 진행률 파트 칩(바·파이·퍼센트): 탭=표시 토글, 드래그=순서 */
-.pparts { display: flex; gap: 0.4rem; flex-wrap: wrap; touch-action: none; }
-.ppart {
-  flex: 0 0 auto;
-  padding: 0.4rem 0.85rem;
-  border: 1px solid var(--line);
-  border-radius: 0.6rem;
-  background: var(--card-2);
-  color: var(--muted);
-  font-size: 0.85rem;
-  font-family: inherit;
-  cursor: grab;
-  user-select: none;
-}
-.ppart[aria-pressed='true'] { background: var(--accent); color: #fff; border-color: var(--accent); }
-.ppart[aria-pressed='false'] { opacity: 0.55; text-decoration: line-through; } /* 꺼짐 = 흐림+취소선 */
-.ppart--dragging { opacity: 0.85; cursor: grabbing; box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4); }
-.ppart:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .set-row__ctrl { flex: 0 0 auto; }
 input[type='range'].set-row__ctrl { width: 11rem; max-width: 55%; accent-color: var(--accent); }
 input[type='checkbox'].set-row__ctrl { width: 1.2rem; height: 1.2rem; accent-color: var(--accent); }

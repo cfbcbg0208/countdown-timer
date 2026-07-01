@@ -67,13 +67,13 @@ test('progressBase: 기본 created, updated만 허용, 그 외 → created', () 
   assert.equal(update(st, { progressBase: 'foo' }).progressBase, 'created'); // 폴백
 });
 
-test('표시 기본값: 기준일시 보임, 등록/수정 숨김 + 불리언 강제', () => {
+test('표시 기본값: 기준일시·등록·수정 모두 숨김 + 불리언 강제', () => {
   const st = fakeStorage();
-  assert.equal(load(st).showTarget, true); // 기준일시 기본 보임
+  assert.equal(load(st).showTarget, false); // 기준일시 기본 숨김(상단 타임라인이 대체)
   assert.equal(load(st).showCreated, false); // 등록일시 기본 숨김
   assert.equal(load(st).showUpdated, false); // 수정일시 기본 숨김
   assert.equal(update(st, { showCreated: 1 }).showCreated, true); // truthy → true
-  assert.equal(update(st, { showTarget: 0 }).showTarget, false); // falsy → false
+  assert.equal(update(st, { showTarget: 1 }).showTarget, true); // truthy → true
 });
 
 test('theme: 기본 dark, light만 허용, 그 외 → dark', () => {
@@ -88,6 +88,16 @@ test('weekStart: 기본 mon, sun만 허용, 그 외 → mon', () => {
   assert.equal(load(st).weekStart, 'mon');
   assert.equal(update(st, { weekStart: 'sun' }).weekStart, 'sun');
   assert.equal(update(st, { weekStart: 'tue' }).weekStart, 'mon'); // 폴백
+});
+
+test('heroScale: 기본 1, 범위 [0.6,1.6] 클램프, 숫자 아니면 1', () => {
+  const st = fakeStorage();
+  assert.equal(load(st).heroScale, 1);
+  assert.equal(update(st, { heroScale: 1.3 }).heroScale, 1.3);
+  assert.equal(update(st, { heroScale: 3 }).heroScale, 1.5); // 상한 클램프
+  assert.equal(update(st, { heroScale: 0.1 }).heroScale, 0.5); // 하한 클램프
+  assert.equal(update(st, { heroScale: 'big' }).heroScale, 1); // 숫자 아님 → 1
+  assert.equal(update(st, { heroScale: '1.2' }).heroScale, 1.2); // 숫자 문자열 허용
 });
 
 test('손상된 JSON → 기본값으로 안전 복구', () => {

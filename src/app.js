@@ -264,16 +264,29 @@ function makeCard(item) {
   const lapsEl = document.createElement('ul');
   lapsEl.className = 'card__laps';
 
-  // 좌측 열: 제목(상단) → 기준/등록/수정일시 → 진행률(좌측 폭만) → 태그. 모두 좌측·자르기.
-  // 진행률을 좌측 열에 둬서 파이·바가 중앙 구분선을 넘어 우측 열을 침범하지 않게 한다.
+  // 상단 히어로: [도넛+큰시간 묶음] → 바로 아래 [타임라인]. 타임라인을 카드 주역으로.
+  // heroFront(도넛+큰시간)는 renderViz가 '채움 영역 중앙'(미래=진행시작→현재 / 과거=기준→현재) 위로 이동시킴.
+  const heroFront = document.createElement('div');
+  heroFront.className = 'card__herofront';
+  heroFront.append(progressEl, timeEl);
+
+  const heroLine = document.createElement('div');
+  heroLine.className = 'card__heroline'; // 위치 컨텍스트(높이 확보) — heroFront를 채움 중앙에 절대배치
+  heroLine.append(heroFront);
+
+  const hero = document.createElement('div');
+  hero.className = 'card__hero';
+  hero.append(heroLine, vizEl); // 도넛+큰시간(채움 위) → 바로 아래 타임라인(등록·수정·기준·현재)
+
+  // 좌측 열: 제목(상단) → 기준/등록/수정일시 → 태그. 기준일시·태그는 기본 숨김(타임라인이 대체).
   const left = document.createElement('div');
   left.className = 'card__col card__col--left';
-  left.append(labelEl, metaEl, createdRow, updatedRow, progressEl, groupsRow);
+  left.append(labelEl, metaEl, createdRow, updatedRow, groupsRow);
 
-  // 우측 열(zone3): 큰 시간(상단·우측·자동축소) → 기록(랩) 목록(우측 하단). 기록 버튼은 우측 레일.
+  // 우측 열: 기록(랩) 목록.
   const right = document.createElement('div');
   right.className = 'card__col card__col--right';
-  right.append(timeEl, lapsEl);
+  right.append(lapsEl);
 
   const cols = document.createElement('div');
   cols.className = 'card__cols';
@@ -291,11 +304,11 @@ function makeCard(item) {
 
   const body = document.createElement('div');
   body.className = 'card__body';
-  body.append(cols, vizEl); // 밴드는 2열 아래 전체폭
+  body.append(hero, cols); // 상단 히어로(도넛+시간+타임라인) → 구분선 → 2열(제목 / 랩)
 
   card.append(railLeft, body, railRight);
 
-  const refs = { card, timeEl, progressEl, pieEl, pieLabelEl, pctEl, vizEl, metaEl, lapsEl, item, dir: null };
+  const refs = { card, timeEl, progressEl, pieEl, pieLabelEl, pctEl, vizEl, heroLineEl: heroLine, heroFrontEl: heroFront, metaEl, lapsEl, item, dir: null };
   renderLaps(refs);
   updateCard(refs);
   return refs;
@@ -404,12 +417,12 @@ function updateCard(refs) {
   // 기준일시: 값(자르기) + [기준일시] 칩(고정 → 날짜가 길어도 칩은 항상 보임).
   refs.metaEl.innerHTML = `<span class="card__metadate">${fmtDate(target)}</span><span class="chip">기준일시</span>`;
   updateProgress(refs, item, target, r.direction);
-  fitTime(refs.timeEl); // 우측 열 폭에 맞게 폰트 자동 축소(오버플로우 방지)
+  fitTime(refs.timeEl); // 히어로 줄 가용폭에 맞게 폰트 자동 축소(오버플로우 방지)
   refs.dir = r.direction;
 }
 
-// 큰 시간이 우측 열을 넘치면(긴 기간 등) 폰트를 줄여 오버플로우를 없앤다.
-// 가용폭은 부모 열(.card__col--right)의 안쪽 너비 기준으로 측정.
+// 큰 시간이 히어로 줄을 넘치면(긴 기간·상단 크기 확대 등) 폰트를 줄여 오버플로우를 없앤다.
+// 가용폭은 timeEl 자신의 clientWidth(=heroFront 안쪽) 기준. --hero-scale 반영 위해 먼저 인라인 폰트 리셋.
 function fitTime(el) {
   el.style.fontSize = '';
   if (!el.clientWidth || el.scrollWidth <= el.clientWidth) return; // 레이아웃 전(0)·여유 있으면 그대로
@@ -465,19 +478,29 @@ function updateProgress(refs, item, target, direction) {
 function renderViz(refs, item, direction) {
   const future = direction === 'future';
   const now = Date.now();
-  // 미래·과거 통일(노드 동일): 항상 등록·수정·기준 + 현재(시간순). '시작'은 별도 노드 없이 진행 채움 시작점으로만.
-  const pts = TL_POINTS.map((p) => ({ cls: p.cls, label: p.label, ms: new Date(p.isoOf(item)).getTime() }))
-    .filter((p) => Number.isFinite(p.ms))
-    .concat([{ cls: 'tl--now', label: '현재', ms: now }])
-    .sort((a, b) => a.ms - b.ms);
-  const min = Math.min(...pts.map((p) => p.ms));
-  const max = Math.max(...pts.map((p) => p.ms));
-  // 채움 구간(트랙 0~1): 미래=진행시작(등록/수정/커스텀 startISO)→현재(경과) / 과거=기준→현재(=1, 적색).
+  // 좌표 기준(min~max): 남은시간(미래)은 **두 기준 = 시작(진행 시작점)~끝(기준)** 을 써서
+  //   도넛 %와 타임라인 채움·현재 위치를 일치시킨다(노드 전체 min~max를 쓰면 커스텀 startISO가 등록보다
+  //   이른 경우 등 도넛%와 어긋남). 등록/수정 노드는 이 범위 안에서 위치(범위 밖은 0/1로 클램프).
+  //   과거(지난시간)는 종전대로 노드 전체(min~max), 기준→현재 적색 채움.
   const startMs = future
     ? new Date(item.startISO || (settings.progressBase === 'updated' ? item.updatedAt : item.createdAt) || item.createdAt).getTime()
     : new Date(item.targetISO).getTime();
-  const fillA = elapsedFraction(min, max, startMs);
-  const fillB = future ? elapsedFraction(min, max, now) : 1;
+  const createdMs = new Date(item.createdAt).getTime(),
+    updatedMs = new Date(item.updatedAt).getTime();
+  // 미래는 진행 시작점(시작=채움 좌측 끝) 노드를 마킹. 단 등록·수정과 겹치면(기본: startISO 없음→시작=등록)
+  //   중복이라 생략 → 커스텀 startISO 등 '시작'이 별도 지점일 때만 시작 마커가 뜬다.
+  const startNode =
+    future && Number.isFinite(startMs) && Math.abs(startMs - createdMs) > 1000 && Math.abs(startMs - updatedMs) > 1000
+      ? [{ cls: 'tl--start', label: '시작', ms: startMs }]
+      : [];
+  const pts = TL_POINTS.map((p) => ({ cls: p.cls, label: p.label, ms: new Date(p.isoOf(item)).getTime() }))
+    .filter((p) => Number.isFinite(p.ms))
+    .concat([{ cls: 'tl--now', label: '현재', ms: now }], startNode)
+    .sort((a, b) => a.ms - b.ms);
+  const min = future ? startMs : Math.min(...pts.map((p) => p.ms));
+  const max = future ? new Date(item.targetISO).getTime() : Math.max(...pts.map((p) => p.ms));
+  const fillA = elapsedFraction(min, max, startMs); // 미래=0(시작)
+  const fillB = future ? elapsedFraction(min, max, now) : 1; // 미래=도넛 %(현재)와 동일
   refs.vizEl.hidden = false;
   refs.vizEl.classList.toggle('card__viz--editable', future); // 미래 바 클릭 → 시작점 편집
   refs.vizEl.classList.toggle('card__viz--past', !future); // 과거 = 적색 채움
@@ -489,32 +512,24 @@ function renderViz(refs, item, direction) {
     const f = elapsedFraction(min, max, p.ms);
     const xPct = 8 + f * 84; // 8~92%: 가장자리 라벨 잘림 방지
     const xPx = (xPct / 100) * W;
-    const c = formatCompact(new Date(p.ms)); // "YYMMDD요일HHMMSS"(13자)
     return {
       ...p,
       xPct,
       xPx,
-      // 시간은 기본 이름 우측. 단 우측보다 좌측 공간이 넓으면(점이 중앙보다 오른쪽) 좌측에 둔다.
+      // 이름은 점 우측 기본. 단 우측보다 좌측 공간이 넓으면(점이 중앙보다 오른쪽) 좌측에 둔다.
       side: xPx <= W / 2 ? 'right' : 'left',
-      estW: (Math.max(p.label.length, 2) + 13) * 5 + 12, // 미부착(측정 0)일 때만 쓰는 폴백 추정폭(가로)
-      full: c,
-      datePart: c.slice(0, 7), // 260630화
-      timePart: c.slice(7), // 074153
+      estW: Math.max(p.label.length, 2) * 8 + 8, // 미부착(측정 0)일 때 폴백 추정폭(이름만)
     };
   });
+  // 마커·라벨에 title(호버 툴팁) 없음 — 현재 노드가 매초 리렌더돼 툴팁이 깜빡이고 모바일 비친화(사용자 요청).
   const marks = items
-    .map(
-      (it) =>
-        `<span class="card__vizmark ${it.cls}" style="left:${it.xPct.toFixed(1)}%" title="${esc(it.label)} ${it.full}"></span>`,
-    )
+    .map((it) => `<span class="card__vizmark ${it.cls}" style="left:${it.xPct.toFixed(1)}%"></span>`)
     .join('');
-  // 각 노드: 이름 + 컴팩트 타임스탬프를 '가로로' (이름 옆 날짜·시간). 시간 위치(좌/우)는 side로. top은 실측 후 부여.
+  // 각 노드: 이름만(타임스탬프 표시 제거 — 사용자 요청). 위치(좌/우)는 side로. top은 실측 후 부여.
   const labels = items
     .map(
       (it) =>
-        `<span class="card__vizlabel ${it.cls}" data-side="${it.side}" style="left:${it.xPct.toFixed(1)}%" ` +
-        `title="${esc(it.label)} ${it.full}"><b>${esc(it.label)}</b>` +
-        `<span class="card__vizts"><i>${esc(it.datePart)}</i><i>${esc(it.timePart)}</i></span></span>`,
+        `<span class="card__vizlabel ${it.cls}" data-side="${it.side}" style="left:${it.xPct.toFixed(1)}%"><b>${esc(it.label)}</b></span>`,
     )
     .join('');
   // 미래는 '남은 시간'(현재→기준=fillB→1)을 흐린 파랑으로 덧칠해 진한 채움(경과)과 2색 대비.
@@ -546,6 +561,17 @@ function renderViz(refs, item, direction) {
     rowRight[r] = m.R;
   }
   labelsEl.style.height = `${Math.max(1, rowRight.length) * ROW_H}px`;
+  // 큰 시간+도넛(heroFront)을 '채움 영역 중앙' 위로: 미래=진행시작→현재, 과거=기준→현재(fillB=1).
+  // 밴드와 동일 좌표(8~92%)로 정렬 후, 카드 밖으로 안 나가게 heroFront 폭 기준 클램프.
+  const front = refs.heroFrontEl,
+    hl = refs.heroLineEl;
+  if (front && hl) {
+    const centerPct = 8 + ((fillA + fillB) / 2) * 84; // 채움 중앙(마커와 같은 스케일)
+    const hw = hl.clientWidth || W;
+    const halfPct = hw ? Math.min(50, ((front.offsetWidth / 2) / hw) * 100) : 0;
+    const left = Math.max(halfPct, Math.min(100 - halfPct, centerPct));
+    front.style.left = `${left.toFixed(1)}%`;
+  }
   refs.vizEl.setAttribute('aria-label', future ? '진행률 타임라인' : '등록·수정·기준·현재 일시 타임라인');
 }
 
@@ -1003,7 +1029,8 @@ function openFieldEditor(card, id, field, lapIndex = null) {
   // 랩 필드도 우측 열 내부가 아니라 2열 아래 전체폭으로(좁은 열 깨짐 방지).
   const ANCHOR = { date: '.card__meta', start: '.card__progress', title: '.card__label' };
   const anchor = card.querySelector(ANCHOR[field] || '.card__cols');
-  (anchor.closest('.card__cols, .card__row') || anchor).after(editor);
+  // 제목·기준일시=2열 아래, 진행 시작점(도넛/밴드)=히어로 아래 전체폭.
+  (anchor.closest('.card__cols, .card__row, .card__hero') || anchor).after(editor);
   card.dataset.editing = field; // 수정 중인 원본 필드를 CSS로 강조
   input.focus();
   input.select?.();
@@ -1792,11 +1819,12 @@ calendarFab.addEventListener('click', openCalendar);
 
 // ── 디자인 설정: 변경 시 즉시 반영 ──
 const setAddPosition = $('set-add-position');
-const setProgressParts = $('set-progress-parts');
 const setProgressBase = $('set-progress-base');
 const setDates = $('set-dates');
 const setDateFormat = $('set-date-format');
 const setTheme = $('set-theme');
+const setHeroScale = $('set-hero-scale');
+const setHeroScaleNum = $('set-hero-scale-num');
 const setCancel = $('set-cancel');
 const setOk = $('set-ok');
 const themeColorMeta = document.querySelector('meta[name="theme-color"]');
@@ -1818,6 +1846,7 @@ function onSeg(el, handler) {
 function applySettings(s) {
   const el = document.documentElement;
   el.dataset.theme = s.theme; // 라이트/다크 팔레트 전환(나머지 색·크기는 CSS 고정)
+  el.style.setProperty('--hero-scale', String(s.heroScale ?? 1)); // 상단 도넛·큰시간 크기 배율
   if (themeColorMeta) themeColorMeta.content = s.theme === 'light' ? '#eef4f0' : '#0e1512';
   applyCtPreview(); syncPreviewCtls(); // 테마 바뀌면 노드 팔레트 + 슬라이더 범위(Range A)·잔량 재계산
 }
@@ -1825,10 +1854,10 @@ function applySettings(s) {
 // ── 노드 색 구분력(WCAG 명암비) 슬라이더 + 남은시간 잔량 미리보기 ──────────────
 // 조건 5: 모든 노드색이 배경과 같은 WCAG 명암비. 조건 6: 그 위에서 색끼리 min ΔE 최대.
 // 조건 7: Range A = [Min A, Max A](세 조건 모두 만족 구간). 기본값 = Max A.
-// 조건 8: 슬라이더는 1:1~21:1 전체. Range A 밖이면 조건 5+사용자 명암비만(조건 6은 그 안에서 최대).
-const CT_HUES = roleHues(); // {past, now, future, origin, updated, target} OKLCH hue
-const CT_ROLES = ['origin', 'updated', 'target', 'now', 'future', 'past'];
-const CT_VARMAP = { origin: '--node-origin', updated: '--node-updated', target: '--node-target', now: '--node-now', future: '--future', past: '--past' };
+// 조건 8: 슬라이더는 3:1~7:1(사용자 스펙 step5). Range A 밖이면 조건 5+사용자 명암비만(조건 6은 그 안에서 최대).
+const CT_HUES = roleHues(); // {past, now, future, origin, updated, start, target} OKLCH hue(자유색 4개)
+const CT_ROLES = ['origin', 'updated', 'start', 'target', 'now', 'future', 'past'];
+const CT_VARMAP = { origin: '--node-origin', updated: '--node-updated', start: '--node-start', target: '--node-target', now: '--node-now', future: '--future', past: '--past' };
 const cardBgHex = () => { const s = getComputedStyle(document.documentElement).getPropertyValue('--card').trim() || '#17211c'; return s.startsWith('#') ? s : '#' + s; };
 const ctHueArr = () => CT_ROLES.map((k) => CT_HUES[k]);
 const _rangeCache = {}; // Range A 스캔 비쌈 → 배경별 캐시
@@ -1849,7 +1878,7 @@ function readNum(key, min, max) {
 }
 function applyCtPreview() {
   const st = document.documentElement.style;
-  const v = readNum('ctVal', SLIDER_MIN, SLIDER_MAX) || SLIDER_MAX; // 미설정 = 7.0(슬라이더 최대, 사용자 기본 셋업)
+  const v = readNum('ctVal', SLIDER_MIN, SLIDER_MAX) || SLIDER_MAX; // 미설정 = 7.0(사용자 지정 시작값, 유지)
   const pal = solveWcagPalette(ctHueArr(), cardBgHex(), v); // 조건 5(등 WCAG) + 조건 6(색간 ΔE 최대)
   CT_ROLES.forEach((k, i) => st.setProperty(CT_VARMAP[k], hex(pal[i].rgb)));
 }
@@ -1858,7 +1887,7 @@ function applyCtPreview() {
 function readAlpha() {
   const raw = localStorage.getItem('remainAlpha');
   const v = raw === null || raw === '' ? NaN : +raw;
-  return v >= 0 && v <= 1 ? v : 0.34; // 기본 34%(사용자 기본 셋업)
+  return v >= 0 && v <= 1 ? v : 0.35; // 기본 35%(사용자 기본 셋업, 명암비 ≈2.0)
 }
 function futureRgb() { // 현재 노드 슬라이더 값에서의 미래(파랑) 색
   const v = readNum('ctVal', SLIDER_MIN, SLIDER_MAX) || SLIDER_MAX;
@@ -1902,25 +1931,27 @@ function wirePreview(rangeId, numId, key, onChange) {
   num.addEventListener('change', () => set(+num.value, 'num'));
   return { range, num };
 }
-// 슬라이더 1~21을 백분율로(특별 디자인: Range A 밴드·Min A/Max A 눈금·범례 위치 계산).
+// 슬라이더 값→백분율(특별 디자인: Range A 밴드·Min A/Max A 눈금·범례 위치). Range A가 슬라이더 밖으로
+// 나갈 수 있으므로(HSL 분포에선 minA<3일 수 있음) 표시는 [0,100]%로 클램프.
 const ctPct = (x) => ((x - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN)) * 100;
+const ctPctC = (x) => Math.max(0, Math.min(100, ctPct(x)));
 function updateRangeAUI(cur) {
   const { minA, maxA } = ctRange(), slider = $('ct-slider');
   if (!slider) return;
-  slider.style.setProperty('--minA', ctPct(minA) + '%');
-  slider.style.setProperty('--maxA', ctPct(maxA) + '%');
-  slider.style.setProperty('--cur', ctPct(cur) + '%');
+  slider.style.setProperty('--minA', ctPctC(minA) + '%');
+  slider.style.setProperty('--maxA', ctPctC(maxA) + '%');
+  slider.style.setProperty('--cur', ctPctC(cur) + '%');
   slider.dataset.inRange = String(cur >= minA - 1e-9 && cur <= maxA + 1e-9);
   const axis = $('ct-axis'); // ▲ 눈금: 슬라이더끝·Min A·Max A·슬라이더끝(칩 대신, 사용자 지정 디자인)
   if (axis) {
     const ticks = [
       { v: SLIDER_MIN, role: 'end',  title: '슬라이더 최저' },
       { v: minA,       role: 'edge', title: 'Min A — Range A 하한' },
-      { v: maxA,       role: 'edge', title: 'Max A — Range A 상한 · 기본값' },
+      { v: maxA,       role: 'edge', title: 'Max A — Range A 상한' },
       { v: SLIDER_MAX, role: 'end',  title: '슬라이더 최고' },
     ];
     axis.innerHTML = ticks.map((t) =>
-      `<div class="ctaxis-tick ctaxis-tick--${t.role}" style="left:${ctPct(t.v)}%" title="${t.title}">`
+      `<div class="ctaxis-tick ctaxis-tick--${t.role}" style="left:${ctPctC(t.v)}%" title="${t.title}">`
       + `<span class="ctaxis-tick__mark"></span><span class="ctaxis-tick__num">${t.v.toFixed(1)}</span></div>`
     ).join('');
   }
@@ -1958,34 +1989,20 @@ function syncRemainCtls() {
 }
 // 슬라이더 범위·시작값(Max A)·Range A 표시 + 잔량 슬라이더를 현재 테마로 갱신.
 function syncPreviewCtls() {
-  const cur = setCtl(ctCtl, 'ctVal', SLIDER_MIN, SLIDER_MAX, SLIDER_MAX, 0.1, 1); // 기본=7.0(슬라이더 최대, 사용자 셋업)
+  const cur = setCtl(ctCtl, 'ctVal', SLIDER_MIN, SLIDER_MAX, SLIDER_MAX, 0.1, 1); // 기본=7.0(사용자 지정 시작값)
   updateRangeAUI(cur);
   syncRemainCtls();
 }
 // ──────────────────────────────────────────────────────────────────
 
-const PART_LABEL = { bar: '타임라인', pie: '도넛', percent: '퍼센트' };
-// 진행률 파트 칩(바/파이/퍼센트): progressOrder 순서로 렌더, progressShow로 켜짐(aria-pressed) 표시.
-function renderProgressParts(s) {
-  setProgressParts.innerHTML = '';
-  for (const p of s.progressOrder) {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'ppart';
-    b.dataset.part = p;
-    b.setAttribute('aria-pressed', String(!!s.progressShow[p]));
-    b.textContent = PART_LABEL[p];
-    setProgressParts.append(b);
-  }
-}
-
 function syncSettingControls(s) {
   syncSeg(setAddPosition, s.addPosition);
-  renderProgressParts(s);
   syncSeg(setProgressBase, s.progressBase);
   for (const b of setDates.querySelectorAll('.seg')) b.setAttribute('aria-pressed', String(!!s[b.dataset.key]));
   syncSeg(setDateFormat, s.dateFormat);
   syncSeg(setTheme, s.theme);
+  setHeroScale.value = String(s.heroScale); // 상단 크기 배율 슬라이더 동기화
+  setHeroScaleNum.value = (+s.heroScale).toFixed(2); // spinbox는 소수점 2자리 유지(1.00·0.75·1.05…)
   syncPreviewCtls(); // TEMP: ΔE 미리보기 슬라이더·숫자 동기화
 }
 
@@ -1996,47 +2013,6 @@ function changeSetting(patch) {
 }
 
 onSeg(setAddPosition, (v) => changeSetting({ addPosition: v }));
-// 진행률 파트(바/파이/퍼센트): 탭=표시 토글, 드래그=순서 변경. 4px 임계로 탭/드래그 구분.
-let ppDrag = null;
-setProgressParts.addEventListener('pointerdown', (e) => {
-  const chip = e.target.closest('.ppart');
-  if (!chip) return;
-  ppDrag = { chip, startX: e.clientX, moved: false };
-  chip.setPointerCapture?.(e.pointerId);
-});
-setProgressParts.addEventListener('pointermove', (e) => {
-  if (!ppDrag) return;
-  if (!ppDrag.moved && Math.abs(e.clientX - ppDrag.startX) < 4) return;
-  ppDrag.moved = true;
-  ppDrag.chip.classList.add('ppart--dragging');
-  const sibs = [...setProgressParts.querySelectorAll('.ppart')];
-  const over = sibs.find((s) => {
-    if (s === ppDrag.chip) return false;
-    const r = s.getBoundingClientRect();
-    return e.clientX >= r.left && e.clientX <= r.right;
-  });
-  if (over) {
-    const r = over.getBoundingClientRect();
-    const after = e.clientX > r.left + r.width / 2;
-    setProgressParts.insertBefore(ppDrag.chip, after ? over.nextSibling : over);
-  }
-});
-function endPpDrag() {
-  if (!ppDrag) return;
-  const { chip, moved } = ppDrag;
-  chip.classList.remove('ppart--dragging');
-  ppDrag = null;
-  if (moved) {
-    const order = [...setProgressParts.querySelectorAll('.ppart')].map((b) => b.dataset.part);
-    changeSetting({ progressOrder: order });
-  } else {
-    const p = chip.dataset.part;
-    changeSetting({ progressShow: { ...settings.progressShow, [p]: !settings.progressShow[p] } });
-  }
-  tick(); // 렌더 로직(updateProgress)이 읽으므로 즉시 반영
-}
-setProgressParts.addEventListener('pointerup', endPpDrag);
-setProgressParts.addEventListener('pointercancel', endPpDrag);
 
 onSeg(setProgressBase, (v) => {
   changeSetting({ progressBase: v });
@@ -2055,6 +2031,13 @@ setDates.addEventListener('click', (e) => {
   rebuild();
 });
 onSeg(setTheme, (v) => changeSetting({ theme: v }));
+// 상단 크기(진행률 도넛·남은/지난시간) 배율: 즉시 반영 + 폰트 배율 바뀌므로 fitTime 재실행.
+function onHeroScale(v) {
+  changeSetting({ heroScale: Math.min(1.6, Math.max(0.6, +(+v).toFixed(2))) });
+  refsList.forEach((r) => fitTime(r.timeEl)); // 큰시간 폰트 배율 반영 후 오버플로우 재적합
+}
+setHeroScale.addEventListener('input', () => onHeroScale(setHeroScale.value));
+setHeroScaleNum.addEventListener('change', () => onHeroScale(setHeroScaleNum.value));
 setReset.addEventListener('click', () => {
   settings = resetSettings(localStorage);
   applySettings(settings);

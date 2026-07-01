@@ -12,12 +12,20 @@ export const DEFAULTS = {
   progressShow: { bar: true, pie: true, percent: false }, // 바·도넛파이 기본 표시(도넛이 %를 품으므로 독립 %는 기본 off)
   progressBase: 'created', // 진행률 0% 기준: 'created'(등록일시) | 'updated'(수정일시)
   dateFormat: 'compact', // 카드 날짜 표시: 'compact'(260628일210436) | 'full'(2026-06-28 일 …)
-  showTarget: true, // 카드에 기준일시 표시(기본 보임)
+  showTarget: false, // 카드에 기준일시 표시(기본 숨김 — 상단 타임라인이 대체)
   showCreated: false, // 카드에 등록일시 표시(기본 숨김)
   showUpdated: false, // 카드에 수정일시 표시(기본 숨김)
   theme: 'dark', // 화면 테마: 'dark' | 'light'
   weekStart: 'mon', // 캘린더 시작 요일: 'mon' | 'sun'
+  heroScale: 1, // 상단 진행률 도넛·큰시간(남은/지난시간) 크기 배율 (0.5~1.5, 기본 1.00)
 };
+
+// 상단 크기 배율: 숫자 아니면 1, 범위 [0.5, 1.5]로 클램프.
+function clampHeroScale(v) {
+  const n = typeof v === 'number' && Number.isFinite(v) ? v : Number(v);
+  if (!Number.isFinite(n)) return 1;
+  return Math.min(1.5, Math.max(0.5, n));
+}
 
 // 순서 배열을 PARTS의 유효한 순열로 정규화(중복 제거 + 빠진 건 기본 순서로 뒤에 보충).
 function coerceOrder(v) {
@@ -47,6 +55,7 @@ function coerce(s) {
     showUpdated: !!o.showUpdated,
     theme: o.theme === 'light' ? 'light' : 'dark', // 그 외/누락 → dark
     weekStart: o.weekStart === 'sun' ? 'sun' : 'mon', // 그 외/누락 → mon
+    heroScale: clampHeroScale(o.heroScale),
   };
 }
 

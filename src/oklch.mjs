@@ -5,7 +5,7 @@
 //   조건 4·5: 라이트/다크 배경 각각에 대해, 모든 색이 배경과 '같은 WCAG 명암비'(등 명암비)가 되게.
 //   조건 6: 그 위에서 색끼리 가장 약한 쌍(min pairwise OKLab ΔE)을 최대화.
 //   조건 7: Range A = 조건 6이 정점 부근으로 유지되는 명암비 구간 [Min A, Max A]. 기본값 = Max A.
-//   조건 8: 슬라이더는 1:1~21:1 전체. Range A 밖이면 조건 5+사용자 명암비만 만족(조건 6은 그 안에서 최대).
+//   조건 8: 슬라이더는 3:1~7:1(사용자 스펙 step5). Range A 밖이면 조건 5+사용자 명암비만 만족(조건 6은 그 안에서 최대).
 // 지표: OKLab ΔE = √(ΔL²+Δa²+Δb²). 철학: memory color-coding-philosophy / 글로벌 CLAUDE.md.
 
 // ── sRGB ↔ 선형 ──
@@ -46,28 +46,45 @@ export const rgb255ToOklchHue = (rgb) => {
   const h = (Math.atan2(b, a) * 180) / Math.PI;
   return h < 0 ? h + 360 : h;
 };
-// 순수 RGB 3원색의 OKLCH hue(빨/녹/파).
-export const FIXED_HUES = { red: rgb255ToOklchHue([255, 0, 0]), green: rgb255ToOklchHue([0, 255, 0]), blue: rgb255ToOklchHue([0, 0, 255]) };
+// HSL(h°, S100%, L50%) → sRGB[0-255]. 색 이름이 HSL 관례와 일치(빨=0·초=120·파=240·노랑=60·청록=180…).
+export function hslToRgb255(h) {
+  h = ((h % 360) + 360) % 360;
+  const x = 1 - Math.abs(((h / 60) % 2) - 1);
+  const [r, g, b] =
+    h < 60 ? [1, x, 0] : h < 120 ? [x, 1, 0] : h < 180 ? [0, 1, x] : h < 240 ? [0, x, 1] : h < 300 ? [x, 0, 1] : [1, 0, x];
+  return [r, g, b].map((v) => Math.round(v * 255));
+}
+// HSL hue → 그 HSL 색(S100·L50)의 OKLCH hue. **hue 분포는 HSL 기준(사용자 스펙), 색 계산만 OKLCH.**
+export const hslHueToOklch = (h) => rgb255ToOklchHue(hslToRgb255(h));
+// 고정 hue = HSL 0/120/240(빨/초/파, 균등 120° — 사용자 스펙 'HSL Hue 0/120/240'). 자유색은 이 위에서 균등 분포.
+export const FIXED_HUES = { red: 0, green: 120, blue: 240 };
 
-// greedy maximin: 고정 hue들 사이 가장 큰 빈 간격의 중점에 자유 hue를 하나씩 배치.
+// 전역(global) maximin: 자유 hue n개를 '전부 새로' 배치해 모든 색(고정+자유)의 최소 hue 간격을 최대화.
+// 방법: 고정 hue 사이 호(arc)들에 점을 하나씩 배분하되, 매번 '현재 가장 큰 하위 호'(width/(k+1))를 가진
+//   호에 넣는다 → 원 위 고정점 사이 점 배치의 최소-하위호 최대화(전역 최적). 각 호는 넣은 점 수로 균등 분할.
+// ⚠️ 증분(greedy-incremental)이 아니라, N이 바뀌면 자유 hue 전체가 이 규칙으로 매번 새로 계산된다
+//    (기존 자유색을 고정한 채 하나만 끼워넣지 않음 — 사용자 스펙 1).
 export function placeFree(fixed, n) {
-  const pts = [...fixed], free = [];
+  const f = [...fixed].sort((a, b) => a - b);
+  const arcs = f.map((h, i) => ({ start: h, width: (i + 1 < f.length ? f[i + 1] : f[0] + 360) - h, k: 0 }));
   for (let i = 0; i < n; i++) {
-    const s = [...pts].sort((a, b) => a - b);
-    let bestSize = -1, bestMid = 0;
-    for (let j = 0; j < s.length; j++) {
-      const a = s[j], b = j + 1 < s.length ? s[j + 1] : s[0] + 360;
-      if (b - a > bestSize) { bestSize = b - a; bestMid = ((a + b) / 2) % 360; }
-    }
-    pts.push(bestMid); free.push(bestMid);
+    let best = 0;
+    // 동점(같은 하위호)일 때는 뒤쪽(높은 hue) 호를 택한다(>=): 사용자 예시가 파랑↔빨강 호에 2점([60,180,280,320]).
+    for (let j = 1; j < arcs.length; j++)
+      if (arcs[j].width / (arcs[j].k + 1) >= arcs[best].width / (arcs[best].k + 1)) best = j;
+    arcs[best].k++;
   }
+  const free = [];
+  for (const a of arcs) for (let i = 0; i < a.k; i++) free.push((a.start + (a.width * (i + 1)) / (a.k + 1)) % 360);
   return free.sort((a, b) => a - b);
 }
 
-// 역할별 OKLCH hue(고정 빨/녹/파 + 자유 등록/수정/기준 = maximin).
+// 역할별 HSL hue(고정 빨0/초120/파240 + 자유 = HSL에서 전역 maximin). 색 계산은 wcagColor가 OKLCH로 변환.
+// 자유색 4개. N=4 전역해 = [60, 180, 280, 320] (파랑240↔빨강360 호에 2점 균등). N 변동 시 전부 재계산됨.
+// 배정(사용자 예시): 60=등록, 180=수정, 280=기준, 320=시작.
 export function roleHues() {
-  const free = placeFree([FIXED_HUES.red, FIXED_HUES.green, FIXED_HUES.blue], 3);
-  return { past: FIXED_HUES.red, now: FIXED_HUES.green, future: FIXED_HUES.blue, origin: free[0], updated: free[1], target: free[2] };
+  const free = placeFree([FIXED_HUES.red, FIXED_HUES.green, FIXED_HUES.blue], 4);
+  return { past: FIXED_HUES.red, now: FIXED_HUES.green, future: FIXED_HUES.blue, origin: free[0], updated: free[1], target: free[2], start: free[3] };
 }
 
 // ── OKLab ΔE (조건 6 지표) ──
@@ -83,11 +100,12 @@ export function minPairwiseDE(pal) {
 }
 
 // ── 조건 5: 등 WCAG 명암비 팔레트 ──
-// 고정 hue에서 배경 대비 WCAG 명암비 = targetC인 '최대 채도' 색(OKLab L 이분탐색으로 명암비 일치).
+// **입력 hue는 HSL(사용자 스펙)** → 내부에서 OKLCH hue로 변환해 색을 계산.
+// 그 hue에서 배경 대비 WCAG 명암비 = targetC인 '최대 채도' 색(OKLab L 이분탐색으로 명암비 일치).
 // 모든 색이 같은 WCAG 명암비 = 배경에서 똑같이 도드라짐(조건 5). 등 WCAG ⇒ 휘도 동일 ⇒
 // '휘도 맞춘 L의 최대 채도'가 회색축에서 가장 멀어 색쌍 ΔE도 최대(= 조건 6 동시 달성).
-export function wcagColor(hueDeg, bgLum, targetC) {
-  const hr = (hueDeg * Math.PI) / 180, ca = Math.cos(hr), sa = Math.sin(hr);
+export function wcagColor(hslHueDeg, bgLum, targetC) {
+  const hr = (hslHueToOklch(hslHueDeg) * Math.PI) / 180, ca = Math.cos(hr), sa = Math.sin(hr);
   const inGamut = (lin) => lin.every((v) => v >= -0.0008 && v <= 1.0008);
   const maxCAt = (L) => { let lo = 0, hi = 0.4; for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (inGamut(oklabToLin([L, m * ca, m * sa]))) lo = m; else hi = m; } return lo; };
   const colorAt = (L) => {
@@ -107,8 +125,8 @@ export function solveWcagPalette(huesArr, bgHex, targetC) {
 // 배경 대비 도달 가능한 최대 WCAG 명암비(흰/검 방향). 살짝 안쪽.
 export const wcagMaxC = (bgLum) => contrast(bgLum < 0.5 ? 1 : 0, bgLum) * 0.985;
 
-// 조건 8: 명암비 슬라이더 범위(WCAG :1). Range A(다크 [4.1,4.9]·라이트 [3.4,4.1]) 주변으로 좁혀
-// 밴드가 잘 보이게 3.0~7.0(2026-07-01 사용자 지정 — 1~21은 Range A가 점선처럼 좁아 보임).
+// 조건 8: 명암비 슬라이더 범위 = WCAG 3:1~7:1(사용자 스펙 step5). 전역 maximin(자유색 4개) Range A는
+// 다크 [3.80,4.60]·라이트 [3.60,4.40]로 [3,7] 안에 들어온다(기본값=Max A).
 export const SLIDER_MIN = 3, SLIDER_MAX = 7;
 
 // 조건 7: Range A = 조건 6(색간 min ΔE)이 정점의 tol배 이상 유지되는 명암비 구간 [minA, maxA].

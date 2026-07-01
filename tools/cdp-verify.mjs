@@ -220,8 +220,8 @@ async function main() {
          return !!l && !!x && getComputedStyle(l).color === getComputedStyle(x).color; })(),
        lapEdits: document.querySelectorAll('.card__laps .lap__edit').length,
        bodyHasCols: !!document.querySelector('.card__body > .card__cols'),
-       // 기준일시 기본 숨김(showTarget=false): display:none이어야 함(.card__meta display:flex가 UA [hidden] 안 덮게)
-       metaHidden: (() => { const m = document.querySelector('.card__meta'); return !!m && getComputedStyle(m).display === 'none'; })(),
+       // 기준일시 기본 숨김(showTarget=false): 감싼 행(.card__daterow[hidden])이 숨겨져 metaEl이 렌더 안 됨(offsetParent null).
+       metaHidden: (() => { const m = document.querySelector('.card__meta'); return !!m && !m.offsetParent; })(),
        tagAddInGroups: !!document.querySelector('.card__groups .card__groupbtn'),
        tagAddText: document.querySelector('.card__groups .card__groupbtn')?.textContent,
        cardGroupsHidden: getComputedStyle(document.querySelector('.card__groups')).display === 'none',
@@ -275,7 +275,26 @@ async function main() {
   if (!checks.railLeftHide) fails.push('숨기기 버튼(.card__hide)이 좌측 레일에 없음');
   if (!checks.railRightDel) fails.push('삭제(✕)가 우측 레일(.card__rail--right)에 없음');
   if (!checks.bodyHasCols) fails.push('본문(.card__body) 안에 2열(.card__cols)이 없음');
-  if (!checks.metaHidden) fails.push('기준일시(.card__meta)가 기본 숨김이 아님(showTarget=false → display:none 기대)');
+  if (!checks.metaHidden) fails.push('기준일시(.card__meta)가 기본 숨김이 아님(showTarget=false → 렌더 안 됨 기대)');
+
+  // 6.4) 타임라인 등록 노드 클릭 → 등록일시가 제목 아래에 표시(색칩=노드색 + 숨기기 눈). 눈 클릭 → 다시 숨김.
+  await evalJS(browser, "document.querySelector('.card__viz-labels .tl--created')?.click()");
+  await until(() => evalJS(browser, "JSON.parse(localStorage.getItem('settings')).showCreated === true"), { label: '등록 노드 클릭→표시' });
+  const dateReveal = await evalJS(browser, `(() => {
+     const row = document.querySelector('.card__daterow.card__row--date');
+     const chip = document.querySelector('.card__daterow .chip.chip--origin');
+     const hide = document.querySelector('.card__datehide[data-key="showCreated"]');
+     const chipCol = chip ? getComputedStyle(chip).color : '';
+     const nodeCol = (() => { const e = document.querySelector('.tl--created.card__vizlabel b'); return e ? getComputedStyle(e).color : ''; })();
+     return { rowShown: !!row && !!row.offsetParent, hasChip: !!chip, hasHide: !!hide, chipMatchesNode: !!chipCol && chipCol === nodeCol }; })()`);
+  if (!dateReveal.rowShown) fails.push('타임라인 등록 노드 클릭 후 등록일시 행이 제목 아래에 표시 안 됨');
+  if (!dateReveal.hasChip) fails.push('등록일시 색칩(.chip--origin)이 없음');
+  if (!dateReveal.chipMatchesNode) fails.push('등록일시 칩 색이 타임라인 등록 노드색과 불일치');
+  if (!dateReveal.hasHide) fails.push('등록일시 행에 숨기기(눈) 버튼 없음');
+  const revealShot = await browser.send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false });
+  await writeFile(join(ARTIFACTS, 'verify-datereveal.png'), Buffer.from(revealShot.data, 'base64'));
+  await evalJS(browser, "document.querySelector('.card__datehide[data-key=\"showCreated\"]')?.click()");
+  await until(() => evalJS(browser, "JSON.parse(localStorage.getItem('settings')).showCreated === false"), { label: '눈 클릭→숨김' });
 
   // 6.5a) 기록(랩) 기준일시 편집 → laps[0].target 갱신(at은 숨은 기준점으로 유지)
   await evalJS(browser, "document.querySelector('.card__laps .lap__edit[data-which=\"target\"]').click()");

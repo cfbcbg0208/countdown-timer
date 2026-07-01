@@ -535,15 +535,13 @@ kbd {
 .card__viz-labels { position: relative; margin-top: 0.15rem; }
 .card__vizlabel {
   position: absolute;
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.3em;
-  line-height: 1.2;
+  transform: translateX(-50%); /* ▲ 마커 바로 아래 중앙 정렬 */
   white-space: nowrap;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer; /* 클릭 → 해당 일시를 제목 아래에 표시(토글) */
 }
-.card__vizlabel[data-side="right"] { transform: translateX(0); }        /* 이름 좌단=마커 → 시간 우측 */
-.card__vizlabel[data-side="left"] { transform: translateX(-100%); flex-direction: row-reverse; } /* 이름 우단=마커 → 시간 좌측 */
-.card__vizlabel b { font-size: 0.56rem; font-weight: 800; } /* 이름(색). 타임스탬프 표시·툴팁은 제거됨(사용자 요청) */
+.card__vizlabel b { font-size: 0.56rem; font-weight: 800; } /* 이름(색). 타임스탬프·툴팁 없음(클릭 시 제목 아래 표시) */
 /* 색(이름): 고정 빨/초/파 + 자유 HSL maximin. 등록=노랑·수정=청록·기준=보라·시작=핑크·현재=초록 */
 .tl--created.card__vizmark { border-bottom-color: var(--node-origin); }
 .tl--created.card__vizlabel b { color: var(--node-origin); }
@@ -589,6 +587,28 @@ kbd {
 .card__row--date .chip { flex: none; } /* 칩 고정 → 항상 표시 */
 .card__datemeta { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; font-size: var(--card-meta-size, 0.64rem); color: var(--muted); font-variant-numeric: tabular-nums; }
 
+/* 일시 행(제목 아래): [값 + 색칩(+연필)] + 숨기기(눈). showTarget/Created/Updated로 표시. */
+.card__daterow { display: flex; align-items: center; gap: 0.25rem; }
+.card__daterow[hidden] { display: none; }
+.card__daterow .card__meta { flex: 1 1 auto; width: auto; min-width: 0; } /* 행 안에서 값+칩이 남는 폭 차지 */
+.card__datehide {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 0.3rem;
+}
+.card__datehide .card__railicon { width: 0.85rem; height: 0.85rem; }
+.card__datehide:hover { color: var(--fg); background: var(--elev); }
+.card__datehide:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
 /* 작은 라벨 칩(pill) */
 .chip {
   display: inline-flex;
@@ -606,6 +626,10 @@ kbd {
 }
 .chip--future { color: var(--future); border-color: var(--future); }
 .chip--past { color: var(--past); border-color: var(--past); }
+/* 일시 칩 색상코드(타임라인 노드 팔레트): 기준=보라·등록=노랑·수정=청록 */
+.chip--target { color: var(--node-target); border-color: var(--node-target); }
+.chip--origin { color: var(--node-origin); border-color: var(--node-origin); }
+.chip--updated { color: var(--node-updated); border-color: var(--node-updated); }
 
 /* 우측 레일 상단: 삭제(✕) */
 .card__del {

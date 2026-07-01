@@ -142,16 +142,28 @@ function chip(text, cls = '') {
   return s;
 }
 
-// 등록/수정 일시 행(설정으로 표시·숨김). 값 + [라벨] 칩. 비편집.
-function dateRow(label, iso, show) {
+// 일시 행 숨기기(눈) 버튼: 클릭 시 해당 설정 키(show*)를 꺼서 제목 아래에서 숨긴다.
+function dateHideBtn(key) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'card__datehide';
+  b.dataset.key = key;
+  b.title = '이 일시 숨기기';
+  b.setAttribute('aria-label', '이 일시 제목 아래에서 숨기기');
+  b.innerHTML = hideIcon(false); // 눈-사선(숨기기)
+  return b;
+}
+
+// 등록/수정 일시 행(설정으로 표시·숨김). 값 + [라벨 색칩] + 숨기기(눈). 비편집(등록/수정은 시스템 일시).
+function dateRow(label, key, iso, show, colorCls) {
   const row = document.createElement('div');
-  row.className = 'card__row card__row--date';
+  row.className = 'card__daterow card__row--date';
   row.hidden = !show || !iso;
   if (iso) {
     const val = document.createElement('span');
     val.className = 'card__datemeta';
     val.textContent = fmtDate(new Date(iso));
-    row.append(val, chip(label));
+    row.append(val, chip(label, colorCls), dateHideBtn(key));
   }
   return row;
 }
@@ -240,11 +252,15 @@ function makeCard(item) {
   metaEl.type = 'button';
   metaEl.className = 'card__meta';
   metaEl.title = '클릭하여 기준일시 수정';
-  metaEl.hidden = !settings.showTarget;
+  // 기준일시 행: [값 + 색칩(클릭 편집·연필)] + 숨기기(눈). 행 전체를 showTarget으로 표시/숨김.
+  const metaRow = document.createElement('div');
+  metaRow.className = 'card__daterow';
+  metaRow.hidden = !settings.showTarget;
+  metaRow.append(metaEl, dateHideBtn('showTarget'));
 
-  // 등록/수정 일시 행(설정 토글, 전체폭).
-  const createdRow = dateRow('등록일시', item.createdAt, settings.showCreated);
-  const updatedRow = dateRow('수정일시', item.updatedAt, settings.showUpdated);
+  // 등록/수정 일시 행(설정 토글). 색칩(등록=노랑·수정=청록) + 숨기기(눈).
+  const createdRow = dateRow('등록일시', 'showCreated', item.createdAt, settings.showCreated, 'chip--origin');
+  const updatedRow = dateRow('수정일시', 'showUpdated', item.updatedAt, settings.showUpdated, 'chip--updated');
 
   // 태그(구 조합) 칩 줄: 소속 태그 + '＋ 태그' 추가 칩(클릭→팝오버). fillCardGroups가 채움.
   const groupsRow = document.createElement('div');
@@ -281,7 +297,7 @@ function makeCard(item) {
   // 좌측 열: 제목(상단) → 기준/등록/수정일시 → 태그. 기준일시·태그는 기본 숨김(타임라인이 대체).
   const left = document.createElement('div');
   left.className = 'card__col card__col--left';
-  left.append(labelEl, metaEl, createdRow, updatedRow, groupsRow);
+  left.append(labelEl, metaRow, createdRow, updatedRow, groupsRow);
 
   // 우측 열: 기록(랩) 목록.
   const right = document.createElement('div');
@@ -415,7 +431,7 @@ function updateCard(refs) {
     `<span class="card__num">${d.sign ? `<span class="display__sign">${d.sign}</span>` : ''}${formatDuration(r)}</span>` +
     ` <span class="chip chip--${r.direction}">${d.chip}</span>`;
   // 기준일시: 값(자르기) + [기준일시] 칩(고정 → 날짜가 길어도 칩은 항상 보임).
-  refs.metaEl.innerHTML = `<span class="card__metadate">${fmtDate(target)}</span><span class="chip">기준일시</span>`;
+  refs.metaEl.innerHTML = `<span class="card__metadate">${fmtDate(target)}</span><span class="chip chip--target">기준일시</span>`;
   updateProgress(refs, item, target, r.direction);
   fitTime(refs.timeEl); // 히어로 줄 가용폭에 맞게 폰트 자동 축소(오버플로우 방지)
   refs.dir = r.direction;
@@ -516,8 +532,6 @@ function renderViz(refs, item, direction) {
       ...p,
       xPct,
       xPx,
-      // 이름은 점 우측 기본. 단 우측보다 좌측 공간이 넓으면(점이 중앙보다 오른쪽) 좌측에 둔다.
-      side: xPx <= W / 2 ? 'right' : 'left',
       estW: Math.max(p.label.length, 2) * 8 + 8, // 미부착(측정 0)일 때 폴백 추정폭(이름만)
     };
   });
@@ -525,11 +539,11 @@ function renderViz(refs, item, direction) {
   const marks = items
     .map((it) => `<span class="card__vizmark ${it.cls}" style="left:${it.xPct.toFixed(1)}%"></span>`)
     .join('');
-  // 각 노드: 이름만(타임스탬프 표시 제거 — 사용자 요청). 위치(좌/우)는 side로. top은 실측 후 부여.
+  // 각 노드: 이름만, **▲ 마커 바로 아래 중앙 정렬**(translateX(-50%)). 겹치면 top으로 단 내림.
   const labels = items
     .map(
       (it) =>
-        `<span class="card__vizlabel ${it.cls}" data-side="${it.side}" style="left:${it.xPct.toFixed(1)}%"><b>${esc(it.label)}</b></span>`,
+        `<span class="card__vizlabel ${it.cls}" style="left:${it.xPct.toFixed(1)}%"><b>${esc(it.label)}</b></span>`,
     )
     .join('');
   // 미래는 '남은 시간'(현재→기준=fillB→1)을 흐린 파랑으로 덧칠해 진한 채움(경과)과 2색 대비.
@@ -547,11 +561,10 @@ function renderViz(refs, item, direction) {
   const labelsEl = refs.vizEl.querySelector('.card__viz-labels');
   labelsEl.innerHTML = labels;
   const labelEls = [...labelsEl.querySelectorAll('.card__vizlabel')];
-  // 라벨 좌/우 끝(L,R)은 side에 따라 다름: 우측배치=[x, x+w], 좌측배치=[x−w, x].
+  // 라벨은 마커 중앙(translateX(-50%)) → 끝(L,R) = [x−w/2, x+w/2].
   const placed = items.map((it, i) => {
     const w = labelEls[i].offsetWidth || it.estW;
-    const L = it.side === 'right' ? it.xPx : it.xPx - w;
-    return { L, R: L + w, el: labelEls[i] };
+    return { L: it.xPx - w / 2, R: it.xPx + w / 2, el: labelEls[i] };
   });
   const rowRight = []; // 각 행에 마지막으로 놓인(=가장 오른쪽) 라벨의 우측 끝
   for (const m of [...placed].sort((a, b) => a.L - b.L)) {
@@ -1123,6 +1136,14 @@ listEl.addEventListener('click', (e) => {
     openFieldEditor(card, id, 'title');
   } else if (e.target.closest('.card__meta')) {
     openFieldEditor(card, id, 'date');
+  } else if (e.target.closest('.card__datehide')) {
+    changeSetting({ [e.target.closest('.card__datehide').dataset.key]: false }); // 눈 → 그 일시를 제목 아래에서 숨김
+    rebuild();
+  } else if (e.target.closest('.card__vizlabel')) {
+    // 타임라인 노드 클릭 → 그 일시를 제목 아래에 표시(등록/수정/기준). 시작·현재는 대응 행 없어 무시.
+    const c = e.target.closest('.card__vizlabel').classList;
+    const key = c.contains('tl--created') ? 'showCreated' : c.contains('tl--updated') ? 'showUpdated' : c.contains('tl--target') ? 'showTarget' : null;
+    if (key) { changeSetting({ [key]: true }); rebuild(); }
   } else if (e.target.closest('.card__progress, .card__viz--editable')) {
     openFieldEditor(card, id, 'start'); // 도넛/% 또는 미래 진행바 클릭 → 진행 시작점 지정
   } else if (e.target.closest('.card__group')) {
@@ -2033,7 +2054,7 @@ setDates.addEventListener('click', (e) => {
 onSeg(setTheme, (v) => changeSetting({ theme: v }));
 // 상단 크기(진행률 도넛·남은/지난시간) 배율: 즉시 반영 + 폰트 배율 바뀌므로 fitTime 재실행.
 function onHeroScale(v) {
-  changeSetting({ heroScale: Math.min(1.6, Math.max(0.6, +(+v).toFixed(2))) });
+  changeSetting({ heroScale: +(+v).toFixed(2) }); // 클램프는 settings.clampHeroScale([0.5,1.5])가 단일 처리(락 방지)
   refsList.forEach((r) => fitTime(r.timeEl)); // 큰시간 폰트 배율 반영 후 오버플로우 재적합
 }
 setHeroScale.addEventListener('input', () => onHeroScale(setHeroScale.value));
